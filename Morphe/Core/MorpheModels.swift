@@ -4018,9 +4018,10 @@ struct AIMemory: Codable, Equatable {
     mutating func apply(adding: [AIMemoryItem], retiring: [UUID]) {
         let retire = Set(retiring)
         items.removeAll { retire.contains($0.id) && !$0.userEdited }
-        let existing = Set(items.map { $0.text.lowercased() })
+        var existing = Set(items.map { $0.text.lowercased() })
         for item in adding where !item.text.isEmpty && !existing.contains(item.text.lowercased()) {
             items.append(item)
+            existing.insert(item.text.lowercased())
         }
         while items.count > Self.capacity, let index = items.firstIndex(where: { !$0.userEdited }) {
             items.remove(at: index)
@@ -4029,9 +4030,15 @@ struct AIMemory: Codable, Equatable {
         updatedAt = Date()
     }
 
-    /// A short fingerprint so a rating can say which memory it was answered with.
+    /// A short, launch-stable fingerprint so a rating can say which memory
+    /// it was answered with (Swift's hashValue is seeded per process — an
+    /// FNV-1a over the ids is the same on every launch).
     var fingerprint: String {
-        let joined = items.map { $0.id.uuidString }.joined()
-        return String(joined.hashValue, radix: 16)
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in items.map({ $0.id.uuidString }).joined().utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        return String(hash, radix: 16)
     }
 }

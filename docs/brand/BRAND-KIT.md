@@ -49,7 +49,7 @@ Pillars: Smarter Training (AI-powered personalization) · Stronger You
 ## Where the app stands against this kit (2026-10-05, not yet reconciled)
 - App accent is Spartan blue **#2957D9** (lit **#7AA2FF** in dark), canvas
   **#121214**; the kit's blues are #0066FF / #0050E6 / #7DD3FF on #0A1A3A.
-- App motto in product copy is **TRAIN SMARTER**; the kit's line is "AI
+- App motto in product copy is **TRAIN HONEST** (one constant, `MorpheTheme.tagline`, since 2026-10-15); the kit's line is "AI
   Fitness. Spartan Discipline. Modern Performance." The launch screen still
   carries "TRANSFORM. EVOLVE. BECOME."
 - Helmet in-app is always frosted white (brand rule since 2026-10-02); the

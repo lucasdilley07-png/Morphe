@@ -1,6 +1,6 @@
 # Morphe
 
-**TRAIN SMARTER.** An iOS training app with a Spartan guardian inside it:
+**TRAIN HONEST.** An iOS training app with a Spartan guardian inside it:
 it plans the session, logs real sets, counts real reps through the camera,
 checks what you eat, and never invents a number. Human-only by law — no
 bots, no spam, no AI-written content; Morphe AI is the only AI in Morphe.

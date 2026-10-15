@@ -490,18 +490,18 @@ private struct WelcomeLandingStep: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var markShown = false
 
-    static let tagline = "TRAIN HONEST"
+    static let tagline = MorpheTheme.tagline
 
     var body: some View {
         BeatSequence(delays: [0.35, 0.65, 0.95, 1.5, 1.65, 1.8, 1.95, 2.4]) { beat in
             VStack(alignment: .leading, spacing: 18) {
                 VStack(spacing: 10) {
                     ZStack {
-                        RingPulse(color: MorpheTheme.accent, from: 0.4, to: 3.2, duration: 1.3, delay: 0.1)
+                        RingPulse(color: MorpheTheme.accent, from: 0.4, to: 2.2, duration: 1.3, delay: 0.1)
                             .frame(width: 96, height: 96)
                         MorpheHelmetMark(glowRadius: 10)
                             .frame(width: 96, height: 96)
-                            .matchedGeometryEffect(id: "brandMark", in: namespace)
+                            .matchedGeometryEffect(id: "brandMark", in: namespace, isSource: true)
                             .scaleEffect(markShown || reduceMotion ? 1 : 0.55)
                             .opacity(markShown || reduceMotion ? 1 : 0)
                             .blur(radius: markShown || reduceMotion ? 0 : 10)
@@ -614,7 +614,7 @@ private struct NameStep: View {
                 HStack(spacing: 10) {
                     MorpheHelmetMark(glowRadius: 4)
                         .frame(width: 28, height: 28)
-                        .matchedGeometryEffect(id: "brandMark", in: namespace)
+                        .matchedGeometryEffect(id: "brandMark", in: namespace, isSource: false)
                         .accessibilityHidden(true)
                     TextField("Your first name", text: $name)
                     .textFieldStyle(MorpheFieldStyle())

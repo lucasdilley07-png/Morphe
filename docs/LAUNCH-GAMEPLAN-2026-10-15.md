@@ -7,7 +7,7 @@ by 10/31. Honest framing on funding: by 10/31 it is a pipeline and first
 conversations, not a close — the investor audit's 90-day proof window
 starts at TestFlight.
 
-## Done this week (all pushed, 427 tests green, on Lucas's phone)
+## Done this week (all pushed and tested; the phone build is updated after each wave)
 - Morphe AI online: the relay (Cloud Function, Sonnet 5.5, $45 budget under
   the $50 key cap, 18+, 30/day, worst-case cost held before each call),
   the app's two doors, consent, ratings opt-in, policy, audited twice.
@@ -26,12 +26,15 @@ starts at TestFlight.
    mark morphs in, ring, "Meet Morphe · TRAIN HONEST", the mark becomes
    the name field; Reduce Motion fallbacks. (Tagline is one string.)
 2. **Tour grid** "Train with Voice · Form · Fuel · Morphe AI" with the real
-   orb stage for Voice; the Form card needs ONE recorded Form Check clip
-   from Lucas (placeholder until then — never a drawn mock).
-3. **Wave 4 — memory** (3–4 days): `AIMemory` schema, post-chat extraction
-   with a strict schema via the relay, `users/{uid}/private/aiMemory`,
-   "Morphe remembers" screen (edit/delete/forget all), retrieval over logs,
-   rating → weekly eval, consent default off for health-type facts.
+   orb stage for Voice — SHIPPED 2026-10-15 (cards are doors: icon + line,
+   no drawn mock). A recorded Form Check clip in the Form card is a later
+   upgrade once Lucas records one.
+3. **Wave 4 — memory** — SHIPPED 2026-10-15: `AIMemory`, post-chat
+   extraction with a strict schema, stored in the account's extras blob
+   (cloud-backed, exported, erased with the account), "Morphe remembers"
+   screen (add/delete/forget all), retrieval over logs, ratings stamped with
+   the prompt + memory version; the whole feature is off by default. Still
+   to do: the weekly eval script over rated answers (needs ratings first).
 4. **Release audit** (1 day): fresh-eyes pass on everything since 10/13,
    Release build, crash-free run on the phone, accessibility sizes,
    App Store metadata + privacy answers updated for the relay, OCR,
@@ -52,8 +55,10 @@ starts at TestFlight.
    switch the four targets to the paid team, App Attest entitlement back,
    enforce App Check (flip `MORPHE_AI_REQUIRE_APP_CHECK=true`), archive →
    TestFlight → 10 testers → submit. The 90-day clock starts at TestFlight.
-3. **Tagline** — "TRAIN HONEST" is used everywhere in the build from today;
-   say the word if it should be something else.
+3. **Tagline** — "TRAIN HONEST" everywhere since 2026-10-15 (app, watch,
+   share cards, Morphe AI, site, store copy), one constant
+   `MorpheTheme.tagline`; say the word if it should be something else. The
+   brand-kit PNGs need `Tools/make_brand_assets.swift` re-run.
 4. **One Form Check clip** for the tour card; **~15 clips per movement** for
    the harness (can be the same session).
 5. **Sign in on the Pro Max simulator** once so I can take the store

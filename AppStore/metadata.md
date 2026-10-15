@@ -10,14 +10,14 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 > Optional keyword variant (helps search): `Morphe: Workout Tracker` (23 chars)
 
 ## Subtitle (≤30 chars)
-**Train smarter. Log real sets.** (29 chars)
+**Train honest. Log real sets.** (28 chars)
 
 > Keyword-heavy alternative if search rank matters more than brand at
 > launch: `Workout builder & tracker` — the keyword field below already
 > carries workout/tracker/gym either way.
 
 ## Promotional text (≤170 chars, editable any time without review)
-Train smarter. Real sets, a camera that counts reps on your device, a food check that reads labels, and a score that only states what you logged. Humans only. (159 chars)
+Train honest. Real sets, a camera that counts reps on your device, a food check that reads labels, and a score that only states what you logged. Humans only. (159 chars)
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,nutrition,builder`
@@ -25,7 +25,7 @@ Train smarter. Real sets, a camera that counts reps on your device, a food check
 ## Description (≤4000 chars)
 Morphe is the Spartan in your pocket: a training guardian that plans the session, logs real sets, counts real reps through the camera, and never invents a number. Plan your workouts, log every set with real weight and reps, and watch a Morphe Score that reflects what you actually did.
 
-TRAIN SMARTER — THE HOUSE RULES
+TRAIN HONEST — THE HOUSE RULES
 • Real scores only — every stat is computed from sets you logged
 • No ads, no trackers — your numbers are never sold or used to target you
 • Your data, your export, and every safety feature stay free, always
@@ -33,7 +33,7 @@ TRAIN SMARTER — THE HOUSE RULES
 
 BUILD YOUR OWN WORKOUTS
 • Create custom workouts from a library of 590+ exercises, or start one of 300+ ready workouts across 17 training styles
-• Build with Morphe AI: answer a few questions — goal, split, style, intensity, time, gear — and the session is built from the library; add your own key for a bespoke build
+• Build with Morphe AI: answer a few questions — goal, split, style, intensity, time, gear — and the session is built from the library; turn on Morphe AI online (18+, free, 30 answers a day) or add your own key for a bespoke build
 • Multi-week programs with progression from your own logs and one deload before the end
 
 LOG WHAT MATTERS
@@ -49,7 +49,7 @@ FORM CHECK
 
 MORPHE AI
 • Ask what's next, why today's plan changed, or how your readiness looks — answered from your own logs and details, never invented
-• Hey Morphe: hands-free with the app open, once you turn it on — the orb lights up in your rank's color
+• Hey Morphe: hands-free in the app and in the background while Morphe is running, once you turn it on — the orb lights up in your rank's color
 • Morphe AI is the only AI in Morphe: nothing else here is generated
 
 FUEL
@@ -109,7 +109,7 @@ When asked "Do you or your third-party partners collect data from this app?", ch
 - **Contact Info → Name** (display name)
 - **Identifiers → User ID** (account id)
 - **Health & Fitness** (workouts written to / sleep read from Apple Health, training logs)
-- **User Content → Other User Content** (posts, comments, messages, connect requests, coach-share summaries, food checks and the fuel log)
+- **User Content → Other User Content** (posts, comments, messages, connect requests, coach-share summaries, food checks and the fuel log; opt-in: Morphe AI answers you rate, and the "Morphe remembers" lines)
 - **User Content → Photos or Videos** (verification selfie, profile photo)
 - **Usage Data → Product Interaction** (first-party milestone events: retention/activation; purpose Analytics, not tracking)
 No advertising, no analytics SDKs, no tracking — `NSPrivacyTracking` is false.

@@ -3248,6 +3248,11 @@ private struct MorpheRemembersSettings: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
+                    if !store.intelligenceEnabled {
+                        Text("Needs Morphe AI online or your own key, in Morphe Intelligence below.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
                 }
                 Spacer(minLength: 0)
                 Toggle("Morphe remembers", isOn: Binding(
@@ -3257,6 +3262,9 @@ private struct MorpheRemembersSettings: View {
                     }))
                     .labelsHidden()
                     .tint(MorpheTheme.accent)
+                    // Remembering needs Claude: no door, no switch (audit
+                    // 2026-10-15 — it read "On" and did nothing).
+                    .disabled(!store.intelligenceEnabled && !store.aiMemoryEnabled)
             }
             .confirmationDialog("Let Morphe remember?", isPresented: $showConsent, titleVisibility: .visible) {
                 Button("Agree and turn on") {
@@ -3265,7 +3273,7 @@ private struct MorpheRemembersSettings: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("After each chat, Morphe asks Claude (through Morphe\u{2019}s server, or on your own key) for the durable things you said \u{2014} never what Morphe said, never a guess. They are stored with your account, shown here with their source, sent to Anthropic with every later answer as context, and deleted when you remove them, tap Forget everything, or delete your account. Nothing is used to train a model.")
+                Text("After each Morphe AI chat, Morphe asks Claude (through Morphe\u{2019}s server, or on your own key) for only the durable things you said \u{2014} never what Morphe said, never a guess \u{2014} and shows every line here so you can remove any. They are stored with your account, shown here with their source, sent to Anthropic with every later answer as context, and deleted when you remove them, tap Forget everything, or delete your account. Nothing is used to train a model.")
             }
 
             if store.aiMemoryEnabled {
@@ -3317,7 +3325,7 @@ private struct MorpheRemembersSettings: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(MorpheTheme.accentText)
-                        .frame(minHeight: 44)
+                        .frame(minWidth: 44, minHeight: 44)
                         .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityLabel("Add the note to what Morphe remembers")
                     }

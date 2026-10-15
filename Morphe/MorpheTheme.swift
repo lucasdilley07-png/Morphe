@@ -4,6 +4,11 @@ import AVFoundation
 import AudioToolbox
 
 enum MorpheTheme {
+    /// The motto, in one place (2026-10-15: the opener and the manifesto
+    /// showed two different lines on one screen). Change it here and the
+    /// app, the share cards, the stories and Morphe AI all follow.
+    static let tagline = "TRAIN HONEST"
+
     // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
     // flat surfaces, hairline strokes, monospaced micro-labels; no glass
     // gradients, no glows. Yellow is scarce — primary action + key data.

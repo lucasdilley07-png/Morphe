@@ -105,7 +105,7 @@ li {{ margin-bottom:6px; }}
 <div class="wrap">
   <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span class="wordmark-glow"><span class="wordmark" role="img" aria-label="Morphe"></span></span></a>
 {body}
-  <div class="foot"><a href="index.html">Morphe</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
+  <div class="foot"><a href="index.html">Morphe</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="support.html">Support</a><span>TRAIN HONEST</span></div>
 </div>
 </body>
 </html>

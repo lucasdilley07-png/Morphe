@@ -2322,7 +2322,7 @@ private struct BoardStoryView: View {
 
                 HStack {
                     Spacer()
-                    Text("TRAIN SMARTER")
+                    Text(MorpheTheme.tagline)
                         .scaledFont(size: 11, weight: .bold, design: .monospaced)
                         .tracking(1.6)
                         .foregroundStyle(MorpheTheme.accentText)
@@ -2654,7 +2654,7 @@ private struct StoryCardView: View {
                     .tracking(1.6)
                     .foregroundStyle(MorpheTheme.textPrimary.opacity(0.7))
                 Spacer()
-                Text("TRAIN SMARTER")
+                Text(MorpheTheme.tagline)
                     .scaledFont(size: 11, weight: .bold, design: .monospaced)
                     .tracking(1.6)
                     .foregroundStyle(MorpheTheme.accentText)

@@ -4720,13 +4720,16 @@ private struct TourTrainWithGrid: View {
         let symbol: String
         let line: String
         let page: Int   // WelcomeExperienceView.Page raw value
+        let hint: String
     }
     private static let doors: [Door] = [
-        Door(id: 0, word: "Voice", symbol: "waveform", line: "Say it. Morphe logs it.", page: 2),
-        Door(id: 1, word: "Form", symbol: "camera.viewfinder", line: "The camera counts the reps.", page: 1),
-        Door(id: 2, word: "Fuel", symbol: "fork.knife", line: "Read a label. Check a plate.", page: 4),
-        Door(id: 3, word: "Morphe AI", symbol: "sparkles", line: "Answers from your own logs.", page: 2)
+        Door(id: 0, word: "Voice", symbol: "waveform", line: "Say it. Morphe logs it.", page: 2, hint: "Opens the voice stop of the tour"),
+        Door(id: 1, word: "Form", symbol: "camera.viewfinder", line: "The camera counts the reps.", page: 1, hint: "Opens the Form Check stop of the tour"),
+        // There is no separate Fuel stop: Fuel is explained on Progress.
+        Door(id: 2, word: "Fuel", symbol: "fork.knife", line: "Read a label. Check a plate.", page: 4, hint: "Opens the Progress stop, where Fuel is explained"),
+        Door(id: 3, word: "Morphe AI", symbol: "sparkles", line: "Answers from your own logs.", page: 2, hint: "Opens the Morphe AI stop of the tour")
     ]
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -4734,16 +4737,23 @@ private struct TourTrainWithGrid: View {
                 Text("Train with")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(MorpheTheme.textSecondary)
-                Text(Self.doors[active].word)
-                    .font(.title.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .id(active)
-                    .transition(.blurIn)
+                // A ZStack, so the leaving word never sits beside the
+                // arriving one during the swap (audit 2026-10-15).
+                ZStack(alignment: .leading) {
+                    Text(Self.doors[active].word)
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .id(active)
+                        .transition(.blurIn)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            // One column at accessibility text sizes, so nothing clips.
+            LazyVGrid(columns: typeSize.isAccessibilitySize
+                      ? [GridItem(.flexible())]
+                      : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 ForEach(Self.doors) { door in
                     Button {
                         open(door.page)
@@ -4752,7 +4762,7 @@ private struct TourTrainWithGrid: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Train with \(door.word). \(door.line)")
-                    .accessibilityHint("Opens that stop of the tour")
+                    .accessibilityHint(door.hint)
                 }
             }
         }
@@ -4777,7 +4787,7 @@ private struct TourTrainWithGrid: View {
         return ZStack {
             VStack(spacing: 10) {
                 Image(systemName: door.symbol)
-                    .font(.system(size: 26, weight: .medium))
+                    .font(.title2.weight(.medium))
                     .foregroundStyle(selected ? AnyShapeStyle(gradient) : AnyShapeStyle(MorpheTheme.textMuted))
                     .frame(height: 32)
                 Text(door.word)
@@ -4787,7 +4797,7 @@ private struct TourTrainWithGrid: View {
                     .font(.caption2)
                     .foregroundStyle(MorpheTheme.textMuted)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 16)
             .padding(.horizontal, 10)
@@ -4795,12 +4805,15 @@ private struct TourTrainWithGrid: View {
 
             // The Voice beat: the real orb stage opens out of the card.
             if door.id == 0 {
-                RadialReveal(origin: .center, revealed: selected && !reduceMotion) {
+                RadialReveal(origin: .center, revealed: selected) {
                     ZStack {
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(Color(red: 0.05, green: 0.05, blue: 0.09))
                         VStack(spacing: 6) {
-                            MorpheOrbView(level: voiceReady ? 0.55 : 0.2, speaking: false, thinking: !voiceReady)
+                            // The orb draws only while its card is the one
+                            // selected (audit 2026-10-15: it ran at 30 fps
+                            // for the whole tour otherwise).
+                            MorpheOrbView(level: voiceReady ? 0.55 : 0.2, speaking: false, thinking: !voiceReady, animates: selected)
                                 .frame(width: 64, height: 64)
                             Text(voiceReady ? "Ready" : "Thinking \u{00B7}\u{00B7}\u{00B7}")
                                 .font(.caption.weight(.semibold))

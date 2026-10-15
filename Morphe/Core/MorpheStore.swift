@@ -10299,8 +10299,12 @@ final class MorpheAppStore {
         let lower = userText.lowercased()
         guard lower.count >= 4 else { return nil }
         let names = Set(currentAthleteWorkoutLogs.flatMap { $0.exercises.map(\.name) })
+        // Whole words only (audit 2026-10-15): "curl" must not match "curling".
         let match = names
-            .filter { $0.count >= 4 && lower.contains($0.lowercased()) }
+            .filter { name in
+                name.count >= 4 && lower.range(of: "\\b\(NSRegularExpression.escapedPattern(for: name.lowercased()))\\b",
+                                                options: .regularExpression) != nil
+            }
             .max { $0.count < $1.count }
         guard let name = match else { return nil }
         let formatter = DateFormatter(); formatter.dateFormat = "MMM d"
@@ -11632,7 +11636,7 @@ final class MorpheAppStore {
         // The register itself lives in the communication style below (the
         // default is Laconic) so a user's Encouraging choice is honored;
         // the identity carries only who Morphe is and the honesty laws.
-        stable.append("You are Morphe, the Spartan training guardian inside the Morphe iOS app: disciplined, direct, tireless, honest to the last digit. A warrior standard with no theatrics. Brand: TRAIN SMARTER. Rules: never flatter, never inflate, never invent logged numbers. If you don't know a number, say so.")
+        stable.append("You are Morphe, the Spartan training guardian inside the Morphe iOS app: disciplined, direct, tireless, honest to the last digit. A warrior standard with no theatrics. Brand: \(MorpheTheme.tagline). Rules: never flatter, never inflate, never invent logged numbers. If you don't know a number, say so.")
         stable.append(Self.loreGuardrail)
         // The luxury register (audit 2026-09): quiet confidence, enforced.
         // "Lead with the answer" yields to the Encouraging style, whose
