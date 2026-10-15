@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "Morphe/Assets.xcassets/LoadingHelmet.imageset/LoadingHelmet.png"
+SOURCE = ROOT / "Morphe/Assets.xcassets/LoadingHelmet.imageset/LoadingHelmet-dark.png"
 OUT = ROOT / "Morphe/Assets.xcassets/LaunchHelmet.imageset"
 
 WIDTH_PT = 236   # LoadingHelmet.width
@@ -32,5 +32,5 @@ def render(scale: int) -> Image.Image:
 
 if __name__ == "__main__":
     for scale in (2, 3):
-        render(scale).save(OUT / f"LaunchHelmet@{scale}x.png")
+        render(scale).save(OUT / f"LaunchHelmet-dark@{scale}x.png")  # light: make_light_loading_layers.py
     print("LaunchHelmet written")

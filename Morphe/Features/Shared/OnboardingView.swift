@@ -3,6 +3,7 @@ import SwiftUI
 struct LaunchSequenceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasStarted = false
     @State private var revealed = false
     @State private var progress: CGFloat = 0
@@ -10,6 +11,10 @@ struct LaunchSequenceView: View {
     /// The cold-open beat (2026-10-15 loading screen): long enough for the
     /// bar to fill and the waves to be seen moving, cold starts only.
     static let beat: Duration = .milliseconds(1400)
+
+    private var isLight: Bool { colorScheme == .light }
+    /// The art's own type colours: near-black on the light field, white on navy.
+    private var ink: Color { isLight ? Color(red: 0.03, green: 0.04, blue: 0.09) : .white }
 
     var body: some View {
         GeometryReader { geo in
@@ -19,11 +24,13 @@ struct LaunchSequenceView: View {
                 // Tools/make_launch_splash.py) — the waves fade in around it.
                 Color("LaunchField").ignoresSafeArea()
 
-                LoadingWaves(animates: !reduceMotion)
+                // Every layer has a light and a dark appearance (Lucas's
+                // two loading arts); the asset catalog picks by scheme.
+                LoadingWaves(animates: !reduceMotion, isLight: isLight)
                     .opacity(revealed ? 1 : 0)
                     .ignoresSafeArea()
 
-                LoadingHelmet(animates: !reduceMotion)
+                LoadingHelmet(animates: !reduceMotion, isLight: isLight)
                     .frame(width: LoadingHelmet.width, height: LoadingHelmet.height)
                     // Screen centre lifted by LoadingHelmet.lift — exactly
                     // where UILaunchScreen centres the baked splash image.
@@ -32,18 +39,18 @@ struct LaunchSequenceView: View {
 
                 VStack(spacing: 14) {
                     MorpheWordmark(height: 40)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(ink)
                     Text(MorpheTheme.tagline)
                         .font(MorpheTheme.microLabel(13))
                         .tracking(6)
-                        .foregroundStyle(.white.opacity(0.92))
-                    LoadingGlassBar(progress: progress, animates: !reduceMotion)
+                        .foregroundStyle(ink.opacity(0.88))
+                    LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: isLight)
                         .frame(width: 210, height: 9)
                         .padding(.top, 22)
                     Text("LOADING…")
                         .font(MorpheTheme.microLabel(10))
                         .tracking(3.5)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(ink.opacity(0.6))
                 }
                 .opacity(revealed ? 1 : 0)
                 .offset(y: revealed ? 0 : 8)
@@ -53,7 +60,6 @@ struct LaunchSequenceView: View {
             }
         }
         .ignoresSafeArea()
-        .preferredColorScheme(.dark)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Morphe. \(MorpheTheme.tagline). Loading.")
         .task {
@@ -76,6 +82,7 @@ struct LaunchSequenceView: View {
 /// waves' own pixels, and data motes rising through it.
 private struct LoadingWaves: View {
     let animates: Bool
+    let isLight: Bool
     @State private var drift = false
 
     var body: some View {
@@ -108,11 +115,13 @@ private struct LoadingWaves: View {
                                 .rotationEffect(.degrees(-24))
                                 .offset(y: (phase * 1.9 - 0.95) * geo.size.height)
                             }
-                            .blendMode(.plusLighter)
-                            .opacity(0.55)
+                            // Dark: light added along the waves. Light: the
+                            // waves deepen (white stays white under multiply).
+                            .blendMode(isLight ? .multiply : .plusLighter)
+                            .opacity(isLight ? 0.45 : 0.55)
                     }
-                    LoadingMotes()
-                        .blendMode(.plusLighter)
+                    LoadingMotes(isLight: isLight)
+                        .blendMode(isLight ? .normal : .plusLighter)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -135,6 +144,7 @@ private struct LoadingWaves: View {
 
 /// Data motes: small electric-blue points rising and twinkling.
 private struct LoadingMotes: View {
+    let isLight: Bool
     private struct Mote { let x, y, speed, size, phase: Double }
     private static let motes: [Mote] = (0..<46).map { i in
         var g = SystemRandomNumberGenerator()
@@ -155,9 +165,11 @@ private struct LoadingMotes: View {
                     let twinkle = 0.35 + 0.65 * (0.5 + 0.5 * sin(t * 2.2 + mote.phase))
                     let r = mote.size
                     context.fill(Path(ellipseIn: CGRect(x: px - r * 2, y: py - r * 2, width: r * 4, height: r * 4)),
-                                 with: .color(Color(red: 0.25, green: 0.5, blue: 1).opacity(0.18 * twinkle)))
+                                 with: .color(Color(red: 0.25, green: 0.5, blue: 1).opacity((isLight ? 0.12 : 0.18) * twinkle)))
                     context.fill(Path(ellipseIn: CGRect(x: px - r / 2, y: py - r / 2, width: r, height: r)),
-                                 with: .color(Color(red: 0.7, green: 0.85, blue: 1).opacity(0.9 * twinkle)))
+                                 with: .color(isLight
+                                    ? Color(red: 0.12, green: 0.4, blue: 0.95).opacity(0.75 * twinkle)
+                                    : Color(red: 0.7, green: 0.85, blue: 1).opacity(0.9 * twinkle)))
                 }
             }
         }
@@ -172,6 +184,7 @@ private struct LoadingHelmet: View {
     /// Matches LIFT_PT in Tools/make_launch_splash.py.
     static let lift: CGFloat = 110
     let animates: Bool
+    let isLight: Bool
     @State private var breathe = false
 
     var body: some View {
@@ -181,9 +194,9 @@ private struct LoadingHelmet: View {
                 .interpolation(.high)
                 .scaledToFit()
                 .blur(radius: 18)
-                .opacity(breathe ? 0.75 : 0.35)
+                .opacity(isLight ? (breathe ? 0.45 : 0.15) : (breathe ? 0.75 : 0.35))
                 .scaleEffect(1.04)
-                .blendMode(.plusLighter)
+                .blendMode(isLight ? .normal : .plusLighter)
             Image("LoadingHelmet")
                 .resizable()
                 .interpolation(.high)
@@ -202,6 +215,7 @@ private struct LoadingHelmet: View {
 private struct LoadingGlassBar: View {
     let progress: CGFloat
     let animates: Bool
+    let isLight: Bool
 
     var body: some View {
         GeometryReader { geo in
@@ -217,7 +231,7 @@ private struct LoadingGlassBar: View {
                 Circle()
                     .fill(Color.white)
                     .frame(width: geo.size.height * 0.9, height: geo.size.height * 0.9)
-                    .shadow(color: .white, radius: 4)
+                    .shadow(color: isLight ? Color(red: 0.3, green: 0.6, blue: 1) : .white, radius: 4)
                     .offset(x: w - geo.size.height * 0.95)
                     .opacity(progress > 0.02 ? 1 : 0)
             }
@@ -227,8 +241,8 @@ private struct LoadingGlassBar: View {
     @ViewBuilder
     private var track: some View {
         if #available(iOS 26.0, *) {
-            Capsule().fill(Color.white.opacity(0.04))
-                .glassEffect(.regular.tint(Color(red: 0.05, green: 0.12, blue: 0.4).opacity(0.5)), in: Capsule())
+            Capsule().fill(Color.white.opacity(isLight ? 0.5 : 0.04))
+                .glassEffect(.regular.tint(isLight ? Color.white.opacity(0.4) : Color(red: 0.05, green: 0.12, blue: 0.4).opacity(0.5)), in: Capsule())
                 .overlay(Capsule().strokeBorder(Color(red: 0.45, green: 0.6, blue: 1).opacity(0.55), lineWidth: 1))
         } else {
             Capsule().fill(.ultraThinMaterial)

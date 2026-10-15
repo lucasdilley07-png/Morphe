@@ -1,7 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "LoadingHelmet.png",
+      "filename" : "LoadingHelmet-light.png",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "LoadingHelmet-dark.png",
       "idiom" : "universal"
     }
   ],

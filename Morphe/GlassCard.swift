@@ -116,6 +116,52 @@ struct GlassCard<Content: View>: View {
     }
 }
 
+struct SectionTitleView: View {
+    let title: String
+    let subtitle: String
+    /// Page-level headers pass 16 to match the Train/Network section tabs;
+    /// section headers deeper in a page keep the 14 default.
+    var titleSize: CGFloat = 14
+
+    var body: some View {
+        // Alive-wave header: centered, symmetrical — the tracked mono title
+        // flanked by matched hairline rules, subtitle centered beneath.
+        // (The old leading tick + one-sided rule read left-to-right; the
+        // whole app now balances around the center line.)
+        VStack(alignment: .center, spacing: 6) {
+            HStack(spacing: 10) {
+                Rectangle()
+                    .fill(MorpheTheme.stroke)
+                    .frame(height: 1)
+                    .frame(maxWidth: .infinity)
+
+                Text(title.uppercased())
+                    // microLabel scales with Dynamic Type; the .bold keeps
+                    // the section weight the fixed-size version had.
+                    .font(MorpheTheme.microLabel(titleSize).weight(.bold))
+                    .tracking(2)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+
+                Rectangle()
+                    .fill(MorpheTheme.stroke)
+                    .frame(height: 1)
+                    .frame(maxWidth: .infinity)
+            }
+
+            Text(subtitle)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
 /// The "Hey Morphe" edge glow: the Siri-glow pattern in brand gold — a
 /// soft breathing border around the whole screen while Morphe listens or
 /// answers. Chrome, not content; hidden from hit-testing and VoiceOver.
@@ -3130,141 +3176,5 @@ struct BeatSequence<Content: View>: View {
                     withAnimation(.easeOut(duration: 0.45)) { shown[index] = true }
                 }
             }
-    }
-}
-
-// MARK: - Page frame (reformat 2026-10-15)
-//
-// One frame on every tab: the page's name in big wide letters with one
-// plain line under it, one segmented control when the page has parts, and
-// a mono section label with an optional "View all". Left-aligned so the eye
-// starts where the content starts. No art — the type is the brand.
-
-/// TRAIN · DISCOVER · NETWORK · LEARN — or Today's greeting.
-struct MorphePageTitle: View {
-    let title: String
-    var subtitle: String? = nil
-    /// Greetings keep their own casing ("Good morning, Verify.").
-    var uppercased: Bool = true
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(uppercased ? title.uppercased() : title)
-                .font(.system(.largeTitle, weight: .heavy).width(uppercased ? .expanded : .standard))
-                .tracking(uppercased ? 1.5 : 0)
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.6)
-                .accessibilityAddTraits(.isHeader)
-            if let subtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Equal segments in one track; the selected part is filled with the
-/// accent and slides between segments. Badges sit top-right of a label.
-struct MorpheSegmentedTabs<ID: Hashable>: View {
-    struct Item: Identifiable {
-        let id: ID
-        let title: String
-        var badge: Int = 0
-    }
-
-    let items: [Item]
-    let selection: ID
-    let onSelect: (ID) -> Void
-    @Namespace private var indicator
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(items) { item in
-                let isActive = item.id == selection
-                Button {
-                    guard !isActive else { return }
-                    Haptics.selection()
-                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.28)) { onSelect(item.id) }
-                } label: {
-                    Text(item.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(isActive ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textSecondary)
-                        .overlay(alignment: .topTrailing) {
-                            if item.badge > 0 {
-                                CountBadge(count: item.badge).offset(x: 16, y: -9)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background {
-                            if isActive {
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                    .fill(MorpheTheme.accent)
-                                    .matchedGeometryEffect(id: "segment", in: indicator)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.badge > 0 ? "\(item.title), \(item.badge) new" : item.title)
-                .accessibilityAddTraits(isActive ? [.isSelected, .isButton] : .isButton)
-            }
-        }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(MorpheTheme.panelStrong)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .strokeBorder(MorpheTheme.strokeSubtle, lineWidth: 1)
-        )
-    }
-}
-
-/// "QUICK START ............ View all ›" — the label names the block; the
-/// action, when there is one, opens the whole set.
-struct MorpheSectionHeader: View {
-    let title: String
-    var count: Int? = nil
-    var actionTitle: String = "View all"
-    var action: (() -> Void)? = nil
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(title.uppercased())
-                .font(MorpheTheme.microLabel(12).weight(.bold))
-                .tracking(1.6)
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            if let count {
-                Text(String(format: "%03d", count))
-                    .font(MorpheTheme.microLabel(10))
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .accessibilityHidden(true)
-            }
-            Spacer(minLength: 8)
-            if let action {
-                Button(action: action) {
-                    HStack(spacing: 3) {
-                        Text(actionTitle)
-                        Image(systemName: "chevron.right").font(.caption2.weight(.bold))
-                    }
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentText)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(actionTitle): \(title)")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

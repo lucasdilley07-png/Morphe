@@ -534,7 +534,7 @@ private struct PartnerSessionPostSheet: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                MorphePageTitle(
+                SectionTitleView(
                     title: "Partner Session Ready",
                     subtitle: "Morphe turned your shared session into a clean post card. Share it, save it, or skip it."
                 )
@@ -3482,9 +3482,10 @@ private struct UniversalSearchSheet: View {
         // scroll regions and buried results under the keyboard on an SE.
         // Same grammar as the Learn pager.
         VStack(alignment: .leading, spacing: 16) {
-                MorphePageTitle(
+                SectionTitleView(
                     title: "Search",
-                    subtitle: "Accounts, workouts, and exercises without leaving the flow."
+                    subtitle: "Accounts, workouts, and exercises without leaving the flow.",
+                    titleSize: 16
                 )
 
                 TextField("Search accounts, workouts, exercises...", text: $query)
@@ -3514,11 +3515,12 @@ private struct UniversalSearchSheet: View {
                     }
 
                 if hasSearched {
-                    MorpheSegmentedTabs(
-                        items: UniversalSearchCategory.allCases.map { .init(id: $0, title: $0.rawValue) },
-                        selection: category,
-                        onSelect: { category = $0 }
-                    )
+                    Picker("Search Category", selection: $category) {
+                        ForEach(UniversalSearchCategory.allCases) { item in
+                            Text(item.rawValue).tag(item)
+                        }
+                    }
+                    .pickerStyle(.segmented)
 
                     // Swipe between the categories (Lucas 2026-08-18) — same
                     // pager grammar as Train and Learn; the picker stays synced

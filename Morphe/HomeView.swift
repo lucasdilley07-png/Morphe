@@ -43,22 +43,19 @@ struct HomeView: View {
                 // time-aware greeting and one context question derived from
                 // real state — coach session due, rest day, streak, or the
                 // plain "what are we training?"
-                // Page frame (reformat 2026-10-15): left-aligned like every
-                // tab's title, but kept at title2 — the workout still
-                // out-weighs the hello (hierarchy audit 2026-09).
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(spacing: 6) {
                     Text(store.homeGreeting)
                         // Demoted from .title2 (hierarchy audit 2026-09):
                         // the greeting is chrome — and the full-screen day
                         // popup already delivers it. The day's WORKOUT is
                         // the primary, so it must out-weigh the hello.
-                        .font(.title2.weight(.bold))
+                        .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                     Text(store.homePrompt)
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                         .contentTransition(.opacity)
                         .glimmer()
                     // The visible learning loop (phase 4): one line of what
@@ -69,7 +66,7 @@ struct HomeView: View {
                             Image(systemName: "wand.and.stars")
                                 .font(.caption2.weight(.bold))
                             Text(learned)
-                                .multilineTextAlignment(.leading)
+                                .multilineTextAlignment(.center)
                         }
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -82,11 +79,11 @@ struct HomeView: View {
                         Text(recap)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accentText)
-                            .multilineTextAlignment(.leading)
+                            .multilineTextAlignment(.center)
                             .padding(.top, 2)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
                 // The voice arrives, it doesn't just print (Jarvis wave) —
                 // and the prompt cross-fades when the day's state changes.
@@ -1668,9 +1665,7 @@ private struct TodayNextMoveCard: View {
 
     var body: some View {
         GlassCard(.hero) {
-            // Left-aligned like Train's card for the same workout (page
-            // frame, reformat 2026-10-15).
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .center, spacing: 14) {
                 Text(minimumWinModeEnabled ? "Today's fallback is active" : "Here's what I've got for you")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -1690,17 +1685,17 @@ private struct TodayNextMoveCard: View {
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
                 } else {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .center, spacing: 8) {
                         Text(workout.name)
                             // Promoted to .title2 (hierarchy audit 2026-09):
                             // the day's session is Today's focal point and
                             // must be the largest element on the screen.
                             .font(.title2.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.leading)
+                            .multilineTextAlignment(.center)
                         Text("\(workout.durationMinutes) min • \(workout.goal)")
                             .foregroundStyle(MorpheTheme.textSecondary)
-                            .multilineTextAlignment(.leading)
+                            .multilineTextAlignment(.center)
                         // Present only when recent ratings/finish times have
                         // actually tilted the plan — silence means holding.
                         if let intensityNote = store.workoutIntensityNote {
@@ -1768,7 +1763,6 @@ private struct TodayNextMoveCard: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

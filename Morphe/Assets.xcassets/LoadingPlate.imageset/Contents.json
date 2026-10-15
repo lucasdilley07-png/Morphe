@@ -1,7 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "LoadingPlate.png",
+      "filename" : "LoadingPlate-light.png",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "LoadingPlate-dark.png",
       "idiom" : "universal"
     }
   ],

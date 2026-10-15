@@ -2,7 +2,7 @@
 """Cuts Lucas's loading art (BrandSource/loading-screen-source.webp) into the
 LoadingPlate (waves, lettering + helmet painted out) and LoadingHelmet layers.
 Run: python3 Tools/make_loading_layers.py <dir holding loading-src.webp>
-then copy both PNGs into their imagesets and run make_launch_splash.py."""
+then copy both PNGs into their imagesets as the -dark files and run make_launch_splash.py."""
 import numpy as np, sys
 from PIL import Image, ImageDraw, ImageFilter
 D=sys.argv[1]

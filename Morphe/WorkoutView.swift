@@ -842,11 +842,12 @@ struct WorkoutView: View {
         return ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                MorphePageTitle(
+                SectionTitleView(
                     title: "Train",
                     subtitle: store.hasCompletedWorkoutFlow
                         ? "Great session. Look it over, rate it, and I'll lock it in."
-                        : "Ready when you are — start the session and I'll track every set with you."
+                        : "Ready when you are — start the session and I'll track every set with you.",
+                    titleSize: 16
                 )
 
                 GuideHint(
@@ -2049,18 +2050,21 @@ struct DiscoverScreenView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Page frame (reformat 2026-10-15): the name, the count
-                    // line under it, then Workouts | Feed as one control.
-                    MorphePageTitle(
-                        title: "Discover",
-                        subtitle: store.selectedDiscoverSection == .feed
-                            ? "What the Creator Coaches published — under their names, every post reportable."
-                            : (store.discoverWorkouts.isEmpty
-                                ? "A new workout library is on the way."
-                                : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style.")
-                    )
-
+                    // Workouts | Feed lead the page (Lucas 2026-10-10: no
+                    // Discover title) — the tabs ARE the header, same as
+                    // Network's.
                     DiscoverSectionTabs()
+                        .padding(.top, -8)
+
+                    Text(store.selectedDiscoverSection == .feed
+                         ? "What the Creator Coaches published — under their names, every post reportable."
+                         : (store.discoverWorkouts.isEmpty
+                             ? "A new workout library is on the way."
+                             : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."))
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
                     if store.selectedDiscoverSection == .feed {
                         CreatorFeed()
@@ -2100,11 +2104,33 @@ private struct DiscoverSectionTabs: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        MorpheSegmentedTabs(
-            items: DiscoverSection.allCases.map { .init(id: $0, title: $0.rawValue) },
-            selection: store.selectedDiscoverSection,
-            onSelect: { store.selectedDiscoverSection = $0 }
-        )
+        // Equal halves, each label centered in its own column (Lucas
+        // 2026-10-10: more separated, symmetrical).
+        HStack(alignment: .bottom, spacing: 0) {
+            ForEach(DiscoverSection.allCases) { section in
+                let isActive = store.selectedDiscoverSection == section
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { store.selectedDiscoverSection = section }
+                    Haptics.selection()
+                } label: {
+                    VStack(alignment: .center, spacing: 5) {
+                        Text(section.rawValue.uppercased())
+                            .font(MorpheTheme.microLabel(16))
+                            .tracking(1.6)
+                            .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                        Rectangle()
+                            .fill(isActive ? MorpheTheme.accent : .clear)
+                            .frame(width: 34, height: 3)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottom)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(section.rawValue)
+                .accessibilityAddTraits(isActive ? .isSelected : [])
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -7419,11 +7445,12 @@ private struct SavedWorkoutsLibraryCard: View {
                         .autocorrectionDisabled()
                 }
 
-                MorpheSegmentedTabs(
-                    items: SavedWorkoutLibraryFilter.allCases.map { .init(id: $0, title: $0.rawValue) },
-                    selection: selectedFilter,
-                    onSelect: { selectedFilter = $0 }
-                )
+                Picker("Saved workout filter", selection: $selectedFilter) {
+                    ForEach(SavedWorkoutLibraryFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
 
                 // Folders: a second lens over whatever segment is active.
                 // Long-press a folder chip to delete it (workouts fall back

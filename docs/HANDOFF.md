@@ -398,8 +398,9 @@ Still open, in priority order:
   in the app; the Watch, site, README, store copy and brand tool carry the
   literal. "Train honest" survives only as the internal principle in code
   comments and archived audits.
-- **Marks** (sources in `BrandSource/`): app icon = the glass tile with
-  the helmet 5% smaller (iOS + Watch); Morphe AI button = the side-helmet
+- **Marks** (sources in `BrandSource/`): app icon = the bright glass tile
+  (`BrandSource/light/app-icon-light.webp`, iOS + Watch; the navy tile is
+  in the brand kit); Morphe AI button = the side-helmet
   glass orb (`MorpheAIButtonMark`); Hey Morphe = the front-helmet orb, cut
   into `MorpheAIOrbBase` + `MorpheAIHelmet` so `MorpheOrbView`'s motion is
   unchanged.
@@ -413,21 +414,27 @@ Still open, in priority order:
   `Tools/make_launch_splash.py` (236 pt wide, 110 pt above screen centre,
   `UIImageRespectsSafeAreaInsets = false`) so the handoff never jumps.
   iOS caches launch screens: reboot the simulator / reinstall to see a change.
-- **Page frame** (end of GlassCard.swift): `MorphePageTitle` (wide heavy
-  title + one line), `MorpheSegmentedTabs` (one track, accent fill slides),
-  `MorpheSectionHeader` (mono label + "View all"). Every tab and full-page
-  sheet opens on it: Today (greeting, title2 — the workout still out-weighs
-  it), TRAIN, DISCOVER, NETWORK, LEARN, Progress, Search, Partner Session,
-  Set Review. Rule: segmented control for a page's sections, chips only for
-  choices and filters, native pickers only inside forms. `SectionTitleView`
-  (the centred ruled header) is gone. Titles land on one line across tabs
-  (`Spacing.pageTopNetwork` = -7).
+- **Page frame: reverted** (Lucas 2026-10-15). A reformat modelled on an
+  AI-generated reference (big left-aligned titles, one segmented control
+  per page) was built and then rolled back at his call; the pages are the
+  pre-reference UI (centred `SectionTitleView` headers, underline tabs,
+  Learn's chips). Everything else from that day stays.
+- **Light mode marks**: every brand asset has a light appearance from
+  Lucas's light art (`BrandSource/light/`) and the asset catalog switches
+  by scheme — Morphe AI button orb, Hey Morphe orb layers
+  (`Tools/make_light_orb_layers.py`), loading plate + helmet, splash
+  helmet and `LaunchField` (`Tools/make_light_loading_layers.py`). The
+  loading screen's type, pulse blend (multiply on white), motes, glow and
+  glass bar follow the scheme. The home-screen icon is his bright glass
+  tile (one icon, both modes).
 - **Onboarding**: Back/Next pinned above the home indicator with a solid
   backdrop and a status-bar fade; the gate is read in `body` (inset content
   sits outside observation tracking).
 - **Website**: hero, product art and download panel use the loading
   screen's navy waves (`docs/assets/waves.jpg`, CSS drift, still under
-  reduced motion); icon, AI bubble, helmet and share card are the new marks.
+  reduced motion); icon, AI bubble, helmet and share card are the new marks;
+  a press strip (`#brand`) shows the dark and light vertical lockups
+  (brand kit + site only, not in the app).
 - **Open (personalization, untouched on purpose)**: the plan ranks workouts
   by sport, level, equipment, injuries and styles — goals aren't an input,
   so a Gain-muscle beginner can be handed a weight-loss HIIT first.

@@ -153,9 +153,9 @@ enum MorpheTheme {
         static let pageTopToday: CGFloat = 0
         static let pageTopTrain: CGFloat = 0
         static let pageTopStacked: CGFloat = 60   // Discover (NavigationStack)
-        // Page frame (2026-10-15): Network opens on its title like every
-        // tab; this lands the title on the same line as Train's.
-        static let pageTopNetwork: CGFloat = -7
+        // The tab row is a 44pt button whose label sits mid-row — pull the
+        // row up so the label lands on the reference line.
+        static let pageTopNetwork: CGFloat = -12
         static let pageTopCompact: CGFloat = 0    // Learn
     }
 

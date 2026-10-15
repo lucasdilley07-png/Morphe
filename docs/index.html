@@ -256,6 +256,16 @@ p { margin: 0; }
 
 .toast { position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 35; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 24px rgba(0,0,0,0.2); }
 .toast[hidden] { display: none; }
+
+/* Press strip: the two vertical lockups, each a download. */
+.brand-strip .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 32px; }
+@media (max-width: 640px) { .brand-strip .grid { grid-template-columns: 1fr; } }
+.brand-card { display: grid; gap: 12px; text-decoration: none; color: inherit; }
+.brand-card .art { border-radius: 20px; overflow: hidden; border: 1px solid var(--hair); aspect-ratio: 941 / 1100; display: grid; place-items: center; }
+.brand-card .art img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; display: block; }
+.brand-card.dark .art { background: #030A24; }
+.brand-card.light .art { background: #FFFFFF; }
+.brand-card .label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--fg-2); }
 </style>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Morphe","applicationCategory":"HealthApplication","operatingSystem":"iOS 17 or later","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Morphe is the Spartan in your pocket: a training guardian that plans the session, logs real sets, counts real reps on your phone, checks what you eat, and never invents a number. Humans only — no bots, no spam, no AI-written posts.","url":"https://lucasdilley07-png.github.io/Morphe/","author":{"@type":"Person","name":"Lucas Dilley"}}
@@ -412,6 +422,26 @@ p { margin: 0; }
         <p class="msg" id="wl-msg" role="status" aria-live="polite"></p>
         <p class="fine">ONE EMAIL WHEN THE BETA OPENS · NOTHING ELSE</p>
       </form>
+    </div>
+  </div>
+</section>
+
+<section class="section brand-strip" id="brand" aria-labelledby="brand-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="micro">Press &amp; brand</p>
+      <h2 id="brand-h">The Morphe lockup.</h2>
+      <p>Use the dark lockup on dark surfaces and the light one on white. Tap either for the full-size file.</p>
+    </div>
+    <div class="grid">
+      <a class="brand-card dark" href="brand-kit/morphe-lockup-vertical-dark.png" download>
+        <div class="art"><img src="assets/lockup-dark.webp" alt="Morphe lockup on navy: the glass helmet, the Morphe wordmark, TRAIN SMARTER" loading="lazy" width="470" height="836"></div>
+        <span class="label">DARK · PNG 941×1672</span>
+      </a>
+      <a class="brand-card light" href="brand-kit/morphe-lockup-vertical-light.png" download>
+        <div class="art"><img src="assets/lockup-light.webp" alt="Morphe lockup on white: the glass helmet, the Morphe wordmark, TRAIN SMARTER" loading="lazy" width="470" height="836"></div>
+        <span class="label">LIGHT · PNG 941×1672</span>
+      </a>
     </div>
   </div>
 </section>

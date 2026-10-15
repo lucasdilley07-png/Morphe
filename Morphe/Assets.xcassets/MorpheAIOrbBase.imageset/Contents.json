@@ -1,21 +1,22 @@
 {
-  "images": [
+  "images" : [
     {
-      "filename": "MorpheAIOrbBase.png",
-      "idiom": "universal",
-      "scale": "1x"
+      "filename" : "MorpheAIOrbBase-light.png",
+      "idiom" : "universal"
     },
     {
-      "idiom": "universal",
-      "scale": "2x"
-    },
-    {
-      "idiom": "universal",
-      "scale": "3x"
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "MorpheAIOrbBase-dark.png",
+      "idiom" : "universal"
     }
   ],
-  "info": {
-    "author": "xcode",
-    "version": 1
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
   }
 }

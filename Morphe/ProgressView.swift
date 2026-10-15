@@ -242,9 +242,10 @@ struct ProgressScreenView: View {
         ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                MorphePageTitle(
+                SectionTitleView(
                     title: "Progress",
-                    subtitle: "Here's what your work adds up to — every number here comes from sets you logged."
+                    subtitle: "Here's what your work adds up to — every number here comes from sets you logged.",
+                    titleSize: 16
                 )
 
                 ProgressHeroStrip(

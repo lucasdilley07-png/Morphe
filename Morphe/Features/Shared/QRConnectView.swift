@@ -26,11 +26,12 @@ struct QRConnectSheet: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    MorpheSegmentedTabs(
-                        items: Mode.allCases.map { .init(id: $0, title: $0.rawValue) },
-                        selection: mode,
-                        onSelect: { mode = $0 }
-                    )
+                    Picker("Mode", selection: $mode) {
+                        ForEach(Mode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
 
                     // Swipe between the two pages (Lucas 2026-10-11):
                     // right-to-left goes to Scan, left-to-right back to
