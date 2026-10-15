@@ -12524,6 +12524,9 @@ final class MorpheAppStore {
             self?.startVoiceIfEnabled()
         }
         heyMorphe.start()
+        // The on-device router loads once so the first command after a
+        // wake doesn't pay for it.
+        VoiceIntentRouter.prewarm()
     }
 
     /// True while a transient-stall retry is queued — prevents stacking.
@@ -12587,7 +12590,42 @@ final class MorpheAppStore {
         voiceNavigationSweep(for: raw)
         if let doorReply {
             presentVoiceExchange(heard: raw, answer: doorReply)
-        } else if intelligenceEnabled {
+            return
+        }
+        // No door matched the words as said. The on-device router (AI
+        // rebuild Wave 1) reads the sentence and, when it is an action,
+        // hands the doors the canonical phrase — so "can you log eight at
+        // one thirty-five for me" lands like "8 at 135". Questions and
+        // anything it can't place go to the brain, as before.
+        guard VoiceIntentRouter.isAvailable else {
+            answerVoiceWithBrain(raw)
+            return
+        }
+        let generation = voiceReplyGeneration
+        lastVoiceExchange = (heard: raw, answer: "Thinking\u{2026}")
+        Task { [weak self] in
+            guard let self else { return }
+            let verdict = await VoiceIntentRouter.classify(raw, inSession: self.isWorkoutSessionActive)
+            guard self.voiceReplyGeneration == generation else { return }
+            if case .command(let canonical) = verdict {
+                if isFollowUp, Self.isMutatingVoiceCommand(canonical) {
+                    self.lastVoiceExchange = nil
+                    self.heyMorphe.speak("")
+                    return
+                }
+                if let reply = self.routeVoiceCommandDoors(canonical) {
+                    self.voiceNavigationSweep(for: canonical)
+                    self.presentVoiceExchange(heard: raw, answer: reply)
+                    return
+                }
+            }
+            self.answerVoiceWithBrain(raw)
+        }
+    }
+
+    /// Claude when it can be reached, the built-in reply otherwise.
+    private func answerVoiceWithBrain(_ raw: String) {
+        if intelligenceEnabled {
             requestIntelligenceVoiceReply(for: raw)
         } else {
             presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))

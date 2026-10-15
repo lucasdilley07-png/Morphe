@@ -9011,3 +9011,44 @@ final class AIWaveZeroTests: XCTestCase {
         XCTAssertGreaterThan(HeyMorpheEngine.unfinishedSettleWindow, HeyMorpheEngine.settleWindow)
     }
 }
+
+/// AI rebuild Wave 1: the on-device router hands the doors the phrases
+/// they already parse; it never acts and never invents numbers.
+final class VoiceIntentRouterTests: XCTestCase {
+    typealias R = VoiceIntentRouter.Reading
+
+    func testReadingsBecomeTheDoorsOwnPhrases() {
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "logSet", reps: 8, weight: 135)), "8 at 135")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "logSet", reps: 12)), "12 reps")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "logSet", reps: 8, weight: 95, isWarmup: true)), "warmup 8 at 95")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "logSet", reps: 8, weight: 135), inSession: false), "log 1x8 at 135",
+                       "outside a session the chat door answers with the honest 'nothing in session' line")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "logSet", reps: 0, weight: 135)), nil, "no reps said, nothing to log")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "startRest", seconds: 120)), "rest for 2 minutes")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "startRest", seconds: 90)), "rest for 90 seconds")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "startRest")), "start rest")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "startWorkout", name: "Push Day")), "start Push Day")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "nextExercise")), "next exercise")
+        XCTAssertEqual(VoiceIntentRouter.canonicalCommand(for: R(action: "openBoard")), "open the leaderboard")
+        XCTAssertNil(VoiceIntentRouter.canonicalCommand(for: R(action: "question")))
+        XCTAssertNil(VoiceIntentRouter.canonicalCommand(for: R(action: "none")))
+        XCTAssertNil(VoiceIntentRouter.canonicalCommand(for: R(action: "launchMissiles")), "anything outside the list is nothing")
+    }
+
+    func testVerdictsSeparateActionsQuestionsAndNoise() {
+        XCTAssertEqual(VoiceIntentRouter.verdict(for: R(action: "question")), .question)
+        XCTAssertEqual(VoiceIntentRouter.verdict(for: R(action: "skipRest")), .command("skip rest"))
+        XCTAssertEqual(VoiceIntentRouter.verdict(for: R(action: "none")), .unplaced)
+    }
+
+    @MainActor
+    func testCanonicalPhrasesAreWhatTheDoorsParse() {
+        // The phrases the router emits must be the ones the store's own
+        // parsers accept — otherwise the router would be a dead end.
+        XCTAssertNotNil(MorpheAppStore.parseLiveSetUtterance("8 at 135"))
+        XCTAssertNotNil(MorpheAppStore.parseLiveSetUtterance("warmup 8 at 95"))
+        XCTAssertNotNil(MorpheAppStore.parseSetCommand("log 1x8 at 135"))
+        XCTAssertTrue(MorpheAppStore.isMutatingVoiceCommand("8 at 135"), "a routed set still needs the wake word")
+        XCTAssertFalse(MorpheAppStore.isMutatingVoiceCommand("next exercise"))
+    }
+}

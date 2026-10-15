@@ -80,8 +80,124 @@ extension Notification.Name {
     static let morpheIntentArrived = Notification.Name("morphe.intent.arrived")
 }
 
+// MARK: - Headless session intents (AI rebuild Wave 1, 2026-10-15)
+//
+// These run WITHOUT opening the app (iOS 26 `supportedModes = .background`;
+// older systems keep the default) against the live store, through the same
+// session doors Hey Morphe uses — so Siri gets the door's own honest line:
+// "Logged 8 at 135" or "Nothing's in session yet". The store registers
+// itself at launch; an intent that lands before that (never, in practice,
+// since the app's init runs first) says so instead of guessing.
+
+/// The live store, registered by `MorpheApp` at launch for the intents.
+@MainActor
+enum IntentStore {
+    static weak var store: MorpheAppStore?
+}
+
+struct SiriLogSetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log a Set"
+    static let description = IntentDescription("Logs a set on the exercise that's active in your Morphe session, without opening the app.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    @Parameter(title: "Reps", requestValueDialog: "How many reps?")
+    var reps: Int
+
+    @Parameter(title: "Weight", requestValueDialog: "What weight? Say zero for bodyweight.")
+    var weight: Double?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let store = IntentStore.store else {
+            return .result(dialog: IntentDialog("Open Morphe once, then try again."))
+        }
+        guard store.isWorkoutSessionActive else {
+            return .result(dialog: IntentDialog("Nothing's in session yet — start a workout in Morphe first."))
+        }
+        let count = max(1, min(reps, 200))
+        let phrase: String
+        if let weight, weight > 0 {
+            let number = weight.rounded() == weight ? String(Int(weight)) : String(format: "%.1f", weight)
+            phrase = "\(count) at \(number)"
+        } else {
+            phrase = "\(count) reps"
+        }
+        let reply = store.sessionVoiceReply(for: phrase) ?? "Couldn't log that — say the reps and the weight."
+        return .result(dialog: IntentDialog("\(MorpheAppStore.spokenForm(of: reply))"))
+    }
+}
+
+struct SiriStartRestIntent: AppIntent {
+    static let title: LocalizedStringResource = "Start Rest"
+    static let description = IntentDescription("Starts the rest timer in your Morphe session.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    @Parameter(title: "Seconds")
+    var seconds: Int?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let store = IntentStore.store else {
+            return .result(dialog: IntentDialog("Open Morphe once, then try again."))
+        }
+        guard store.isWorkoutSessionActive else {
+            return .result(dialog: IntentDialog("Nothing's in session yet — start a workout in Morphe first."))
+        }
+        let phrase = (seconds ?? 0) > 0 ? "rest for \(min(seconds ?? 0, 600)) seconds" : "start rest"
+        let reply = store.sessionVoiceReply(for: phrase) ?? "Couldn't start the rest."
+        return .result(dialog: IntentDialog("\(MorpheAppStore.spokenForm(of: reply))"))
+    }
+}
+
+struct SiriNextExerciseIntent: AppIntent {
+    static let title: LocalizedStringResource = "Next Exercise"
+    static let description = IntentDescription("Moves your Morphe session to the next exercise.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let store = IntentStore.store else {
+            return .result(dialog: IntentDialog("Open Morphe once, then try again."))
+        }
+        guard store.isWorkoutSessionActive else {
+            return .result(dialog: IntentDialog("Nothing's in session yet — start a workout in Morphe first."))
+        }
+        let reply = store.sessionVoiceReply(for: "next exercise") ?? "Couldn't move on."
+        return .result(dialog: IntentDialog("\(MorpheAppStore.spokenForm(of: reply))"))
+    }
+}
+
 struct MorpheShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: SiriLogSetIntent(),
+            phrases: [
+                "Log a set in \(.applicationName)",
+                "Log my set in \(.applicationName)"
+            ],
+            shortTitle: "Log a Set",
+            systemImageName: "checkmark.circle"
+        )
+        AppShortcut(
+            intent: SiriStartRestIntent(),
+            phrases: [
+                "Start rest in \(.applicationName)",
+                "Start my rest timer in \(.applicationName)"
+            ],
+            shortTitle: "Start Rest",
+            systemImageName: "timer"
+        )
+        AppShortcut(
+            intent: SiriNextExerciseIntent(),
+            phrases: [
+                "Next exercise in \(.applicationName)"
+            ],
+            shortTitle: "Next Exercise",
+            systemImageName: "arrow.right.circle"
+        )
         AppShortcut(
             intent: StartWorkoutIntent(),
             phrases: [

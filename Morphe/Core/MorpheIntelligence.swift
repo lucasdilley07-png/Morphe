@@ -1165,3 +1165,176 @@ extension FoodCheckService {
         return grams > 0 && grams <= 2_000 ? grams : nil
     }
 }
+
+// MARK: - On-device intent router (AI rebuild Wave 1, 2026-10-15)
+//
+// Apple's Foundation Models framework (iOS 26, iPhone 15 Pro and newer with
+// Apple Intelligence on) reads one spoken sentence and says what the
+// athlete wants. It never acts: it turns the sentence into the CANONICAL
+// command the existing voice doors already understand ("log 8 at 135",
+// "next exercise", "start rest"), so every guard those doors carry — wake
+// word required for mutations, session checks, honest refusals — keeps
+// working unchanged. A question, or anything it can't place, falls through
+// to Claude or the built-in brain with the original words. Free, offline,
+// no key. Unavailable → the regex doors alone, exactly as before.
+
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
+
+enum VoiceIntentRouter {
+
+    /// What the model is allowed to say the athlete wants. Fixed list: a
+    /// value outside it is treated as `none`.
+    static let actions = [
+        "logSet", "sameAsLastTime", "extraSet", "undoLastSet",
+        "startRest", "skipRest", "nextExercise", "previousExercise", "finishWorkout",
+        "startWorkout", "buildWorkout", "formCheck",
+        "openProgress", "openBoard", "openChats", "openCalendar", "openNutrition", "openLearn", "openTrain", "openToday",
+        "question", "none"
+    ]
+
+    /// The model's reading of one sentence. A plain struct so the mapping
+    /// below is testable without the model.
+    struct Reading: Equatable {
+        var action: String
+        var reps: Int = 0
+        var weight: Double = 0
+        var seconds: Int = 0
+        var name: String = ""
+        var isWarmup: Bool = false
+    }
+
+    /// The canonical door phrase for a reading, or nil when the sentence
+    /// should go to the brain instead (a question, or nothing placeable).
+    /// `inSession` picks the set grammar the doors expect: the live
+    /// console's "8 at 135" mid-session, the chat door's "log 1x8 at 135"
+    /// outside one (which answers with the honest "nothing's in session").
+    static func canonicalCommand(for reading: Reading, inSession: Bool = true) -> String? {
+        let name = reading.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch reading.action {
+        case "logSet":
+            guard reading.reps > 0 else { return nil }
+            let weight = reading.weight > 0 ? " at \(Self.format(reading.weight))" : ""
+            if !inSession { return "log 1x\(reading.reps)\(weight)" }
+            if reading.isWarmup { return "warmup \(reading.reps)\(weight)" }
+            return weight.isEmpty ? "\(reading.reps) reps" : "\(reading.reps)\(weight)"
+        case "sameAsLastTime": return "same as last time"
+        case "extraSet":
+            guard reading.reps > 0 else { return "extra set" }
+            return reading.weight > 0 ? "extra set \(reading.reps) at \(Self.format(reading.weight))" : "extra set \(reading.reps)"
+        case "undoLastSet": return "delete last set"
+        case "startRest":
+            guard reading.seconds > 0 else { return "start rest" }
+            return reading.seconds % 60 == 0 ? "rest for \(reading.seconds / 60) minutes" : "rest for \(reading.seconds) seconds"
+        case "skipRest": return "skip rest"
+        case "nextExercise": return "next exercise"
+        case "previousExercise": return "previous exercise"
+        case "finishWorkout": return "finish workout"
+        case "startWorkout": return name.isEmpty ? "start my workout" : "start \(name)"
+        case "buildWorkout": return name.isEmpty ? "build me a workout" : "build me \(name)"
+        case "formCheck": return "form check"
+        case "openProgress": return "open progress"
+        case "openBoard": return "open the leaderboard"
+        case "openChats": return "open chats"
+        case "openCalendar": return "open calendar"
+        case "openNutrition": return "open nutrition"
+        case "openLearn": return "open learn"
+        case "openTrain": return "open train"
+        case "openToday": return "open today"
+        default: return nil
+        }
+    }
+
+    private static func format(_ weight: Double) -> String {
+        weight.rounded() == weight ? String(Int(weight)) : String(format: "%.1f", weight)
+    }
+
+    /// Everything the model is told. Short on purpose: the on-device
+    /// context is 4,096 tokens for instructions, prompt and answer together.
+    static let instructions = """
+    You classify one sentence an athlete said out loud to Morphe, a gym training app, while a workout may be in progress. Decide the single action the athlete wants, from this list only: \(actions.joined(separator: ", ")).
+    Rules. logSet: they state a set they just did — reps, and a weight if said (a bare "10 at 135" means 10 reps at 135). sameAsLastTime: repeat the previous session's set. extraSet: a set beyond the plan. undoLastSet: remove the last logged set. startRest: start the rest timer, with seconds if a length was said (minutes × 60). skipRest: stop the running rest. nextExercise / previousExercise: move in the session. finishWorkout: end the session. startWorkout: begin a workout (name if one was said). buildWorkout: make or design a new workout (name holds the description). formCheck: open the camera form check. The open* actions are navigation. question: the sentence asks for information, advice or an explanation — anything that wants an answer, not an action. none: small talk, noise, or nothing in the list.
+    Never invent numbers: reps, weight and seconds are 0 unless the athlete said them. When unsure between an action and a question, choose question. Output only the structure.
+    """
+
+    #if canImport(FoundationModels)
+    /// The model's structure. Mirrors `Reading`; the guides keep numbers
+    /// honest and the action inside the list.
+    @available(iOS 26.0, *)
+    @Generable(description: "What the athlete wants, read from one spoken sentence.")
+    struct GeneratedReading {
+        @Guide(description: "The single action, from the allowed list.", .anyOf(VoiceIntentRouter.actions))
+        var action: String
+        @Guide(description: "Reps the athlete said, 0 when none were said.", .range(0...200))
+        var reps: Int
+        @Guide(description: "Weight the athlete said as a plain number in their unit, 0 when none was said.")
+        var weight: Double
+        @Guide(description: "Rest length in seconds the athlete said, 0 when none was said.", .range(0...3600))
+        var seconds: Int
+        @Guide(description: "A workout, exercise or build description the athlete named, empty when none.")
+        var name: String
+        @Guide(description: "True only when the athlete called the set a warm-up.")
+        var isWarmup: Bool
+    }
+
+    @available(iOS 26.0, *)
+    @MainActor private static var session: LanguageModelSession?
+
+    /// True on a phone that can run the on-device model right now.
+    @MainActor static var isAvailable: Bool {
+        if #available(iOS 26.0, *) {
+            if case .available = SystemLanguageModel.default.availability { return true }
+        }
+        return false
+    }
+
+    /// Warms the model so the first command after a wake doesn't pay the
+    /// load. Safe to call often.
+    @MainActor static func prewarm() {
+        if #available(iOS 26.0, *) {
+            guard isAvailable else { return }
+            if session == nil { session = LanguageModelSession(instructions: instructions) }
+            session?.prewarm()
+        }
+    }
+
+    /// One sentence → the canonical door phrase, `.question` for the brain,
+    /// or nil when the model isn't available or couldn't place it (the
+    /// caller then behaves exactly as before the router existed).
+    enum Verdict: Equatable { case command(String), question, unplaced }
+
+    @MainActor static func classify(_ sentence: String, inSession: Bool) async -> Verdict? {
+        if #available(iOS 26.0, *) {
+            guard isAvailable else { return nil }
+            let text = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty, text.count <= 400 else { return nil }
+            if session == nil { session = LanguageModelSession(instructions: instructions) }
+            guard let session else { return nil }
+            do {
+                let response = try await session.respond(to: text, generating: GeneratedReading.self)
+                let g = response.content
+                let reading = Reading(action: g.action, reps: g.reps, weight: g.weight, seconds: g.seconds, name: g.name, isWarmup: g.isWarmup)
+                return verdict(for: reading, inSession: inSession)
+            } catch {
+                // A full context (one session grows with every turn) or a
+                // model hiccup: start a fresh session next time, no harm.
+                Self.session = nil
+                return nil
+            }
+        }
+        return nil
+    }
+    #else
+    @MainActor static var isAvailable: Bool { false }
+    @MainActor static func prewarm() {}
+    enum Verdict: Equatable { case command(String), question, unplaced }
+    @MainActor static func classify(_ sentence: String, inSession: Bool) async -> Verdict? { nil }
+    #endif
+
+    static func verdict(for reading: Reading, inSession: Bool = true) -> Verdict {
+        if reading.action == "question" { return .question }
+        if let command = canonicalCommand(for: reading, inSession: inSession) { return .command(command) }
+        return .unplaced
+    }
+}

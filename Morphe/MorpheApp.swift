@@ -64,6 +64,9 @@ struct MorpheApp: App {
             store.signOut()
             store.showToast("You were signed out — sign in again to keep backing up.")
         }
+        // The headless Siri intents (log a set, start rest, next exercise)
+        // run against this store without opening the app.
+        IntentStore.store = store
         _store = State(initialValue: store)
     }
 

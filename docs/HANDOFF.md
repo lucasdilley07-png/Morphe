@@ -231,8 +231,21 @@ stable/live, cache breakpoint on stable, shared by voice and chat; strap
 bpm and the relative strap date moved out of the cached part); the relay
 accepts system blocks and caches the first. 416 tests, 8 relay tests.
 Not done from Wave 0: structured-output schema through the relay (Wave 3).
-Next: Wave 1 (voice): SpeechAnalyzer/SpeechDetector endpointing,
-Foundation Models intent router, headless App Intents, streaming TTS.
+**Wave 1a shipped (2026-10-15)**: `VoiceIntentRouter` (end of
+MorpheIntelligence.swift) — Apple's on-device Foundation Models (iOS 26,
+iPhone 15 Pro+) reads a sentence into a `Reading` and emits the CANONICAL
+door phrase ("8 at 135", "next exercise", "rest for 2 minutes"); the store
+runs it only when the regex doors returned nil (`handleVoiceCommand`),
+re-applies the wake-word mutation guard to the canonical, and falls to the
+brain on `question`/`unplaced`. Prewarmed in `startVoiceIfEnabled`.
+Headless Siri intents `SiriLogSetIntent` / `SiriStartRestIntent` /
+`SiriNextExerciseIntent` (`supportedModes = .background` on iOS 26) run
+`sessionVoiceReply` on the live store (`IntentStore.store`, set in
+MorpheApp) and speak the door's line. API verification: Apple's
+`SpeechDetector` reports NO speech start/end (results stay empty by
+design), so endpointing stays Morphe's adaptive window; `SpeechTranscriber`
+has no contextual-strings bias, so the wake scan stays on
+SFSpeechRecognizer. Remaining Wave 1: streaming TTS. 419 tests.
 
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
