@@ -2497,7 +2497,7 @@ struct FormAIReviewer {
         }
         do {
             let text = try await MorpheIntelligence.reply(
-                system: Self.system,
+                system: MorpheIntelligence.SystemPrompt(Self.system),
                 turns: [MorpheIntelligence.Turn(isUser: true, text: Self.prompt(exerciseName: exerciseName, pattern: pattern, metrics: metrics))],
                 credential: credential, timeout: 30)
             return text.isEmpty ? "No coaching came back — try again." : text

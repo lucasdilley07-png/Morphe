@@ -355,7 +355,7 @@ enum TodayQuickAction: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum ChatSender: String, Identifiable {
+enum ChatSender: String, Identifiable, Codable {
     case user
     case ai
     case coach
@@ -3398,7 +3398,7 @@ struct ProgramBuilderDraft: Hashable {
     var coachNotes: String = "Keep instructions direct, calm, and easy to execute."
 }
 
-struct ThreadMessage: Identifiable, Hashable {
+struct ThreadMessage: Identifiable, Hashable, Codable {
     var id = UUID()
     var sender: ChatSender
     var senderName: String

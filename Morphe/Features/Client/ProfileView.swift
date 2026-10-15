@@ -1717,7 +1717,7 @@ struct ProfileView: View {
                     // voice is part of making it yours, not a training setting.
                     preferenceToggleRow(
                         title: "\u{201C}Hey Morphe\u{201D}",
-                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
+                        caption: "Hands-free: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud \u{2014} in the app and in the background while Morphe is running (iOS shows the microphone indicator the whole time). Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery.",
                         glimmer: true,
                         isOn: Binding(
                             get: { store.heyMorpheEnabled },

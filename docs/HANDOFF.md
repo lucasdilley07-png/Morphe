@@ -210,6 +210,30 @@ answer, `aiFeedback` erased with the account (rules allow the author to
 list their own), 44pt thumbs, policy lines that still said "your key".
 413 app tests, 7 relay tests.
 
+**AI rebuild — decisions (Lucas 2026-10-14)**: background Hey Morphe YES
+(must never cut the user off mid-sentence); Foundation Models on iPhone
+15 Pro+ OK; plate photos keep web search ON; memory default OFF for
+health-type facts; Form Check says "estimated" and never "injury risk".
+Report + 4-wave order: `docs/AI-REVERSE-ENGINEERING-2026-10-14.md`.
+
+**Wave 0 shipped (2026-10-15)**: `audio` background mode + the app no
+longer stops Hey Morphe on background when the toggle is on (mic indicator
+copy in settings, usage string, policy); adaptive settle window
+(`HeyMorpheEngine.settleWindow(for:)` — 1.6 s, 2.8 s when the last word is
+a continuation word); a recognizer pass that ends mid-capture CONTINUES the
+capture (`activeStreamEnded`) instead of firing half a sentence; barge-in
+re-arms when its pass ends; the 2.5 s breath floor applies only when
+nothing was said with the wake; food photo downscale at scale 1 (was 3×
+the vision tokens); calories template uses null; the Morphe AI chat
+persists per profile (device-only, cap 200); the system prompt is two
+blocks (`intelligenceSystemBlocks` → `MorpheIntelligence.SystemPrompt`
+stable/live, cache breakpoint on stable, shared by voice and chat; strap
+bpm and the relative strap date moved out of the cached part); the relay
+accepts system blocks and caches the first. 416 tests, 8 relay tests.
+Not done from Wave 0: structured-output schema through the relay (Wave 3).
+Next: Wave 1 (voice): SpeechAnalyzer/SpeechDetector endpointing,
+Foundation Models intent router, headless App Intents, streaming TTS.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

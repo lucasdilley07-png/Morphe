@@ -133,7 +133,10 @@ struct MorpheApp: App {
                         // Real background — the only thing that re-arms the
                         // day takeover on return (audit 12, P1-1).
                         store.noteBackgrounded()
-                        store.heyMorphe.stop()
+                        // Hey Morphe keeps listening in the background
+                        // (Lucas 2026-10-14) — the `audio` background mode
+                        // holds the mic session; iOS shows its indicator.
+                        if !store.heyMorpheEnabled { store.heyMorphe.stop() }
                         store.requestImmediateLogBackup()
                     }
                 }

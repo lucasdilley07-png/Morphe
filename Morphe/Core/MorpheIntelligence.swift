@@ -133,6 +133,25 @@ enum MorpheIntelligence {
 
     // MARK: Conversation shape
 
+    /// The system prompt in two parts (reverse-engineering audit
+    /// 2026-10-14): `stable` is identical across a member's turns and
+    /// across voice and chat (identity, rules, persona, profile), so it is
+    /// sent as its own block with a cache breakpoint; `live` holds what
+    /// changes per turn (session state, today's numbers, the format rule).
+    struct SystemPrompt: Equatable {
+        var stable: String
+        var live: String
+        init(_ single: String) { stable = single; live = "" }
+        init(stable: String, live: String) { self.stable = stable; self.live = live }
+        var joined: String { live.isEmpty ? stable : stable + " " + live }
+        /// Messages-API `system` blocks: the breakpoint on the stable one.
+        var blocks: [[String: Any]] {
+            var out: [[String: Any]] = [["type": "text", "text": stable, "cache_control": ["type": "ephemeral"]]]
+            if !live.isEmpty { out.append(["type": "text", "text": live]) }
+            return out
+        }
+    }
+
     struct Turn {
         let isUser: Bool
         let text: String
@@ -185,7 +204,7 @@ enum MorpheIntelligence {
 
     /// Error-absorbing wrapper for the store: every failure becomes an
     /// honest, speakable line instead of a thrown error.
-    static func safeReply(system: String, turns: [Turn], credential: Credential,
+    static func safeReply(system: SystemPrompt, turns: [Turn], credential: Credential,
                           timeout: TimeInterval = 30) async -> String {
         do {
             return try await reply(system: system, turns: turns, credential: credential, timeout: timeout)
@@ -202,7 +221,7 @@ enum MorpheIntelligence {
     /// MainActor; the final full text returns (or throws — callers wrap
     /// with the same error copy as safeReply). Voice still uses safeReply:
     /// a spoken answer needs the complete utterance anyway.
-    static func streamReply(system: String, turns: [Turn], credential: Credential,
+    static func streamReply(system: SystemPrompt, turns: [Turn], credential: Credential,
                             timeout: TimeInterval = 30,
                             onDelta: @MainActor @escaping (String) -> Void) async throws -> String {
         let request = try makeRequest(system: system, turns: turns, credential: credential,
@@ -307,7 +326,7 @@ enum MorpheIntelligence {
     }
 
     /// Shared request builder for both paths.
-    static func makeRequest(system: String, turns: [Turn], credential: Credential,
+    static func makeRequest(system: SystemPrompt, turns: [Turn], credential: Credential,
                             timeout: TimeInterval, stream: Bool) throws -> URLRequest {
         var request = baseRequest(credential: credential, timeout: timeout)
         var messages: [[String: Any]] = []
@@ -321,7 +340,7 @@ enum MorpheIntelligence {
         // contract lives in the system prompt, not the token cap.
         var body: [String: Any] = [
             "max_tokens": 4000,
-            "system": system,
+            "system": system.blocks,
             "output_config": ["effort": "low"],
             "messages": messages
         ]
@@ -335,7 +354,7 @@ enum MorpheIntelligence {
     /// One non-streaming Messages API request. Replies are deliberately
     /// short (voice-first: the system prompt caps spoken length) — the
     /// VOICE path uses this; chat streams via streamReply.
-    static func reply(system: String, turns: [Turn], credential: Credential,
+    static func reply(system: SystemPrompt, turns: [Turn], credential: Credential,
                       timeout: TimeInterval = 30) async throws -> String {
         let request = try makeRequest(system: system, turns: turns, credential: credential,
                                       timeout: timeout, stream: false)
@@ -870,14 +889,19 @@ enum FoodCheckService {
     static func jpeg(from image: UIImage, maxSide: CGFloat = 1024) -> Data? {
         let scale = min(1, maxSide / max(image.size.width, image.size.height))
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: size)
+        // Scale 1 (reverse-engineering audit 2026-10-14): the default
+        // renderer used the 3× screen scale, so a "1024 px" photo left the
+        // phone at ~3072 px and cost three times the vision tokens.
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
         return renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.jpegData(compressionQuality: 0.72)
     }
 
     private static let reportSystem = """
     You are Morphe's food checker: disciplined, direct, honest to the last digit. You read a photo of a food, meal or package and/or product facts from Open Food Facts, you search the web for the brand's production and supply chain, and you report. Rules: never invent a fact; when something is not found, write "unknown" and say why; cite only pages you actually read; nutrition for a plate is an estimate and must say so; say "likely" and "possible" only with the reason; no medical claims; plain words, no hype. GMO: a GM ingredient is likely only when a GM crop (corn, soy, canola, sugar beet, cottonseed, papaya) is present AND the product is sold where that crop is mostly GM and no organic/non-GMO label exists. Processing uses the NOVA groups: 1 whole or minimally processed, 2 kitchen ingredient, 3 processed, 4 ultra-processed.
     Reply with ONE JSON object and nothing else, no code fences:
-    {"name":"","brand":"","processing":"wholeFood|kitchenIngredient|processed|ultraProcessed|unknown","processingReason":"","origin":"where it comes from: country/region, grower or factory if known, how it reached the shelf","originConfidence":"high|medium|low|unknown","healthRead":"2-4 sentences on how healthy it is and why","nutriScore":"A-E or null","additives":[{"code":"E322 or name","name":"","note":"","concern":"none|low|moderate|high|unknown"}],"gmoRead":"","gmoLikelihood":"high|medium|low|unknown","ingredients":"as read, or unknown","calories":0,"protein":0,"carbs":0,"fat":0,"sugar":0,"fiber":0,"sodiumMg":0,"servingNote":"what the numbers are for and whether estimated","sources":[{"title":"","url":""}],"verdict":"one laconic line"}
+    {"name":"","brand":"","processing":"wholeFood|kitchenIngredient|processed|ultraProcessed|unknown","processingReason":"","origin":"where it comes from: country/region, grower or factory if known, how it reached the shelf","originConfidence":"high|medium|low|unknown","healthRead":"2-4 sentences on how healthy it is and why","nutriScore":"A-E or null","additives":[{"code":"E322 or name","name":"","note":"","concern":"none|low|moderate|high|unknown"}],"gmoRead":"","gmoLikelihood":"high|medium|low|unknown","ingredients":"as read, or unknown","calories":null,"protein":null,"carbs":null,"fat":null,"sugar":null,"fiber":null,"sodiumMg":null,"servingNote":"what the numbers are for and whether estimated","sources":[{"title":"","url":""}],"verdict":"one laconic line"}
     Numbers are integers; use null for any you cannot support.
     """
 

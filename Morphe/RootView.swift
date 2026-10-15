@@ -1313,13 +1313,17 @@ private struct AIAgentMessageRow: View {
 
 // MARK: - Speech dictation (talk-to-text for the AI composer)
 
-/// "Hey Morphe" (Jarvis wave): hands-free voice while the app is OPEN.
-/// One continuous on-device recognition stream scans for the wake phrase;
-/// hearing it flips to active capture until a ~1.4s pause, then hands the
-/// command to the store's router and speaks the answer back. iOS does not
-/// allow third-party wake words in the background or from the lock screen
-/// — this is foreground-only by platform rule, and the settings copy says
-/// so. Recognition is forced on-device where the hardware supports it.
+/// "Hey Morphe" (Jarvis wave): hands-free voice, in the app and — since
+/// Lucas's call of 2026-10-14 — in the background too (the `audio`
+/// background mode keeps the mic session alive; iOS shows its mic
+/// indicator the whole time, and the settings copy says so). One
+/// continuous on-device recognition stream scans for the wake phrase;
+/// hearing it flips to active capture until the speaker pauses (an
+/// adaptive settle window — longer when the sentence sounds unfinished),
+/// then hands the command to the store's router and speaks the answer
+/// back. A recognizer pass that ends mid-sentence continues the capture
+/// instead of cutting the user off. Recognition is forced on-device where
+/// the hardware supports it.
 @Observable
 final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     enum VoiceState {
@@ -2421,7 +2425,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         onWake?()
         // A wake with a natural pause earns the breath window, same as a
         // normal wake (audit 24, P1).
-        armCommandTimer(after: text.isEmpty ? Self.emptyWakeWindow : 1.4)
+        armCommandTimer(after: text.isEmpty ? Self.emptyWakeWindow : Self.settleWindow(for: text))
     }
 
     /// Minimal recognition re-arm for barge-in: the full beginListening
@@ -2650,7 +2654,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     onWake?()
                     // A longer first window (audit 14): the user just said
                     // the name — give them a breath before the command.
-                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
+                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : Self.settleWindow(for: command))
                 } else if let deadline = followUpDeadline, Date() < deadline,
                           !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     // Follow-up window (rebuild 2026-08): the breath after
@@ -2663,7 +2667,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     activeIsFollowUp = true
                     followUpCaptureStart = Date()
                     liveTranscript = text
-                    armCommandTimer(after: 1.4)
+                    armCommandTimer(after: Self.settleWindow(for: text))
                 }
             case .active where activeIsFollowUp:
                 // A re-wake inside the window must WIN (audit 17, P1):
@@ -2680,7 +2684,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     promptedThisWake = false
                     promptLine = nil
                     onWake?()
-                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
+                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : Self.settleWindow(for: command))
                 } else if !isBargeCapture, let began = followUpCaptureStart,
                           Date().timeIntervalSince(began) > 8
                             || text.split(separator: " ").count > 12 {
@@ -2704,7 +2708,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     let full = capturePrefix.isEmpty ? text : capturePrefix + " " + text
                     if full != liveTranscript {
                         liveTranscript = full
-                        armCommandTimer(after: 1.4)
+                        armCommandTimer(after: Self.settleWindow(for: full))
                     }
                 }
             case .active:
@@ -2719,7 +2723,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                         liveTranscript = command
                         // A retraction back to the bare wake re-earns the
                         // breath window (audit 14, P3).
-                        armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
+                        armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : Self.settleWindow(for: command))
                     }
                 } else {
                     // The recognizer retro-corrected the wake phrase AWAY —
@@ -2759,19 +2763,61 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             if result.isFinal {
                 if state == .speaking {
                     // The barge-in recognizer capped its stream mid-answer
-                    // — nothing to fire; the exchange keeps speaking.
+                    // — re-arm it, or barge-in dies for the rest of the
+                    // answer (reverse-engineering audit 2026-10-14).
+                    tearDownRecognition()
+                    armBargeInRecognition()
                     return
                 }
-                // The recognizer capped the stream (~1 min) — fire what we
-                // have or go back to scanning.
-                state == .active ? fireCommand() : scheduleRestart()
+                state == .active ? activeStreamEnded() : scheduleRestart()
                 return
             }
         }
         if error != nil {
-            if state == .speaking { return }
-            state == .active ? fireCommand() : scheduleRestart()
+            if state == .speaking {
+                tearDownRecognition()
+                armBargeInRecognition()
+                return
+            }
+            state == .active ? activeStreamEnded() : scheduleRestart()
         }
+    }
+
+    /// The on-device pass ended (its ~1 min cap, or its own silence
+    /// detector) while the user was still being captured. If they were
+    /// speaking a moment ago, keep listening — what they said so far
+    /// becomes the prefix of a fresh pass — instead of firing half a
+    /// sentence. A real pause fires as before.
+    private func activeStreamEnded() {
+        let heard = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let recentlySpeaking = Date().timeIntervalSince(transcriptChangedAt) < Self.unfinishedSettleWindow
+        guard !heard.isEmpty, recentlySpeaking else { fireCommand(); return }
+        capturePrefix = heard
+        activeIsFollowUp = true        // whole-stream capture machinery…
+        directCaptureSession = true    // …with full routing on fire
+        isBargeCapture = true          // no ambient ceiling on a continued sentence
+        followUpCaptureStart = Date()
+        tearDownRecognition()
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable,
+              recognizer.supportsOnDeviceRecognition else { fireCommand(); return }
+        self.recognizer = recognizer
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = true
+        request.contextualStrings = Self.contextualVocabulary
+        self.request = request
+        do {
+            try installMicTap(feeding: request)
+        } catch { fireCommand(); return }
+        var startedTask: SFSpeechRecognitionTask?
+        startedTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                guard let self, self.task === startedTask else { return }
+                self.handle(result: result, error: error)
+            }
+        }
+        task = startedTask
+        armCommandTimer(after: Self.settleWindow(for: heard))
     }
 
     /// Finds the wake phrase in the CURRENT hypothesis and returns what
@@ -2819,10 +2865,35 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// retries so a retry can't shrink it to the default.
     private var pendingPromptWindow: TimeInterval?
 
+    /// Words a sentence rarely ends on: the speaker is mid-thought, so the
+    /// settle window stretches instead of cutting them off (Lucas
+    /// 2026-10-14: "doesn't shut off on the user mid sentence").
+    static let continuationWords: Set<String> = [
+        "and", "but", "or", "so", "then", "with", "for", "to", "the", "a", "an", "my", "at", "in", "on", "of",
+        "um", "uh", "like", "about", "if", "when", "because", "that", "is", "are", "can", "could", "should",
+        "what", "how", "which", "do", "does", "i", "it", "this", "add", "set", "log", "start"
+    ]
+    static let settleWindow: TimeInterval = 1.6
+    static let unfinishedSettleWindow: TimeInterval = 2.8
+
+    /// How long to wait after the last heard word before firing.
+    static func settleWindow(for transcript: String) -> TimeInterval {
+        let words = transcript.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        guard let last = words.last else { return settleWindow }
+        return continuationWords.contains(String(last)) ? unfinishedSettleWindow : settleWindow
+    }
+
+    /// When the live transcript last changed — the ear's own clock.
+    private var transcriptChangedAt = Date.distantPast
+
     private func armCommandTimer(after interval: TimeInterval) {
         commandTimer?.invalidate()
+        transcriptChangedAt = Date()
         var interval = interval
-        if let since = activeSince {
+        // The breath after the name only when nothing has been said yet
+        // (reverse-engineering audit 2026-10-14): "hey Morphe next
+        // exercise" used to wait out the floor with the command in hand.
+        if let since = activeSince, liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let remaining = Self.listenWindow - Date().timeIntervalSince(since)
             if remaining > interval { interval = remaining }
         }

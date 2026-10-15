@@ -161,7 +161,8 @@ function blockChars(block: Block): number {
 export interface SanitizedBody {
   /** System + every message, in characters (images at a flat rate). */
   totalChars: number;
-  system: string;
+  /** One to three text blocks; the relay caches the first one. */
+  system: Array<{ type: "text"; text: string }>;
   messages: Array<{ role: "user" | "assistant"; content: string | Block[] }>;
   maxTokens: number;
   stream: boolean;
@@ -177,8 +178,27 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
   }
   const body = raw as Record<string, unknown>;
 
-  const system = typeof body.system === "string" ? body.system : "";
-  if (system.length > MAX_SYSTEM_CHARS) {
+  // The system prompt arrives as a string or as up to three text blocks
+  // (stable prefix first). Only the text survives: the relay sets the
+  // cache breakpoint itself, never the client.
+  const rawSystem = body.system;
+  let system: Array<{ type: "text"; text: string }> = [];
+  if (typeof rawSystem === "string") {
+    if (rawSystem.length > 0) system = [{ type: "text", text: rawSystem }];
+  } else if (Array.isArray(rawSystem)) {
+    if (rawSystem.length > 3) throw new RelayRequestError(400, "bad_request", "too many system blocks");
+    system = rawSystem.map((b, i) => {
+      const text = (b as Record<string, unknown> | null)?.text;
+      if ((b as Record<string, unknown> | null)?.type !== "text" || typeof text !== "string") {
+        throw new RelayRequestError(400, "bad_request", `system[${i}] must be a text block`);
+      }
+      return { type: "text" as const, text };
+    });
+  } else if (rawSystem !== undefined) {
+    throw new RelayRequestError(400, "bad_request", "system must be a string or an array of text blocks");
+  }
+  const systemChars = system.reduce((sum, b) => sum + b.text.length, 0);
+  if (systemChars > MAX_SYSTEM_CHARS) {
     throw new RelayRequestError(400, "bad_request", "system prompt too long");
   }
 
@@ -212,7 +232,7 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
   if (messages[0].role !== "user") {
     throw new RelayRequestError(400, "bad_request", "the first message must be from the user");
   }
-  let totalChars = system.length;
+  let totalChars = systemChars;
   for (const m of messages) {
     totalChars += typeof m.content === "string" ? m.content.length : m.content.reduce((sum, b) => sum + blockChars(b), 0);
   }

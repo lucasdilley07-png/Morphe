@@ -165,10 +165,11 @@ and are off until you turn them on; "Add an app" lives in Profile → Connection
   the app. With neither on, nothing but the barcode leaves the phone.
 - **Microphone & speech recognition** — recording audio for clips you
   capture in video mode, dictating messages to the in-app assistant, and
-  the optional "Hey Morphe" wake phrase. While Hey Morphe is on and the
-  app is open, the microphone listens for the wake phrase using Apple's
-  on-device speech recognition; nothing is stored or sent anywhere until
-  you say the phrase and make a request. Audio is processed for
+  the optional "Hey Morphe" wake phrase. While Hey Morphe is on, the
+  microphone listens for the wake phrase using Apple's on-device speech
+  recognition — in the app and in the background while Morphe is running,
+  with iOS's microphone indicator showing the whole time; nothing is
+  stored or sent anywhere until you say the phrase and make a request. Audio is processed for
   transcription only. Hey Morphe is off until you turn it on in Profile →
   Make it yours.
 - **Notifications** — local reminders you control (appointments, daily

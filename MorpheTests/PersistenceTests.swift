@@ -8782,7 +8782,7 @@ final class OnlineAITests: XCTestCase {
 
     func testRequestsGoToTheRelayWithTheAccountTokenAndNoModel() throws {
         let turns = [MorpheIntelligence.Turn(isUser: true, text: "What's next?")]
-        let relay = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .relay(token: "tok", appCheck: nil), timeout: 5, stream: true)
+        let relay = try MorpheIntelligence.makeRequest(system: MorpheIntelligence.SystemPrompt("s"), turns: turns, credential: .relay(token: "tok", appCheck: nil), timeout: 5, stream: true)
         XCTAssertEqual(relay.url, MorpheIntelligence.relayURL)
         XCTAssertEqual(relay.value(forHTTPHeaderField: "Authorization"), "Bearer tok")
         XCTAssertNil(relay.value(forHTTPHeaderField: "x-api-key"))
@@ -8790,7 +8790,7 @@ final class OnlineAITests: XCTestCase {
         XCTAssertNil(relayBody["model"], "the relay picks the model")
         XCTAssertEqual(relayBody["stream"] as? Bool, true)
 
-        let direct = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .personalKey("sk-ant-x"), timeout: 5, stream: false)
+        let direct = try MorpheIntelligence.makeRequest(system: MorpheIntelligence.SystemPrompt("s"), turns: turns, credential: .personalKey("sk-ant-x"), timeout: 5, stream: false)
         XCTAssertEqual(direct.url?.host, "api.anthropic.com")
         XCTAssertEqual(direct.value(forHTTPHeaderField: "x-api-key"), "sk-ant-x")
         XCTAssertNil(direct.value(forHTTPHeaderField: "Authorization"))
@@ -8944,5 +8944,70 @@ final class OnlineAIDoorTests: XCTestCase {
         store.rateAIAnswer(failure, helpful: false)
         XCTAssertTrue(store.ratedAIMessages.isEmpty)
         store.setOnlineAI(enabled: false)
+    }
+}
+
+/// Wave 0 of the AI rebuild (2026-10-14): the chat survives a relaunch, the
+/// prompt is split into a cached stable block and a live block, and the
+/// voice settle window stretches when a sentence sounds unfinished.
+@MainActor
+final class AIWaveZeroTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        return store
+    }
+
+    func testChatSurvivesARelaunchWithoutThePlaceholder() {
+        let store = freshStore()
+        let key = "morphe.ai.chat.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: key)
+        store.athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: "Sarah", text: "What's next?", timestamp: "Now"))
+        store.athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now"))
+        store.athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Bench, three sets.", timestamp: "Now"))
+
+        let saved: [ThreadMessage]? = UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([ThreadMessage].self, from: $0) }
+        XCTAssertEqual(saved?.map(\.text), [store.athleteAIAgentConversation.first!.text, "What's next?", "Bench, three sets."],
+                       "the thinking placeholder is never written to disk")
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
+    func testSystemPromptSplitsIntoACachedStableBlockAndALiveBlock() throws {
+        let store = freshStore()
+        let chat = store.intelligenceSystemBlocks(spoken: false)
+        let voice = store.intelligenceSystemBlocks(spoken: true)
+        XCTAssertEqual(chat.stable, voice.stable, "voice and chat share one cached prefix")
+        XCTAssertNotEqual(chat.live, voice.live, "the format rule is the live part")
+        XCTAssertTrue(chat.stable.contains("You are Morphe"))
+        XCTAssertTrue(chat.live.contains("Their real numbers right now"))
+        XCTAssertFalse(chat.stable.contains("real numbers right now"), "today's numbers never sit in the cached block")
+        XCTAssertEqual(store.intelligenceSystemPrompt(spoken: false), chat.joined)
+
+        let request = try MorpheIntelligence.makeRequest(system: chat, turns: [MorpheIntelligence.Turn(isUser: true, text: "hi")],
+                                                         credential: .relay(token: "t", appCheck: nil), timeout: 5, stream: false)
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+        let system = try XCTUnwrap(body["system"] as? [[String: Any]])
+        XCTAssertEqual(system.count, 2)
+        XCTAssertNotNil(system[0]["cache_control"], "the breakpoint sits on the stable block")
+        XCTAssertNil(system[1]["cache_control"])
+    }
+
+    func testSettleWindowStretchesWhenTheSentenceSoundsUnfinished() {
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "next exercise"), HeyMorpheEngine.settleWindow)
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "log eight reps at"), HeyMorpheEngine.unfinishedSettleWindow)
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "swap this for the"), HeyMorpheEngine.unfinishedSettleWindow)
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "um"), HeyMorpheEngine.unfinishedSettleWindow)
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: ""), HeyMorpheEngine.settleWindow)
+        XCTAssertGreaterThan(HeyMorpheEngine.unfinishedSettleWindow, HeyMorpheEngine.settleWindow)
     }
 }

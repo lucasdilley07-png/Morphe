@@ -218,7 +218,8 @@ export const morpheAI = onRequest(
         // The system prompt is the stable prefix: one explicit breakpoint
         // on it, so a member's follow-ups within five minutes read it at a
         // tenth of the price.
-        system: [{ type: "text" as const, text: body.system || "You are Morphe.", cache_control: { type: "ephemeral" as const } }],
+        system: (body.system.length ? body.system : [{ type: "text" as const, text: "You are Morphe." }])
+          .map((block, i) => (i === 0 ? { ...block, cache_control: { type: "ephemeral" as const } } : block)),
         messages: body.messages as Anthropic.Beta.BetaMessageParam[],
         output_config: { effort: body.effort },
         // A policy decline is retried server-side on Anthropic's

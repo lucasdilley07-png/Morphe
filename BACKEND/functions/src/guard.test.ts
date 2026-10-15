@@ -64,6 +64,16 @@ test("sanitizeBody keeps the bounded fields and nothing else", () => {
   assert.deepEqual(body.messages, [{ role: "user", content: "hi" }]);
 });
 
+test("system prompt blocks keep only their text", () => {
+  const body = sanitizeBody({
+    system: [{ type: "text", text: "stable", cache_control: { type: "ephemeral", ttl: "1h" } }, { type: "text", text: "live" }],
+    messages: [{ role: "user", content: "hi" }],
+  });
+  assert.deepEqual(body.system, [{ type: "text", text: "stable" }, { type: "text", text: "live" }]);
+  assert.deepEqual(sanitizeBody({ system: "one", messages: [{ role: "user", content: "hi" }] }).system, [{ type: "text", text: "one" }]);
+  assert.throws(() => sanitizeBody({ system: [{ type: "image" }], messages: [{ role: "user", content: "hi" }] }), RelayRequestError);
+});
+
 test("sanitizeBody refuses what the relay does not forward", () => {
   assert.throws(() => sanitizeBody({ messages: [] }), RelayRequestError);
   assert.throws(() => sanitizeBody({ messages: [{ role: "assistant", content: "x" }] }), RelayRequestError);
