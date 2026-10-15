@@ -4351,13 +4351,14 @@ private struct WelcomeExperienceView: View {
         switch p {
         case .welcome:
             VStack(alignment: .leading, spacing: 16) {
-                MorpheHelmetMark(glowRadius: 12)
-                    .frame(width: 72, height: 72)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .accessibilityHidden(true)
                 kicker("Welcome")
                 title("Welcome to Morphe, \(store.clientProfile.name).")
+                // "Train with Voice · Form · Fuel · Morphe AI" (motion
+                // grammar 2026-10-15): four beats, each card earns its
+                // outline in turn; a tap jumps to that stop of the tour.
+                TourTrainWithGrid { destination in
+                    withAnimation(.easeInOut(duration: 0.3)) { page = destination }
+                }
                 body("Two minutes, nine stops, every one of them optional. Skip anything; nothing here is required.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 12) {
@@ -4699,6 +4700,133 @@ private struct TourCameraMock: View {
         }
         .aspectRatio(16 / 11, contentMode: .fit)
         .accessibilityHidden(true)
+    }
+}
+
+/// The reference grid, Morphe's way: the headline word swaps with a blur,
+/// the matching card earns a gradient outline and a gradient icon, 0.6 s
+/// a beat, then it loops. The Voice beat opens the real orb stage inside
+/// its card (a circle growing out of the card — the dark mode reveal).
+/// Nothing here is a drawn stand-in for a feature: the cards are doors.
+private struct TourTrainWithGrid: View {
+    let open: (Int) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var active = 0
+    @State private var voiceReady = false
+
+    private struct Door: Identifiable {
+        let id: Int
+        let word: String
+        let symbol: String
+        let line: String
+        let page: Int   // WelcomeExperienceView.Page raw value
+    }
+    private static let doors: [Door] = [
+        Door(id: 0, word: "Voice", symbol: "waveform", line: "Say it. Morphe logs it.", page: 2),
+        Door(id: 1, word: "Form", symbol: "camera.viewfinder", line: "The camera counts the reps.", page: 1),
+        Door(id: 2, word: "Fuel", symbol: "fork.knife", line: "Read a label. Check a plate.", page: 4),
+        Door(id: 3, word: "Morphe AI", symbol: "sparkles", line: "Answers from your own logs.", page: 2)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Train with")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                Text(Self.doors[active].word)
+                    .font(.title.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .id(active)
+                    .transition(.blurIn)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                ForEach(Self.doors) { door in
+                    Button {
+                        open(door.page)
+                    } label: {
+                        card(door, selected: door.id == active)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Train with \(door.word). \(door.line)")
+                    .accessibilityHint("Opens that stop of the tour")
+                }
+            }
+        }
+        .task {
+            guard !reduceMotion else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(active == 0 ? 2.2 : 1.1))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.35)) { active = (active + 1) % Self.doors.count }
+            }
+        }
+        .task(id: active) {
+            voiceReady = false
+            guard active == 0, !reduceMotion else { return }
+            try? await Task.sleep(for: .seconds(1.2))
+            if !Task.isCancelled { withAnimation(.easeOut(duration: 0.3)) { voiceReady = true } }
+        }
+    }
+
+    private func card(_ door: Door, selected: Bool) -> some View {
+        let gradient = LinearGradient(colors: [MorpheTheme.accent, MorpheTheme.accentAlt], startPoint: .topLeading, endPoint: .bottomTrailing)
+        return ZStack {
+            VStack(spacing: 10) {
+                Image(systemName: door.symbol)
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundStyle(selected ? AnyShapeStyle(gradient) : AnyShapeStyle(MorpheTheme.textMuted))
+                    .frame(height: 32)
+                Text(door.word)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(door.line)
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .padding(.vertical, 16)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 124)
+
+            // The Voice beat: the real orb stage opens out of the card.
+            if door.id == 0 {
+                RadialReveal(origin: .center, revealed: selected && !reduceMotion) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(Color(red: 0.05, green: 0.05, blue: 0.09))
+                        VStack(spacing: 6) {
+                            MorpheOrbView(level: voiceReady ? 0.55 : 0.2, speaking: false, thinking: !voiceReady)
+                                .frame(width: 64, height: 64)
+                            Text(voiceReady ? "Ready" : "Thinking \u{00B7}\u{00B7}\u{00B7}")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .contentTransition(.opacity)
+                        }
+                        if voiceReady {
+                            RingPulse(color: .white, from: 0.5, to: 1.6, duration: 1.0)
+                                .frame(width: 64, height: 64)
+                        }
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panel)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .strokeBorder(selected ? AnyShapeStyle(gradient) : AnyShapeStyle(MorpheTheme.stroke), lineWidth: selected ? 1.5 : 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        .animation(.easeInOut(duration: 0.35), value: selected)
     }
 }
 
