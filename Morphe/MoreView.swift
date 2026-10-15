@@ -1498,7 +1498,7 @@ struct FuelLogCard: View {
                     Button {
                         if !store.intelligenceEnabled { showNeedsKey = true } else { showCamera = true }
                     } label: {
-                        Label("Camera", systemImage: "camera.fill").frame(maxWidth: .infinity)
+                        Label("Log a plate", systemImage: "camera.fill").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
                 }
@@ -1770,7 +1770,8 @@ struct FoodSearchSheet: View {
                                 .lineLimit(1)
                         }
                         Spacer(minLength: 8)
-                        Text("\(Int(food.kcal100.rounded())) cal · \(Int(food.protein100.rounded()))g P")
+                        // Library rows are per 100 g — say so, or 172 cal reads as a portion.
+                        Text("\(Int(food.kcal100.rounded())) cal · \(Int(food.protein100.rounded()))g P / 100 g")
                             .font(.caption)
                             .monospacedDigit()
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -2395,7 +2396,7 @@ struct FoodCheckCard: View {
                         // path needs the user's key; shooting first wasted it.
                         if !store.intelligenceEnabled { showPhotoNeedsKey = true } else { showCamera = true }
                     } label: {
-                        Label("Photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
+                        Label("Check a photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
                 }

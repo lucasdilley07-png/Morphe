@@ -439,3 +439,33 @@ Still open, in priority order:
   by sport, level, equipment, injuries and styles — goals aren't an input,
   so a Gain-muscle beginner can be handed a weight-loss HIIT first.
 
+
+## Today block + fix wave (2026-10-15, wave 3)
+
+- **Today**: Schedule now sits directly under today's plan (hero, done or
+  rest card), followed by `TodayGlanceRow` (HomeView.swift): Goals
+  (checklist preview; tap → `TodayGoalsSheet` to check/uncheck, change,
+  delete, add), Nutrition (calories + protein bars → Learn → Nutrition),
+  Progress (this week's sessions as a pie → Progress). Goal edits persist
+  in the profile snapshot (`customTaskTitles`, `hiddenTaskTitles`,
+  `taskRenames`) and re-apply every day via `personalizedDailyTasks`;
+  user-added goals earn 0 XP. `.schedule` left the reorderable stack.
+- **Fixes**: holds are flagged per set (`LoggedExercise.timedPerSet`,
+  note fallback for old logs) — History reads "Hold 12s", and seconds never
+  count as reps, e1RM or lifetime reps; a new account's back-catalogue news
+  lands read (no red 6); "1 day" plurals; the duplicate "Workout logged"
+  toast is gone (tier unlocks still toast, after the celebration); Morphe
+  AI prompts change once today is done; Return sends in the composer.
+- **Added**: offline log recall (`logRecallReply`: "how many push-ups did
+  I do today", "what did I do this week", "my last workout"); a "You did
+  1 of 7 exercises" check before finishing a mostly-skipped session; the
+  plan ranks by the athlete's goals (`catalogGoals`), General Fitness
+  matches every sport, Olympic lifting/strongman stay out of the default
+  rotation unless styles ask for them.
+- **Polish**: plain foods rank above breaded/fried; library rows say
+  "/ 100 g"; the Fuel cameras read "Log a plate" vs "Check a photo";
+  Profile's "Login" row is "Sign out".
+- **Open**: the ranker doesn't know age ("Balance and Strength for Older
+  Adults" can land for a 27-year-old); the live rest countdown is below the
+  exercise card; Apple Health appears under Connections and Health; the
+  9-page tour is long.

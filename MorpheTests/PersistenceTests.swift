@@ -6749,8 +6749,8 @@ final class ModerationTests: XCTestCase {
         XCTAssertTrue(store.morpheInbox.filter { $0.kind == .weeklyReport }.isEmpty, "no logs before this week → no report invented")
         store.refreshMorpheInbox()
         XCTAssertEqual(store.morpheInbox.filter { $0.kind == .news }.count, news.count, "never delivered twice")
-        XCTAssertEqual(store.morpheInboxUnreadCount, news.count)
-        store.markMorpheInboxRead()
+        // The first delivery is the back catalogue: it lands read, so a new
+        // account never opens on a red badge (audit 2026-10-15).
         XCTAssertEqual(store.morpheInboxUnreadCount, 0)
         // The report body never dresses up an empty week.
         let start = LeaderboardWeek.start()
@@ -9284,4 +9284,80 @@ final class MorpheRemembersTests: XCTestCase {
         let plan = MorpheDemoContent.generatedPlan(from: draft)
         XCTAssertFalse(plan.goalTranslation.weeklyActions.contains("4 strength sessions"))
     }
+
+    // MARK: Fix wave 2026-10-15
+
+    private func todayLog(_ exercises: [LoggedExercise], at date: Date = .now) -> WorkoutLog {
+        WorkoutLog(
+            athleteID: UUID(), athleteName: "Tester", workoutTemplateID: nil,
+            workoutTitle: "Beginner Low-Impact HIIT", sport: .generalFitness,
+            completedAt: date, durationMinutes: 2, exercises: exercises, notes: "",
+            source: .athleteManual, enteredByUserID: UUID(), enteredByRole: .client,
+            enteredByName: "Tester", verificationStatus: .athleteSubmitted
+        )
+    }
+
+    func testHoldSetsAreSecondsNotReps() {
+        var hold = LoggedExercise(name: "Cat-Cow", sets: "1", reps: "12", weight: "Bodyweight", note: "Set 1: Hold 12s")
+        hold.repsPerSet = [12]
+        XCTAssertTrue(hold.isTimedSet(0), "older logs read the Hold note")
+        hold.timedPerSet = [false]
+        XCTAssertFalse(hold.isTimedSet(0), "explicit flags win over the note")
+
+        var mixed = LoggedExercise(name: "Plank", sets: "2", reps: "", weight: "", note: "")
+        mixed.repsPerSet = [30, 10]
+        mixed.timedPerSet = [true, false]
+        XCTAssertEqual(MorpheAppStore.lifetimeReps(of: "Plank", in: [todayLog([mixed])]), 10, "held seconds never count as reps")
+    }
+
+    func testRecallAnswersFromTheLogOffline() {
+        var push = LoggedExercise(name: "Incline Push-Up", sets: "2", reps: "10", weight: "Bodyweight", note: "")
+        push.repsPerSet = [10, 8]
+        var hold = LoggedExercise(name: "Cat-Cow", sets: "1", reps: "", weight: "", note: "Set 1: Hold 12s")
+        hold.repsPerSet = [12]
+        let logs = [todayLog([hold, push])]
+
+        let pushUps = MorpheAppStore.logRecallReply(to: "how many push-ups did i do today?", logs: logs, unit: .pounds)
+        XCTAssertEqual(pushUps, "From your log today — Incline Push-Up: 2 sets, 18 reps, bodyweight.")
+
+        let day = MorpheAppStore.logRecallReply(to: "what did i do today?", logs: logs, unit: .pounds) ?? ""
+        XCTAssertTrue(day.contains("2 exercises, 3 sets"), day)
+
+        XCTAssertEqual(MorpheAppStore.logRecallReply(to: "what did i do yesterday?", logs: logs, unit: .pounds),
+                       "Nothing logged yesterday. Finish a session and I'll count it.")
+        XCTAssertNil(MorpheAppStore.logRecallReply(to: "how many calories did i eat today?", logs: logs, unit: .pounds),
+                     "food questions go to the nutrition answers")
+        XCTAssertNil(MorpheAppStore.logRecallReply(to: "start my workout", logs: logs, unit: .pounds))
+    }
+
+    func testTodayGoalsEditsStickAndEarnNoXP() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        let generated = store.todayTasks
+        XCTAssertFalse(generated.isEmpty)
+
+        store.addTodayTask("Walk the dog")
+        XCTAssertEqual(store.todayTasks.last?.title, "Walk the dog")
+        XCTAssertEqual(store.todayTasks.last?.xp, 0, "your own goals earn no XP")
+        store.addTodayTask("walk the dog")
+        XCTAssertEqual(store.todayTasks.filter { $0.title.lowercased() == "walk the dog" }.count, 1, "no duplicates")
+
+        let first = generated[0]
+        store.renameTodayTask(first, to: "Renamed goal")
+        store.deleteTodayTask(generated[1])
+
+        // The next day's list is rebuilt with the same edits.
+        let rebuilt = store.personalizedDailyTasks()
+        XCTAssertTrue(rebuilt.contains { $0.title == "Renamed goal" })
+        XCTAssertFalse(rebuilt.contains { $0.title == generated[1].title })
+        XCTAssertTrue(rebuilt.contains { $0.title == "Walk the dog" })
+    }
+
+    func testPlanRanksTheAthletesGoalFirst() {
+        XCTAssertEqual(MorpheAppStore.catalogGoals(for: ["Gain muscle", "Get stronger"]), ["Strength Building"])
+        XCTAssertEqual(MorpheAppStore.catalogGoals(for: ["Lose weight"]), ["Weight Loss", "Lean Out"])
+        XCTAssertTrue(MorpheAppStore.catalogGoals(for: ["Build consistency"]).isEmpty, "no goal bias when nothing maps")
+    }
 }
+

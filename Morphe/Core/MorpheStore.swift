@@ -560,7 +560,8 @@ final class MorpheAppStore {
         case .insight:
             return todayExperienceTier >= 2 && primaryAthletePatternInsight != nil
         case .schedule:
-            return true
+            // Pinned under today's plan (2026-10-15), not in the stack.
+            return false
         case .adjustments:
             return todayExperienceTier >= 1 || minimumWinModeEnabled
         case .support:
@@ -2729,6 +2730,12 @@ final class MorpheAppStore {
         nameChangedAtEpoch = snapshot.nameChangedAtEpoch
         usernameChangedAtEpoch = snapshot.usernameChangedAtEpoch
         lastDailyResetDay = snapshot.dailyStateDay
+        customTaskTitles = snapshot.customTaskTitles
+        hiddenTaskTitles = Set(snapshot.hiddenTaskTitles)
+        taskRenames = Dictionary(snapshot.taskRenames.compactMap { pair -> (String, String)? in
+            let parts = pair.split(separator: Self.taskRenameSeparator, maxSplits: 1).map(String.init)
+            return parts.count == 2 ? (parts[0], parts[1]) : nil
+        }, uniquingKeysWith: { _, last in last })
         if snapshot.dailyStateDay == Self.dayKey() {
             // Same day + same dial regenerate the same personalized list, so
             // the saved completion titles land on the right rows.
@@ -3288,6 +3295,9 @@ final class MorpheAppStore {
                 age: clientProfile.age,
                 dailyStateDay: lastDailyResetDay,
                 completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title),
+                customTaskTitles: customTaskTitles,
+                hiddenTaskTitles: Array(hiddenTaskTitles),
+                taskRenames: taskRenames.map { "\($0.key)\(Self.taskRenameSeparator)\($0.value)" },
                 protectedDayKeys: Array(protectedDayKeys),
                 planDayIndex: planDayIndex,
                 completedMinimumWinTitlesToday: minimumWinTasks.filter(\.isCompleted).map(\.title),
@@ -4035,6 +4045,15 @@ final class MorpheAppStore {
     }
 
     var aiAgentQuickPrompts: [String] {
+        // Done for the day: offering "Start my workout" read as if the
+        // session never happened (audit 2026-10-15). Lead with the result.
+        if isWorkoutLoggedToday, !isWorkoutSessionActive {
+            return ["What did I do today?", "Show my progress", "Something light for recovery", "What can you do?"]
+        }
+        return defaultAIAgentQuickPrompts
+    }
+
+    private var defaultAIAgentQuickPrompts: [String] {
 
         // Athlete prompts lead with ACTIONS the assistant can actually
         // perform, then a couple of coaching questions.
@@ -6324,6 +6343,8 @@ final class MorpheAppStore {
                 for (index, pair) in zip(weights, reps).enumerated() where pair.0 > 0 && pair.1 > 0 {
                     // Warm-up sets never feed the e1RM estimate.
                     if warmups.indices.contains(index), warmups[index] { continue }
+                    // A hold's slot is seconds, not reps.
+                    if exercise.isTimedSet(index) { continue }
                     let (weight, repCount) = pair
                     let epley: Double = weight * (1 + Double(min(repCount, 15)) / 30)
                     let rounded: Double = (epley * 10).rounded() / 10
@@ -7178,8 +7199,13 @@ final class MorpheAppStore {
         sport: SportFocus,
         equipmentOrder: [String],
         flaggedAreas: Set<String>,
-        trainingStyles: [TrainingStyleOption] = []
+        trainingStyles: [TrainingStyleOption] = [],
+        goals: [String] = []
     ) -> [WorkoutTemplate] {
+        // The athlete's goals pick the catalog's goal column (audit
+        // 2026-10-15: a Gain-muscle beginner opened on "Weight Loss" HIIT).
+        // Soft like sport and style — reorders, never excludes.
+        let wantedGoals = Self.catalogGoals(for: goals)
         // The user's chosen training styles map to catalog vocabulary — a
         // yoga/pilates/dance pick should actually surface those categories.
         // Soft preference like sport: styles reorder, never exclude. (Passed
@@ -7200,17 +7226,45 @@ final class MorpheAppStore {
             }
         }
 
-        func key(_ t: WorkoutTemplate) -> (Int, Int, Int, Int, String) {
+        func key(_ t: WorkoutTemplate) -> (Int, Int, Int, Int, Int, String) {
             // generalFitness templates count as a match: they're the sport-
             // agnostic backbone of the catalog, not a mismatch to bury.
-            let sportRank = (t.sport == sport || t.sport == .generalFitness) ? 0 : 1
+            // A General Fitness athlete has no sport to mismatch: every
+            // template fits (the specialist rule below keeps niche
+            // disciplines out of the default rotation).
+            let sportRank = (sport == .generalFitness || t.sport == sport || t.sport == .generalFitness) ? 0 : 1
             let haystack = "\(t.categoryTag) \(t.focusTag) \(t.trainingTypeTag) \(t.type)".lowercased()
             let styleRank = (styleKeywords.isEmpty
                 || styleKeywords.contains(where: { haystack.contains($0) })) ? 0 : 1
             let equipmentRank = equipmentOrder.firstIndex(of: t.equipment) ?? equipmentOrder.count
-            return (injuryPenalty(for: t, areas: flaggedAreas), sportRank, styleRank, equipmentRank, t.name)
+            let goalRank = (wantedGoals.isEmpty || wantedGoals.contains(t.goal)) ? 0 : 1
+            // Specialist disciplines (Olympic lifting, strongman)
+            // are a choice, not a default: a general-fitness
+            // beginner was handed "Clean and Jerk Technique" on day one.
+            let category = t.categoryTag.lowercased()
+            let isSpecialist = ["olympic", "strongman"].contains(where: category.contains)
+            let specialistRank = (isSpecialist && !styleKeywords.contains(where: { category.contains($0) })) ? 1 : 0
+            return (injuryPenalty(for: t, areas: flaggedAreas), sportRank + specialistRank, goalRank, styleRank, equipmentRank, t.name)
         }
         return candidates.sorted { key($0) < key($1) }
+    }
+
+    /// The athlete's goal choices → the catalog's goal values.
+    static func catalogGoals(for goals: [String]) -> Set<String> {
+        var wanted: Set<String> = []
+        for goal in goals.map({ $0.lowercased() }) {
+            if goal.contains("muscle") || goal.contains("stronger") || goal.contains("strength") {
+                wanted.insert("Strength Building")
+            }
+            if goal.contains("lose") || goal.contains("weight") || goal.contains("lean") || goal.contains("fat") {
+                wanted.formUnion(["Weight Loss", "Lean Out"])
+            }
+            if goal.contains("conditioning") || goal.contains("performance") || goal.contains("event") {
+                wanted.formUnion(["Lean Out", "Strength Building"])
+            }
+            if goal.contains("injury") { wanted.insert("Recovery") }
+        }
+        return wanted
     }
 
 
@@ -7237,7 +7291,8 @@ final class MorpheAppStore {
                     sport: clientProfile.sportMode,
                     equipmentOrder: pref,
                     flaggedAreas: areas,
-                    trainingStyles: clientProfile.selectedTrainingStyles
+                    trainingStyles: clientProfile.selectedTrainingStyles,
+                    goals: clientProfile.selectedGoals
                 )
             }
             .filter { !$0.isEmpty }
@@ -7269,7 +7324,8 @@ final class MorpheAppStore {
                 sport: clientProfile.sportMode,
                 equipmentOrder: pref,
                 flaggedAreas: areas,
-                trainingStyles: clientProfile.selectedTrainingStyles
+                trainingStyles: clientProfile.selectedTrainingStyles,
+                    goals: clientProfile.selectedGoals
             )
             if !blendPool.isEmpty {
                 var blendIndex = 0
@@ -7334,6 +7390,9 @@ final class MorpheAppStore {
         workoutHistory = []
         workoutConsistency = []
         taskCompletionHistory = []
+        customTaskTitles = []
+        hiddenTaskTitles = []
+        taskRenames = [:]
         workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
         customWorkoutIDs = []
         customExercises = []
@@ -7848,7 +7907,79 @@ final class MorpheAppStore {
     /// through the pools by calendar day. Deterministic for a given day and
     /// dial, so a same-day relaunch regenerates the identical list and
     /// completions re-apply by title.
+    // MARK: Today's goals — the athlete's own edits (2026-10-15)
+
+    /// Goals the athlete added — they recur every day until removed. They
+    /// earn no XP: XP stays tied to things Morphe can see happen.
+    var customTaskTitles: [String] = []
+    /// Generated goals the athlete removed (matched by their generated title).
+    var hiddenTaskTitles: Set<String> = []
+    /// Generated title → the athlete's wording.
+    var taskRenames: [String: String] = [:]
+
+    static let taskRenameSeparator: Character = "\u{1F}"
+
+    /// The generated list with the athlete's edits applied. Every path that
+    /// builds the day (launch, rollover, level change) goes through here.
     func personalizedDailyTasks(for date: Date = .now) -> [TaskItem] {
+        var tasks = generatedDailyTasks(for: date)
+            .filter { !hiddenTaskTitles.contains($0.title) }
+            .map { task -> TaskItem in
+                var task = task
+                if let renamed = taskRenames[task.title] { task.title = renamed }
+                return task
+            }
+        for title in customTaskTitles where !tasks.contains(where: { $0.title == title }) {
+            tasks.append(TaskItem(title: title, difficulty: .easy, isCompleted: false, xp: 0))
+        }
+        return tasks
+    }
+
+    /// The generated title a (possibly renamed) row came from.
+    private func generatedTitle(for title: String) -> String {
+        taskRenames.first(where: { $0.value == title })?.key ?? title
+    }
+
+    func addTodayTask(_ raw: String) {
+        let title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !todayTasks.contains(where: { $0.title.caseInsensitiveCompare(title) == .orderedSame }) else { return }
+        customTaskTitles.append(title)
+        todayTasks.append(TaskItem(title: title, difficulty: .easy, isCompleted: false, xp: 0))
+        persistLocalProfile()
+    }
+
+    func renameTodayTask(_ task: TaskItem, to raw: String) {
+        let title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, title != task.title,
+              let index = todayTasks.firstIndex(where: { $0.id == task.id }),
+              !todayTasks.contains(where: { $0.id != task.id && $0.title.caseInsensitiveCompare(title) == .orderedSame })
+        else { return }
+        if let custom = customTaskTitles.firstIndex(of: task.title) {
+            customTaskTitles[custom] = title
+        } else {
+            let origin = generatedTitle(for: task.title)
+            taskRenames[origin] = title == origin ? nil : title
+        }
+        todayTasks[index].title = title
+        persistLocalProfile()
+    }
+
+    func deleteTodayTask(_ task: TaskItem) {
+        guard let index = todayTasks.firstIndex(where: { $0.id == task.id }) else { return }
+        // Removing a checked goal takes back what it earned.
+        if todayTasks[index].isCompleted { updateXP(for: todayTasks[index].xp, add: false) }
+        if let custom = customTaskTitles.firstIndex(of: task.title) {
+            customTaskTitles.remove(at: custom)
+        } else {
+            let origin = generatedTitle(for: task.title)
+            hiddenTaskTitles.insert(origin)
+            taskRenames[origin] = nil
+        }
+        todayTasks.remove(at: index)
+        persistLocalProfile()
+    }
+
+    private func generatedDailyTasks(for date: Date = .now) -> [TaskItem] {
         let mix: (easy: Int, steady: Int, stretch: Int)
         switch taskDifficultyDial {
         case 0: mix = (3, 0, 0)
@@ -8672,7 +8803,9 @@ final class MorpheAppStore {
         for log in currentAthleteWorkoutLogs {   // newest first
             guard let exercise = log.exercises.first(where: { $0.name == name }),
                   let reps = exercise.repsPerSet, !reps.isEmpty else { continue }
-            let repsText = reps.prefix(6).map(String.init).joined(separator: "/")
+            let repsText = reps.prefix(6).enumerated()
+                .map { exercise.isTimedSet($0.offset) ? "\($0.element)s" : String($0.element) }
+                .joined(separator: "/")
             let suffix = reps.count > 6 ? "…" : ""
             let top = exercise.weightsPerSet?.max() ?? 0
             guard top > 0 else { return "LAST: \(repsText)\(suffix) BW" }
@@ -8736,6 +8869,19 @@ final class MorpheAppStore {
     /// Total sets logged so far this session (drives the discard confirmation).
     var trackedSetTotalCount: Int {
         completedWorkoutSets.values.reduce(0, +)
+    }
+
+    /// Exercises in today's session with at least one logged set.
+    var trackedExercisesStartedCount: Int {
+        currentWorkout.exercises.filter { (completedWorkoutSets[$0.id] ?? 0) > 0 }.count
+    }
+
+    /// Finishing with under half the exercises touched asks first (audit
+    /// 2026-10-15: 1 of 7 saved with full XP, no question). Still counts if
+    /// they confirm — a short day is real — it just isn't silent.
+    var finishWouldSkipMost: Bool {
+        let total = currentWorkout.exercises.count
+        return total >= 3 && trackedSetTotalCount > 0 && trackedExercisesStartedCount * 2 < total
     }
 
     /// The just-finished session's real logged work, per exercise, for the recap.
@@ -9654,7 +9800,15 @@ final class MorpheAppStore {
         if recordStamp == nil {
             Haptics.success()
         }
-        showToast("Workout logged. Progress updated.\(tierUnlockLine ?? "")")
+        // The celebration above already says "logged" (audit 2026-10-15:
+        // the toast stacked on it). Only a tier unlock is news — it waits
+        // for the celebration to clear.
+        if let tierUnlockLine {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                self?.showToast(tierUnlockLine.trimmingCharacters(in: .whitespaces))
+            }
+        }
         // Milestone pep-talks ride the same beat — but a PR celebration
         // wins the moment; the milestone waits for a quieter log.
         celebrateMilestonesAfterLog()
@@ -9769,10 +9923,13 @@ final class MorpheAppStore {
             var item = entry
             // Delivered "just now" for everyone (audit 2026-10-10: a
             // ship-date stamp buried news mid-history, unread but unseen).
-            _ = fresh
             item.date = now.addingTimeInterval(-60 + Double(offset))
             morpheInbox.append(item); deliveredNewsIDs.insert(entry.id); changed = true
         }
+        // A brand-new account's first delivery is the back catalogue, not
+        // news: it lands read, so day one never opens on a red "6" for an
+        // empty Network (release audit 2026-10-15). Later entries badge.
+        if fresh, changed { markMorpheInboxRead() }
         // The week that just ended.
         let thisWeekStart = LeaderboardWeek.start()
         let weekId = "report-\(LeaderboardWeek.key(for: thisWeekStart))"
@@ -10314,7 +10471,7 @@ final class MorpheAppStore {
             let reps = exercise.repsPerSet ?? []
             let top = exercise.weightsPerSet?.max() ?? 0
             let load = top > 0 ? weightUnit.format(normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)) : "bodyweight"
-            lines.append("\(formatter.string(from: log.completedAt)): \(reps.count) sets, reps \(reps.map(String.init).joined(separator: "/")), top \(load)")
+            lines.append("\(formatter.string(from: log.completedAt)): \(reps.count) sets, reps \(reps.enumerated().map { exercise.isTimedSet($0.offset) ? "\($0.element)s hold" : String($0.element) }.joined(separator: "/")), top \(load)")
         }
         guard !lines.isEmpty else { return nil }
         return "Their logged history for \(name), newest first: \(lines.joined(separator: "; ")). Quote it; do not invent sessions."
@@ -13515,7 +13672,11 @@ final class MorpheAppStore {
         logs.reduce(0) { total, log in
             total + log.exercises
                 .filter { $0.name == exerciseName }
-                .reduce(0) { $0 + ($1.repsPerSet ?? []).reduce(0, +) }
+                .reduce(0) { sum, exercise in
+                    sum + (exercise.repsPerSet ?? []).enumerated()
+                        .filter { !exercise.isTimedSet($0.offset) }
+                        .reduce(0) { $0 + $1.element }
+                }
         }
     }
 
@@ -17951,8 +18112,97 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: Log recall (offline, 2026-10-15)
+
+    /// Answers "what / how many did I do" questions straight from the
+    /// athlete's logs. Nil when the prompt isn't a recall question, so the
+    /// rest of the reply chain runs. Never estimates: counts only what was
+    /// logged, holds in seconds, nothing for a window with no sessions.
+    static func logRecallReply(to prompt: String, logs: [WorkoutLog], unit: WeightUnit, now: Date = .now) -> String? {
+        let recallCues = ["did i", "have i", "how many", "how much", "what did", "last workout", "last session", "my workout today", "i logged", "did today"]
+        guard recallCues.contains(where: prompt.contains) else { return nil }
+        // Food questions belong to the nutrition answers.
+        let foodCues = ["calorie", "protein", "carb", "fat", "water", "eat", "ate", "food", "meal"]
+        guard !foodCues.contains(where: prompt.contains) else { return nil }
+
+        let calendar = Calendar.current
+        let window: (label: String, logs: [WorkoutLog])
+        if prompt.contains("yesterday") {
+            window = ("yesterday", logs.filter { calendar.isDateInYesterday($0.completedAt) })
+        } else if prompt.contains("week") {
+            let start = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+            window = ("this week", logs.filter { $0.completedAt >= start })
+        } else if prompt.contains("last") {
+            let latest = logs.max(by: { $0.completedAt < $1.completedAt })
+            window = ("in your last session", latest.map { [$0] } ?? [])
+        } else if prompt.contains("ever") || prompt.contains("total") || prompt.contains("all time") {
+            window = ("in total", logs)
+        } else {
+            window = ("today", logs.filter { calendar.isDateInToday($0.completedAt) })
+        }
+        guard !window.logs.isEmpty else {
+            return window.label == "in your last session"
+                ? "Nothing's logged yet — finish a session and I'll have numbers for you."
+                : "Nothing logged \(window.label). Finish a session and I'll count it."
+        }
+
+        // A named exercise: "push-ups" matches "Incline Push-Up".
+        func key(_ text: String) -> String {
+            let letters = text.lowercased().filter { $0.isLetter }
+            return letters.hasSuffix("s") ? String(letters.dropLast()) : letters
+        }
+        let promptKey = prompt.lowercased().filter { $0.isLetter || $0 == " " }
+        let names = Set(window.logs.flatMap { $0.exercises.map(\.name) })
+        let named = names.filter { name in
+            let words = name.split(whereSeparator: { !$0.isLetter && $0 != "-" }).map { key(String($0)) }.filter { $0.count >= 4 }
+            let joined = key(name)
+            return promptKey.split(separator: " ").contains { word in
+                let w = key(String(word))
+                return w.count >= 4 && (words.contains(w) || joined.hasSuffix(w) || w.hasSuffix(joined))
+            } || promptKey.replacingOccurrences(of: " ", with: "").contains(joined)
+        }
+
+        if !named.isEmpty {
+            let lines = named.sorted().map { name -> String in
+                var sets = 0, reps = 0, holdSeconds = 0
+                var top: Double = 0
+                for log in window.logs {
+                    for exercise in log.exercises where exercise.name == name {
+                        let perSet = exercise.repsPerSet ?? []
+                        sets += perSet.isEmpty ? (Int(exercise.sets.prefix(while: \.isNumber)) ?? 0) : perSet.count
+                        for (index, value) in perSet.enumerated() {
+                            if exercise.isTimedSet(index) { holdSeconds += value } else { reps += value }
+                        }
+                        top = max(top, exercise.weightsPerSet?.max() ?? 0)
+                    }
+                }
+                var parts: [String] = ["\(sets) set\(sets == 1 ? "" : "s")"]
+                if reps > 0 { parts.append("\(reps) rep\(reps == 1 ? "" : "s")") }
+                if holdSeconds > 0 { parts.append("\(holdSeconds)s held") }
+                parts.append(top > 0 ? "top \(unit.format(top))" : "bodyweight")
+                return "\(name): \(parts.joined(separator: ", "))"
+            }
+            return "From your log \(window.label) — \(lines.joined(separator: " · "))."
+        }
+
+        let sessions = window.logs.count
+        let titles = window.logs.map(\.workoutTitle)
+        let exerciseCount = Set(window.logs.flatMap { $0.exercises.map(\.name) }).count
+        let setCount = window.logs.reduce(0) { total, log in
+            total + log.exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? (Int($1.sets.prefix(while: \.isNumber)) ?? 0)) }
+        }
+        let minutes = window.logs.reduce(0) { $0 + $1.durationMinutes }
+        let what = sessions == 1 ? titles[0] : "\(sessions) sessions (\(titles.prefix(3).joined(separator: ", "))\(sessions > 3 ? "…" : ""))"
+        return "From your log \(window.label): \(what) — \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s"), \(setCount) set\(setCount == 1 ? "" : "s"), \(minutes) min."
+    }
+
     private func athleteAgentReply(to prompt: String) -> String {
         let lowercasedPrompt = prompt.lowercased()
+        // "How many push-ups did I do today?" — answered from the log,
+        // no model needed (audit 2026-10-15: the offline brain declined).
+        if let recall = Self.logRecallReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, unit: weightUnit) {
+            return recall
+        }
         let primaryExercise = activeWorkoutExercise?.name ?? currentWorkout.exercises.first?.name ?? "your first movement"
         let firstWin = recentWins.first ?? "You kept showing up when the plan got busy."
 
@@ -18708,6 +18958,9 @@ final class MorpheAppStore {
                     : trackedSetWarmups[exercise.id, default: []],
                 cameraCountedPerSet: trackedSetCamera[exercise.id, default: []].contains(true)
                     ? trackedSetCamera[exercise.id, default: []]
+                    : nil,
+                timedPerSet: labelsLogged.contains(where: { $0.hasPrefix("Hold ") })
+                    ? labelsLogged.map { $0.hasPrefix("Hold ") }
                     : nil
             )
         }

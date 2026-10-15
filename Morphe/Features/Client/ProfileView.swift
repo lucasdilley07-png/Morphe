@@ -1392,7 +1392,7 @@ struct ProfileView: View {
             ("Your app", "theme accent color"),
             ("Your data", "export json download backup cloud morphe pro subscription plans"),
             ("More info and support", "about terms privacy policy contact support email version"),
-            ("Login", "sign out log out delete account remove")
+            ("Sign out", "sign out log out login delete account remove")
         ]
         return !sections.contains { settingsSectionMatches(title: $0.0, keywords: $0.1) }
     }
@@ -1428,7 +1428,7 @@ struct ProfileView: View {
         "Your app": ("paintpalette", "Accent color"),
         "Your data": ("externaldrive", PremiumGate.storefrontEnabled ? "Export, import, backup, Pro" : "Export, import, backup"),
         "More info and support": ("questionmark.circle", "About, privacy, contact"),
-        "Login": ("rectangle.portrait.and.arrow.right", "Sign out, delete account")
+        "Sign out": ("rectangle.portrait.and.arrow.right", "Sign out, delete account")
     ]
 
     /// One grouped section, hidden when the search query matches neither
@@ -2241,7 +2241,7 @@ struct ProfileView: View {
             }
 
             if FeatureFlags.accountsEnabled {
-                settingsSection("Login", keywords: "sign out log out delete account remove", emphasis: .quiet) {
+                settingsSection("Sign out", keywords: "sign out log out login delete account remove", emphasis: .quiet) {
                     Button("Sign Out") {
                         showSignOutConfirm = true
                     }

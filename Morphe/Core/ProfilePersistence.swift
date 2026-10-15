@@ -102,6 +102,11 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // denominator for banking an ended day into the difficulty dial
     // (audit 8, P1-2). Optional so pre-field blobs decode unchanged.
     var autoTaskTotalToday: Int? = nil
+    // The athlete's own edits to Today's goals (2026-10-15): goals they
+    // added, generated ones they removed, and renames ("old\u{1F}new").
+    var customTaskTitles: [String] = []
+    var hiddenTaskTitles: [String] = []
+    var taskRenames: [String] = []
     // Days protected with a minimum win — they count in the streak.
     var protectedDayKeys: [String] = []
     // Where the user is in their catalog-backed daily-plan rotation.
@@ -222,6 +227,9 @@ extension LocalProfileSnapshot {
         // Written since audit 8 but never decoded until audit 9 (P0-3) —
         // the tolerant decoder pattern silently swallows missing lines.
         autoTaskTotalToday = ((try? c.decodeIfPresent(Int.self, forKey: .autoTaskTotalToday)) ?? nil)
+        customTaskTitles = arr(.customTaskTitles)
+        hiddenTaskTitles = arr(.hiddenTaskTitles)
+        taskRenames = arr(.taskRenames)
         completedTaskTitlesToday = arr(.completedTaskTitlesToday)
         protectedDayKeys = arr(.protectedDayKeys)
         planDayIndex = ((try? c.decodeIfPresent(Int.self, forKey: .planDayIndex)) ?? nil) ?? 0

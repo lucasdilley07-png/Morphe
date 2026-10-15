@@ -1055,7 +1055,7 @@ private struct ProgressHeroStrip: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
-                            MetricPill(label: "Streak", value: "\(streak) days")
+                            MetricPill(label: "Streak", value: streak == 1 ? "1 day" : "\(streak) days")
                         }
 
                         Spacer(minLength: 0)
@@ -2039,6 +2039,9 @@ private struct WorkoutHistoryCard: View {
         return reps.indices.map { index in
             let weight = weights.indices.contains(index) ? weights[index] : 0
             let rpe = rpes.indices.contains(index) ? rpes[index] : 0
+            if exercise.isTimedSet(index) {
+                return weight > 0 ? "Hold \(reps[index])s · \(String(format: "%g", weight)) \(unit)" : "Hold \(reps[index])s"
+            }
             var line = weight > 0
                 ? "\(reps[index])×\(weight.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(weight)) : String(weight)) \(unit)"
                 : "\(reps[index]) reps"

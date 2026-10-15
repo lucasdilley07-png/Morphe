@@ -34,6 +34,7 @@ struct WorkoutView: View {
     @State private var pendingRPE: Int?
     @State private var voiceSetLogger = VoiceSetLogController()
     @State private var showDiscardConfirm = false
+    @State private var showPartialFinishConfirm = false
     @State private var showLibrary = false
     @State private var showSessionQueue = false
     /// Runs after the library sheet finishes dismissing.
@@ -562,11 +563,25 @@ struct WorkoutView: View {
                 if !store.isTrackedWorkoutComplete {
                     HStack(spacing: 10) {
                         Button("Finish session") {
-                            if store.finishTrackedWorkoutSession() {
+                            if store.finishWouldSkipMost {
+                                showPartialFinishConfirm = true
+                            } else if store.finishTrackedWorkoutSession() {
                                 restRunning = false
                             }
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .confirmationDialog(
+                            "You did \(store.trackedExercisesStartedCount) of \(store.currentWorkout.exercises.count) exercises",
+                            isPresented: $showPartialFinishConfirm,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Finish anyway") {
+                                if store.finishTrackedWorkoutSession() { restRunning = false }
+                            }
+                            Button("Keep training", role: .cancel) {}
+                        } message: {
+                            Text("A short day still counts. Finish now, or keep going — the rest of today's session is still here.")
+                        }
                         // Finish with nothing logged (fix wave 2026-10-13):
                         // a session only counts with real sets in it.
                         .confirmationDialog("Nothing logged yet", isPresented: Binding(

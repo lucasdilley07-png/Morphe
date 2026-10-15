@@ -1686,6 +1686,17 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     /// as hand-entered. It vouches for the REP COUNT only — the weight is
     /// still the lifter's word.
     var cameraCountedPerSet: [Bool]? = nil
+    /// Per-set "this was a timed hold" flags, parallel to repsPerSet: for
+    /// those sets the reps slot carries SECONDS (2026-10-15 audit — history
+    /// printed "12 reps" for a 12 s hold). Optional: older logs fall back to
+    /// their "Set N: Hold 12s" note.
+    var timedPerSet: [Bool]? = nil
+
+    /// True when set `index` was a hold (its reps slot holds seconds).
+    func isTimedSet(_ index: Int) -> Bool {
+        if let flags = timedPerSet { return flags.indices.contains(index) && flags[index] }
+        return note.contains("Set \(index + 1): Hold ")
+    }
 }
 
 extension LoggedExercise {

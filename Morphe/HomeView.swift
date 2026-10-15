@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var showAppointments = false
     @State private var showEmptyLibraryNotice = false
     @State private var showLayoutEditor = false
+    @State private var showGoalsEditor = false
     @State private var greetingAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -123,6 +124,7 @@ struct HomeView: View {
                 if store.firstWeekSteps == nil,
                    !store.isPlannedRestDay, !store.isWorkoutLoggedToday {
                     nextMoveCard
+                    planFollowUps
                 }
 
                 // Jarvis beat: the app asks, you answer, the day reshapes.
@@ -240,6 +242,12 @@ struct HomeView: View {
                     if store.firstWeekSteps != nil {
                         nextMoveCard
                     }
+                }
+
+                // Schedule + the day at a glance sit right under whichever
+                // plan card showed (Lucas 2026-10-15).
+                if !(store.firstWeekSteps == nil && !store.isPlannedRestDay && !store.isWorkoutLoggedToday) {
+                    planFollowUps
                 }
 
                 // The day-7 bridge: five derived checkmarks that walk a new
@@ -395,6 +403,12 @@ struct HomeView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
         .onAppear { store.recordAppOpen() }
+        .sheet(isPresented: $showGoalsEditor) {
+            TodayGoalsSheet()
+                .environment(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showLayoutEditor) {
             HomeLayoutEditorSheet()
                 .environment(store)
@@ -418,6 +432,52 @@ struct HomeView: View {
     /// Personal schedule as a full-width card — used when there is no Coach
     /// card to pair with. Real per-account data (Firestore).
     /// The workout hero — one builder, two positions (week one vs after).
+    /// Under today's plan: Schedule (with Messages beside it when threads
+    /// exist), then Goals · Nutrition · Progress (Lucas 2026-10-15).
+    @ViewBuilder
+    private var planFollowUps: some View {
+        // Schedule (and Messages when threads exist) leads the
+        // planning half of Today (Lucas 2026-08-28): what's booked
+        // outranks the what-if tools below. When Messages and
+        // Schedule are BOTH present they share one slim two-column
+        // row so Today doesn't end in a stack of look-alike cards.
+        if store.liveThreads.isEmpty {
+            scheduleLinkCard
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                HomeLinkTile(
+                    systemImage: "bubble.left.and.bubble.right.fill",
+                    title: "Messages",
+                    detail: messagesTileDetail,
+                    detailIsMuted: messagesTileDetailIsMuted,
+                    accessibilityLabel: "Messages"
+                ) {
+                    // Deep-link into the one messaging surface —
+                    // Network → Contact auto-opens a lone thread.
+                    store.noteHomeCardUsed(.schedule)
+                    store.openCommunity(.contact)
+                }
+
+                HomeLinkTile(
+                    systemImage: "calendar.badge.clock",
+                    title: "Schedule",
+                    detail: scheduleTileDetail,
+                    detailIsMuted: store.upcomingAppointments.isEmpty,
+                    accessibilityLabel: "Schedule"
+                ) {
+                    store.noteHomeCardUsed(.schedule)
+                    showAppointments = true
+                }
+            }
+        }
+
+        TodayGlanceRow(
+            onOpenGoals: { showGoalsEditor = true },
+            onOpenNutrition: { store.openHub(.nutrition) },
+            onOpenProgress: { store.openProgress() }
+        )
+    }
+
     private var nextMoveCard: some View {
         TodayNextMoveCard(
             workout: store.currentWorkout,
@@ -486,40 +546,8 @@ struct HomeView: View {
                 }
             }
         case .schedule:
-            // Schedule (and Messages when threads exist) leads the
-            // planning half of Today (Lucas 2026-08-28): what's booked
-            // outranks the what-if tools below. When Messages and
-            // Schedule are BOTH present they share one slim two-column
-            // row so Today doesn't end in a stack of look-alike cards.
-            if store.liveThreads.isEmpty {
-                scheduleLinkCard
-            } else {
-                HStack(alignment: .top, spacing: 12) {
-                    HomeLinkTile(
-                        systemImage: "bubble.left.and.bubble.right.fill",
-                        title: "Messages",
-                        detail: messagesTileDetail,
-                        detailIsMuted: messagesTileDetailIsMuted,
-                        accessibilityLabel: "Messages"
-                    ) {
-                        // Deep-link into the one messaging surface —
-                        // Network → Contact auto-opens a lone thread.
-                        store.noteHomeCardUsed(.schedule)
-                        store.openCommunity(.contact)
-                    }
-
-                    HomeLinkTile(
-                        systemImage: "calendar.badge.clock",
-                        title: "Schedule",
-                        detail: scheduleTileDetail,
-                        detailIsMuted: store.upcomingAppointments.isEmpty,
-                        accessibilityLabel: "Schedule"
-                    ) {
-                        store.noteHomeCardUsed(.schedule)
-                        showAppointments = true
-                    }
-                }
-            }
+            // Pinned under today's plan now (planFollowUps).
+            EmptyView()
         case .adjustments:
             if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
             HomeExpandableSection(
@@ -1049,7 +1077,7 @@ struct HomeLayoutEditorSheet: View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(store.homeCardLayout) { card in
+                    ForEach(store.homeCardLayout.filter { $0 != .schedule }) { card in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(card.title)
@@ -2406,5 +2434,279 @@ struct AwayOverlay: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Morphe is away. Tap anywhere to come back.")
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - The day at a glance (Lucas 2026-10-15)
+
+/// Three tiles under today's plan: Goals (checklist), Nutrition (progress
+/// bars), Progress (this week as a pie). Every number is the athlete's own:
+/// today's tasks, today's fuel against the targets, sessions this week
+/// against the weekly target.
+private struct TodayGlanceRow: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let onOpenGoals: () -> Void
+    let onOpenNutrition: () -> Void
+    let onOpenProgress: () -> Void
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+        layout {
+            goalsTile
+            nutritionTile
+            progressTile
+        }
+    }
+
+    private func tile<Content: View>(_ title: String, label: String, action: @escaping () -> Void,
+                                      @ViewBuilder content: () -> Content) -> some View {
+        Button(action: action) {
+            GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 4) {
+                    Text(title.uppercased())
+                        .font(MorpheTheme.microLabel(10).weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                content()
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var goalsTile: some View {
+        let tasks = store.todayTasks
+        let done = tasks.filter(\.isCompleted).count
+        return tile("Goals", label: "Today's goals, \(done) of \(tasks.count) done. Opens the checklist.", action: onOpenGoals) {
+            Text("\(done)/\(tasks.count)")
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(MorpheTheme.textPrimary)
+            if tasks.isEmpty {
+                Text("Add your first goal")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(tasks.prefix(3)) { task in
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .font(.caption2)
+                                .foregroundStyle(task.isCompleted ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                            Text(task.title)
+                                .font(.caption2)
+                                .strikethrough(task.isCompleted)
+                                .foregroundStyle(task.isCompleted ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    if tasks.count > 3 {
+                        Text("+\(tasks.count - 3) more")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+            }
+        }
+    }
+
+    private var nutritionTile: some View {
+        let targets = store.nutritionTargets
+        let day = store.nutrition
+        return tile("Nutrition",
+                    label: "Nutrition, \(day.caloriesConsumed) of \(targets.calories) calories, \(day.proteinConsumed) of \(targets.proteinGrams) grams protein. Opens Fuel.",
+                    action: onOpenNutrition) {
+            Text("\(day.caloriesConsumed.formatted())")
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text("of \(targets.calories.formatted()) cal")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            ProgressBarView(progress: Self.fraction(day.caloriesConsumed, targets.calories), color: MorpheTheme.accent)
+            Text("Protein \(day.proteinConsumed)/\(targets.proteinGrams)g")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            ProgressBarView(progress: Self.fraction(day.proteinConsumed, targets.proteinGrams), color: MorpheTheme.accentAlt)
+        }
+    }
+
+    private var progressTile: some View {
+        let done = store.currentAthleteWorkoutSummary.workoutsThisWeek
+        let target = max(store.clientProfile.trainingDaysPerWeek, 1)
+        let fraction = Self.fraction(done, target)
+        return tile("Progress", label: "Progress, \(done) of \(target) sessions this week. Opens Progress.", action: onOpenProgress) {
+            ZStack {
+                Circle()
+                    .fill(MorpheTheme.panelStrong)
+                PieSlice(fraction: fraction)
+                    .fill(MorpheTheme.accent)
+                    .animation(.easeOut(duration: 0.4), value: fraction)
+                Circle()
+                    .strokeBorder(MorpheTheme.strokeSubtle, lineWidth: 1)
+            }
+            .frame(width: 52, height: 52)
+            .frame(maxWidth: .infinity)
+            Text("\(done) of \(target) this week")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    static func fraction(_ value: Int, _ target: Int) -> Double {
+        guard target > 0 else { return 0 }
+        return min(max(Double(value) / Double(target), 0), 1)
+    }
+}
+
+/// A filled wedge from 12 o'clock, clockwise.
+private struct PieSlice: Shape {
+    var fraction: Double
+    var animatableData: Double {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard fraction > 0 else { return path }
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        if fraction >= 1 { path.addEllipse(in: rect); return path }
+        path.move(to: center)
+        path.addArc(center: center, radius: min(rect.width, rect.height) / 2,
+                    startAngle: .degrees(-90), endAngle: .degrees(-90 + 360 * fraction), clockwise: false)
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Today's goals: check/uncheck, change, delete, add. Generated goals carry
+/// XP; goals the athlete adds don't (XP stays tied to what Morphe can see).
+private struct TodayGoalsSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var newTitle = ""
+    @State private var editing: TaskItem?
+    @State private var editText = ""
+    @FocusState private var addFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(store.todayTasks) { task in
+                        HStack(spacing: 12) {
+                            Button {
+                                store.toggleTask(task)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3)
+                                        .foregroundStyle(task.isCompleted ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(task.title)
+                                            .strikethrough(task.isCompleted)
+                                            .foregroundStyle(task.isCompleted ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
+                                        Text(task.xp > 0 ? "+\(task.xp) XP" : "Your goal")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    }
+                                    Spacer(minLength: 0)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(task.title), \(task.isCompleted ? "done" : "not done")")
+                            .accessibilityHint("Double-tap to \(task.isCompleted ? "uncheck" : "check off")")
+
+                            Button {
+                                editText = task.title
+                                editing = task
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .accessibilityLabel("Change \(task.title)")
+
+                            Button(role: .destructive) {
+                                withAnimation { store.deleteTodayTask(task) }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.danger)
+                            .accessibilityLabel("Delete \(task.title)")
+                        }
+                        .listRowBackground(MorpheTheme.panel)
+                    }
+                } footer: {
+                    Text("Morphe's goals earn XP. Goals you add are yours to track and come back every day until you delete them.")
+                }
+
+                Section("Add a goal") {
+                    HStack(spacing: 10) {
+                        TextField("e.g. Walk 20 minutes", text: $newTitle)
+                            .focused($addFocused)
+                            .submitLabel(.done)
+                            .onSubmit(add)
+                        Button("Add", action: add)
+                            .buttonStyle(.borderedProminent)
+                            .tint(MorpheTheme.accent)
+                            .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .listRowBackground(MorpheTheme.panel)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(PremiumBackground().ignoresSafeArea())
+            .navigationTitle("Today's goals")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .alert("Change goal", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
+                TextField("Goal", text: $editText)
+                Button("Save") {
+                    if let task = editing { store.renameTodayTask(task, to: editText) }
+                    editing = nil
+                }
+                Button("Cancel", role: .cancel) { editing = nil }
+            }
+        }
+    }
+
+    private func add() {
+        store.addTodayTask(newTitle)
+        newTitle = ""
+        addFocused = true
     }
 }

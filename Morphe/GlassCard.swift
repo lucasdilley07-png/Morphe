@@ -1982,7 +1982,7 @@ struct LevelProgressCard: View {
                     Text("XP \(progress.currentXP) / \(progress.targetXP)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     Spacer()
-                    Text("Streak \(progress.streak) days")
+                    Text(progress.streak == 1 ? "Streak 1 day" : "Streak \(progress.streak) days")
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
                 .font(.subheadline)

@@ -1209,6 +1209,10 @@ enum FoodLibrary {
             if name.hasPrefix(words[0]) { score += 100 }
             if let first = name.split(separator: ",").first, words.allSatisfy({ first.contains($0) }) { score += 40 }
             score -= min(name.count, 60)
+            // Plain food before its processed cousins (audit 2026-10-15:
+            // "chicken breast" led with breaded tenders) — unless asked for.
+            let processed = ["breaded", "batter", "flour", "tenders", "nugget", "fried", "sweetened", "candied", "glazed", "frozen", "canned", "imitation"]
+            score -= 30 * processed.filter { name.contains($0) && !query.lowercased().contains($0) }.count
             return (item, score)
         }
         return scored.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)

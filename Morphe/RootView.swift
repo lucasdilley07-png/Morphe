@@ -568,7 +568,7 @@ private struct PartnerSessionPostSheet: View {
                             MetricPill(label: "Mode", value: draft.mode.rawValue)
                             MetricPill(label: "Minutes", value: "\(draft.durationMinutes)")
                             MetricPill(label: "XP bonus", value: "+\(draft.xpBonus)")
-                            MetricPill(label: "Partner streak", value: "\(draft.partnerStreak) days")
+                            MetricPill(label: "Partner streak", value: draft.partnerStreak == 1 ? "1 day" : "\(draft.partnerStreak) days")
                         }
 
                         if !draft.tags.isEmpty {
@@ -1139,6 +1139,16 @@ private struct MorpheAIAgentSheet: View {
                 .padding(.leading, 14)
                 .padding(.vertical, 11)
                 .focused($inputFocused)
+                // Return sends, like Messages (audit 2026-10-15); the field
+                // still grows for long questions. A vertical field takes
+                // the newline into the text, so it's caught here.
+                .submitLabel(.send)
+                .onChange(of: prompt) { _, value in
+                    guard value.contains("\n") else { return }
+                    prompt = value.replacingOccurrences(of: "\n", with: " ")
+                        .trimmingCharacters(in: .whitespaces)
+                    if !trimmedPrompt.isEmpty { send() }
+                }
 
                 Button {
                     toggleDictation()
