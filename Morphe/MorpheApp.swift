@@ -42,6 +42,11 @@ struct MorpheApp: App {
         AppCheck.setAppCheckProviderFactory(MorpheAppCheckProviderFactory())
         #endif
         FirebaseApp.configure()
+        // Morphe AI online sends an App Check token with each relay request
+        // (the relay requires it once App Check is enforced).
+        MorpheIntelligence.appCheckTokenProvider = {
+            try? await AppCheck.appCheck().token(forcingRefresh: false).token
+        }
         let auth = FirebaseAuthService()
         let store = MorpheAppStore(
             authService: auth,

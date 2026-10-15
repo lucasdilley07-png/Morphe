@@ -8782,7 +8782,7 @@ final class OnlineAITests: XCTestCase {
 
     func testRequestsGoToTheRelayWithTheAccountTokenAndNoModel() throws {
         let turns = [MorpheIntelligence.Turn(isUser: true, text: "What's next?")]
-        let relay = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .relay(token: "tok"), timeout: 5, stream: true)
+        let relay = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .relay(token: "tok", appCheck: nil), timeout: 5, stream: true)
         XCTAssertEqual(relay.url, MorpheIntelligence.relayURL)
         XCTAssertEqual(relay.value(forHTTPHeaderField: "Authorization"), "Bearer tok")
         XCTAssertNil(relay.value(forHTTPHeaderField: "x-api-key"))
@@ -8841,11 +8841,108 @@ final class OnlineAITests: XCTestCase {
         XCTAssertEqual(store.ratedAIMessages[answer.id], true, "the thumb shows locally")
         XCTAssertTrue(spy.pushed.isEmpty, "nothing leaves the phone without the opt-in")
 
+        // One rating per answer: a second tap on the same one does nothing.
         store.aiImprovementOptIn = true
         store.rateAIAnswer(answer, helpful: false)
+        XCTAssertTrue(spy.pushed.isEmpty, "an answer is rated once")
+
+        let second = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Rest 90 seconds between them.", timestamp: "Now")
+        store.athleteAIAgentConversation.append(second)
+        store.rateAIAnswer(second, helpful: false)
         XCTAssertEqual(spy.pushed.count, 1)
         XCTAssertEqual(spy.pushed.first?.question, "How many sets?")
         XCTAssertEqual(spy.pushed.first?.helpful, false)
         store.aiImprovementOptIn = false
+    }
+}
+
+/// Audit 2026-10-14, P0: the relay door was asserted onto the main actor
+/// from a pool thread and trapped on its first real request. These run the
+/// async door the way the chat and voice paths do.
+@MainActor
+final class OnlineAIDoorTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        MorpheIntelligence.clearAPIKey()
+    }
+
+    private func eligibleStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.updateAge(30)
+        XCTAssertTrue(store.setOnlineAI(enabled: true))
+        return store
+    }
+
+    func testCredentialResolvesToTheRelayFromAnAsyncTask() async {
+        let store = eligibleStore()
+        MorpheIntelligence.relayTokenProvider = { "tok" }
+        MorpheIntelligence.appCheckTokenProvider = { "ac" }
+        // Hop through a detached task first — the trap only showed off-main.
+        let credential = await Task.detached { await MorpheIntelligence.credential() }.value
+        XCTAssertEqual(credential, .relay(token: "tok", appCheck: "ac"))
+        let request = MorpheIntelligence.baseRequest(credential: .relay(token: "tok", appCheck: "ac"), timeout: 5)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Firebase-AppCheck"), "ac")
+        MorpheIntelligence.appCheckTokenProvider = nil
+        store.setOnlineAI(enabled: false)
+    }
+
+    func testAPersonalKeyBeatsTheRelay() async {
+        let store = eligibleStore()
+        MorpheIntelligence.relayTokenProvider = { "tok" }
+        XCTAssertTrue(MorpheIntelligence.setAPIKey("sk-ant-test"))
+        let credential = await MorpheIntelligence.credential()
+        XCTAssertEqual(credential, .personalKey("sk-ant-test"))
+        MorpheIntelligence.clearAPIKey()
+        store.setOnlineAI(enabled: false)
+    }
+
+    func testOfflineReadsAsAConnectionProblemNotSignedOut() async {
+        let store = eligibleStore()
+        MorpheIntelligence.relayTokenProvider = { nil }  // expired token, no network
+        do {
+            _ = try await store.resolveCredential()
+            XCTFail("no token, no credential")
+        } catch let error as MorpheIntelligence.IntelligenceError {
+            XCTAssertEqual(error, .network, "signed in but offline must not say 'sign in again'")
+        } catch { XCTFail("\(error)") }
+        store.authUser = nil
+        do {
+            _ = try await store.resolveCredential()
+            XCTFail("signed out has no credential")
+        } catch let error as MorpheIntelligence.IntelligenceError {
+            XCTAssertEqual(error, .signInNeeded)
+        } catch { XCTFail("\(error)") }
+        store.setOnlineAI(enabled: false)
+    }
+
+    func testRelayRefusalCopyNeverMentionsAKeyTheMemberDoesNotHave() {
+        func body(_ type: String) -> Data { try! JSONSerialization.data(withJSONObject: ["error": ["type": type]]) }
+        XCTAssertEqual(MorpheIntelligence.error(status: 429, body: body("busy")), .busy)
+        XCTAssertEqual(MorpheIntelligence.error(status: 429, body: body("rate_limit_error")), .overloaded)
+        XCTAssertEqual(MorpheIntelligence.error(status: 401, body: body("app_check")), .signInNeeded)
+        XCTAssertEqual(MorpheIntelligence.error(status: 503, body: body("relay_key")), .overloaded)
+        for error in [MorpheIntelligence.IntelligenceError.signInNeeded, .ageRestricted, .dailyLimit, .budget, .busy, .rateLimited] {
+            let line = error.errorDescription ?? ""
+            XCTAssertFalse(line.lowercased().contains("your key"), "\(error) mentions a key: \(line)")
+            XCTAssertTrue(MorpheIntelligence.isFailureNote(line), "\(error) must never be sent back as Claude's words")
+        }
+    }
+
+    func testPlaceholdersAndFailureLinesAreNeverRated() {
+        let store = eligibleStore()
+        let dots = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
+        let failure = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: MorpheIntelligence.IntelligenceError.network.errorDescription!, timestamp: "Now")
+        store.rateAIAnswer(dots, helpful: true)
+        store.rateAIAnswer(failure, helpful: false)
+        XCTAssertTrue(store.ratedAIMessages.isEmpty)
+        store.setOnlineAI(enabled: false)
     }
 }

@@ -954,7 +954,10 @@ service cloud.firestore {
     // author after opting in; nobody reads it from a client (the founder's
     // service account does). Deleted with the account by the author.
     match /aiFeedback/{feedbackId} {
-      allow read, update: if false;
+      // The author may LIST their own (to erase them with the account) —
+      // never get or read anyone else's.
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow get, update: if false;
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid

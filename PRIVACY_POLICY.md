@@ -47,12 +47,12 @@ and the status) are stored under your account, and so is your
 conversation with Morphe in Chats (its reports and news, your questions
 and its answers), as part of your account backup.
 
-**Build with Morphe AI (optional, your own key).** When you build a workout
-with Morphe AI, your answers to the questionnaire and the profile facts the
-app holds for you (age, experience, self-reported weakness, injury note)
-are sent to Anthropic with your key, along with the exercise names in the
-library. Without a key nothing leaves the phone — Morphe's own rules build
-the session.
+**Build with Morphe AI (optional, Morphe AI online or your own key).** When
+you build a workout with Morphe AI, your answers to the questionnaire and the
+profile facts listed under "The AI assistant" below are sent to Anthropic —
+through Morphe's server with Morphe AI online, or on your own key — along
+with the exercise names in the library. With neither on, nothing leaves the
+phone — Morphe's own rules build the session.
 
 **Coach sharing (optional).** If you turn on "Share with coach," a summary
 of your real training progress (streak, weekly volume, recent sessions,
@@ -111,8 +111,8 @@ advertising and never sold. Two kinds of Health data leave the Health
 framework: the sleep number you confirm in your morning check-in, and the
 workouts you import from other apps (activity, time, length, app name).
 Both are stored with your training data and backed up to your account
-(Google Firebase, as the processor for your backup); with your own
-Anthropic key they can be part of what the assistant is told. No other
+(Google Firebase, as the processor for your backup); with Morphe AI online
+or your own key they can be part of what the assistant is told. No other
 Health records are uploaded. Both toggles live in Profile → Health
 and are off until you turn them on; "Add an app" lives in Profile → Connections.
 
@@ -130,16 +130,16 @@ and are off until you turn them on; "Add an app" lives in Profile → Connection
 - **Bluetooth (optional)** — only when you connect a heart-rate monitor
   in Profile → Connections. Morphe reads beats per minute from the strap
   during a workout and writes nothing to it. Live readings stay on your
-  phone (except the current reading in what the assistant is told, if you
-  use your own Anthropic key); the average and peak of your last session are kept with your
+  phone (except the current reading in what the assistant is told, when
+  Claude answers are on); the average and peak of your last session are kept with your
   training data and backed up to your account.
 - **Supplements and enhancements (optional)** — the supplement stack you
   enter (name, dose, timing) and the days you check items off are stored
   with your training data and backed up to your account. The optional
   enhancements note is stored on your iPhone only — never synced to
   your Morphe account, never shown to other members. It leaves the phone only in your own data export
-  and, if you added your own Anthropic key, in what the assistant is told
-  (see below).
+  and, when Claude answers are on (Morphe AI online or your own key), in
+  what the assistant is told (see below).
 - **What you open in the app** — Morphe counts, on your account, how
   often you open each Discover category (or start a workout from it), the Feed and Workouts tabs,
   lessons, and food checks (counts only: no times, no content). The
@@ -155,14 +155,14 @@ and are off until you turn them on; "Add an app" lives in Profile → Connection
   type to Open Food Facts, a public product database (no account, no
   personal data); the bundled whole-food library (USDA, public domain) is
   searched on your phone. Scanning a product's barcode sends only that
-  number to Open Food Facts. **With your own Anthropic key added**, every check — barcode or
+  number to Open Food Facts. **With Morphe AI online or your own key**, every check — barcode or
   photo — also sends Anthropic the label facts (product name, ingredients,
   origins, countries sold in) and, for a photo, the photo itself, and
   Claude runs up to five web searches for the brand's supply chain. Morphe
   does not keep the photo. The resulting report (origin, processing,
   additives, numbers, the web sources read) is saved with your training
   data so the assistant can remember what you eat; delete any report from
-  the app. Without a key, nothing but the barcode leaves the phone.
+  the app. With neither on, nothing but the barcode leaves the phone.
 - **Microphone & speech recognition** — recording audio for clips you
   capture in video mode, dictating messages to the in-app assistant, and
   the optional "Hey Morphe" wake phrase. While Hey Morphe is on and the
@@ -188,8 +188,9 @@ never breaks the rest of the app.
   itself uses are Google Firebase (authentication and database hosting),
   which processes your data on our behalf under
   [Google's terms](https://firebase.google.com/support/privacy), and Open
-  Food Facts (food search and barcode lookups, no personal data). The AI
-  providers below are reached only with a key you add yourself.
+  Food Facts (food search and barcode lookups, no personal data). Anthropic
+  is reached only when you turn on Morphe AI online or add your own key, and
+  ElevenLabs only with a key you add yourself (see below).
 
 ## The AI assistant (optional)
 
@@ -226,9 +227,10 @@ What is sent to Anthropic is the same either way:
   names of foods you checked in the last 14 days. The workout builder
   sends your request with your profile facts, usual intensity and training
   hour, supplement stack, connected devices and heart rate, and the five
-  things you open most — never your enhancements note. This is sent to Anthropic's API using your key, under
-  [Anthropic's privacy policy](https://www.anthropic.com/privacy). Usage
-  is billed to your key, not to Morphe.
+  things you open most — never your enhancements note. This is sent to Anthropic's API — through
+  Morphe's server with Morphe AI online, or on your key — under
+  [Anthropic's privacy policy](https://www.anthropic.com/privacy). With your
+  own key, usage bills to you; Morphe AI online is paid for by Morphe.
 - **ElevenLabs** — if you also add an ElevenLabs key, the assistant's
   spoken replies are generated by sending the reply text to ElevenLabs
   under [their privacy policy](https://elevenlabs.io/privacy). Billed to
@@ -241,7 +243,8 @@ all traffic to that provider.
 **Help improve Morphe AI (optional, off by default).** If you turn it on,
 thumbs up and down appear under Morphe AI's answers. When you rate an
 answer, the question, the answer, your rating and your account id are
-stored with your account and read by the founder to improve Morphe AI.
+stored with your account, along with which door answered (Morphe's server
+or your key), and read by the founder to improve Morphe AI.
 They are never shown to other members, never published, and never used to
 train a model outside Morphe. Turn it off any time; they are deleted with
 your account.

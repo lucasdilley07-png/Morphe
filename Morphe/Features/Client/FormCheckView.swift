@@ -2479,20 +2479,13 @@ private struct FormSummarySheet: View {
 // Firebase Cloud Function proxy exists (the proxy is where the key lives for
 // real). The key is entered at runtime and stored on-device.
 
-enum DevAIKey {
-    private static let storageKey = "morphe.dev.anthropicKey"
-    static var value: String? {
-        get { UserDefaults.standard.string(forKey: storageKey) }
-        set { UserDefaults.standard.set(newValue, forKey: storageKey) }
-    }
-}
-
 struct FormAIReviewer {
     struct APIError: Error { let message: String }
 
     /// Sends the MEASURED rep data (angles/tempo — never video) to Claude and
     /// returns a short coaching note. Raw HTTPS: Swift has no official
     /// Anthropic SDK.
+    @MainActor
     func review(exerciseName: String, pattern: FormMovementPattern, metrics: [FormRepMetrics]) async throws -> String {
         // Morphe AI online or the user's own key — the same doors as chat
         // (Lucas 2026-10-14); the measured numbers go, never video.

@@ -10,6 +10,8 @@ export const PRICE_PER_MILLION = {
   cacheWrite: 2.5,
   cacheRead: 0.2,
 };
+/** Web search is billed per search, outside token usage ($10 per 1,000). */
+export const WEB_SEARCH_MICRO_USD = 10_000;
 
 export const MODEL = "claude-sonnet-5-5";
 export const MAX_SYSTEM_CHARS = 60_000;
@@ -17,6 +19,12 @@ export const MAX_MESSAGES = 40;
 export const MAX_TEXT_CHARS = 20_000;
 export const MAX_IMAGE_BASE64_CHARS = 7_000_000; // ~5 MB JPEG
 export const MAX_OUTPUT_TOKENS = 8_000;
+/** Everything the client sends (system + every block), in characters —
+ *  roughly 40k tokens, so one request costs at most ~$0.20 in input. An
+ *  image counts at a flat 2,000 characters (~1,600 tokens at 1024 px). */
+export const MAX_TOTAL_CHARS = 150_000;
+const IMAGE_CHARS = 2_000;
+const MAX_PASSTHROUGH_BLOCK_CHARS = 50_000;
 export const MAX_WEB_SEARCH_USES = 5;
 
 export interface Usage {
@@ -24,6 +32,7 @@ export interface Usage {
   output_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
+  server_tool_use?: { web_search_requests?: number | null } | null;
 }
 
 /** Cost of one response in micro-dollars (1e-6 USD), rounded up. */
@@ -36,7 +45,17 @@ export function costMicroUSD(usage: Usage | undefined | null): number {
       n(usage.cache_creation_input_tokens) * PRICE_PER_MILLION.cacheWrite +
       n(usage.cache_read_input_tokens) * PRICE_PER_MILLION.cacheRead) /
     1_000_000;
-  return Math.ceil(dollars * 1_000_000);
+  return Math.ceil(dollars * 1_000_000) + n(usage.server_tool_use?.web_search_requests) * WEB_SEARCH_MICRO_USD;
+}
+
+/** The most one request can cost, reserved against the month's budget
+ *  BEFORE Claude is called (input at the cache-write price, every output
+ *  token, every allowed search); the real cost replaces it afterward. */
+export function worstCaseMicroUSD(body: SanitizedBody): number {
+  const inputTokens = Math.ceil(body.totalChars / 3);
+  const dollars =
+    (inputTokens * PRICE_PER_MILLION.cacheWrite + body.maxTokens * PRICE_PER_MILLION.output) / 1_000_000;
+  return Math.ceil(dollars * 1_000_000) + (body.webSearchUses ?? 0) * WEB_SEARCH_MICRO_USD;
 }
 
 /** "2026-10-14" in UTC — the relay's day for the per-user limit. */
@@ -79,7 +98,7 @@ const ALLOWED_BLOCK_TYPES = new Set([
   "redacted_thinking",
 ]);
 
-function sanitizeBlock(block: unknown, index: number): Block {
+function sanitizeBlock(block: unknown, index: number, role: "user" | "assistant"): Block {
   if (!block || typeof block !== "object") {
     throw new RelayRequestError(400, "bad_request", `content[${index}] must be an object`);
   }
@@ -105,18 +124,43 @@ function sanitizeBlock(block: unknown, index: number): Block {
       typeof data !== "string" ||
       data.length > MAX_IMAGE_BASE64_CHARS ||
       typeof media !== "string" ||
-      !["image/jpeg", "image/png", "image/webp", "image/heic"].includes(media)
+      !["image/jpeg", "image/png", "image/gif", "image/webp"].includes(media)
     ) {
-      throw new RelayRequestError(400, "bad_request", `content[${index}] image must be a base64 JPEG/PNG/WebP under 5 MB`);
+      throw new RelayRequestError(400, "bad_request", `content[${index}] image must be a base64 JPEG/PNG/GIF/WebP under 5 MB`);
     }
     return { type, source: { type: "base64", media_type: media, data } };
   }
   // Server-tool continuation blocks (pause_turn) and thinking blocks are
-  // echoed back exactly as Anthropic produced them.
-  return b;
+  // echoed back as Anthropic produced them — assistant turns only, bounded,
+  // and rebuilt from known keys so nothing like cache_control rides along.
+  if (role !== "assistant") {
+    throw new RelayRequestError(400, "bad_request", `content[${index}] of type ${type} belongs to an assistant turn`);
+  }
+  if (JSON.stringify(b).length > MAX_PASSTHROUGH_BLOCK_CHARS) {
+    throw new RelayRequestError(400, "bad_request", `content[${index}] is too large`);
+  }
+  const keys: Record<string, string[]> = {
+    server_tool_use: ["type", "id", "name", "input"],
+    web_search_tool_result: ["type", "tool_use_id", "content"],
+    thinking: ["type", "thinking", "signature"],
+    redacted_thinking: ["type", "data"],
+  };
+  const clean: Block = {};
+  for (const key of keys[type] ?? ["type"]) {
+    if (key in b) clean[key] = b[key];
+  }
+  return clean;
+}
+
+function blockChars(block: Block): number {
+  if (block.type === "image") return IMAGE_CHARS;
+  if (block.type === "text") return (block.text as string).length;
+  return JSON.stringify(block).length;
 }
 
 export interface SanitizedBody {
+  /** System + every message, in characters (images at a flat rate). */
+  totalChars: number;
   system: string;
   messages: Array<{ role: "user" | "assistant"; content: string | Block[] }>;
   maxTokens: number;
@@ -161,12 +205,19 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
       if (content.length > 40) {
         throw new RelayRequestError(400, "bad_request", `messages[${i}] has too many blocks`);
       }
-      return { role, content: content.map(sanitizeBlock) };
+      return { role, content: content.map((block, j) => sanitizeBlock(block, j, role)) };
     }
     throw new RelayRequestError(400, "bad_request", `messages[${i}].content must be a string or an array`);
   });
   if (messages[0].role !== "user") {
     throw new RelayRequestError(400, "bad_request", "the first message must be from the user");
+  }
+  let totalChars = system.length;
+  for (const m of messages) {
+    totalChars += typeof m.content === "string" ? m.content.length : m.content.reduce((sum, b) => sum + blockChars(b), 0);
+  }
+  if (totalChars > MAX_TOTAL_CHARS) {
+    throw new RelayRequestError(400, "bad_request", "this conversation is too long for Morphe AI online — start a new chat");
   }
 
   const requested = typeof body.max_tokens === "number" ? body.max_tokens : 4000;
@@ -188,5 +239,5 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
     }
   }
 
-  return { system, messages, maxTokens, stream: body.stream === true, effort, webSearchUses };
+  return { totalChars, system, messages, maxTokens, stream: body.stream === true, effort, webSearchUses };
 }

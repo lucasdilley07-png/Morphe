@@ -2561,7 +2561,7 @@ private struct ConnectionsSettings: View {
                     Text("Supplements")
                         .foregroundStyle(MorpheTheme.textPrimary)
                     Text(store.supplementStack.items.isEmpty
-                         ? "Your stack, with a daily check. Morphe AI sees it when you use your key."
+                         ? "Your stack, with a daily check. Morphe AI sees it when Claude answers are on."
                          : "\(store.supplementsTakenTodayCount) of \(store.supplementStack.items.count) taken today")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -3280,7 +3280,7 @@ private struct OnlineAISettings: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Help improve Morphe AI")
                             .foregroundStyle(MorpheTheme.textPrimary)
-                        Text("Adds thumbs up and down under answers. A rated question and answer are kept with your account for Lucas to read and improve Morphe AI; nothing is shared or published. Deleted with your account.")
+                        Text("Adds thumbs up and down under answers. A rated question and answer, and which door answered (Morphe\u{2019}s server or your key), are kept with your account for Lucas to read and improve Morphe AI; nothing is shared or published. Deleted with your account.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
                             .fixedSize(horizontal: false, vertical: true)

@@ -193,6 +193,23 @@ yet**: the function needs Node 22 + the Firebase CLI on this Mac, Blaze,
 yields the honest "hit a snag" line. Decisions taken for Lucas: 18+ only,
 30/day, $45 relay budget under the $50 key cap.
 
+**Relay audit fix wave (2026-10-14)**: two reviews (server, app). Server:
+each request holds its worst-case cost against the month before Claude is
+called (`worstCaseMicroUSD`, settled to the real cost after), total input
+capped at 150k chars, one request in flight per member, refund of the day's
+slot when Anthropic fails, abort on client disconnect, 300 s timeout,
+cumulative usage from `message_delta`, web searches priced, HEIC dropped,
+pass-through blocks assistant-only and rebuilt without `cache_control`,
+explicit cache breakpoint on the system block, `concurrency 10 /
+maxInstances 2` until App Check. App: the relay door is `@MainActor`
+(the `assumeIsolated` version trapped on the first real request), App Check
+token sent as `X-Firebase-AppCheck` (`MorpheIntelligence.appCheckTokenProvider`,
+set in MorpheApp), offline reads as a connection problem not "sign in",
+door-neutral copy, age pushes to the cloud immediately, one rating per
+answer, `aiFeedback` erased with the account (rules allow the author to
+list their own), 44pt thumbs, policy lines that still said "your key".
+413 app tests, 7 relay tests.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

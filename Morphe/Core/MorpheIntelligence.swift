@@ -58,7 +58,9 @@ enum MorpheIntelligence {
     /// it bills the user, not Morphe, and runs the bigger model.
     enum Credential: Equatable {
         case personalKey(String)
-        case relay(token: String)
+        /// The account's ID token, plus the App Check token when the app can
+        /// mint one (the relay requires it once App Check is enforced).
+        case relay(token: String, appCheck: String?)
     }
 
     /// The relay (BACKEND/functions). Same body as the Messages API,
@@ -66,22 +68,39 @@ enum MorpheIntelligence {
     static let relayURL = URL(string: "https://us-central1-morphe-3c5c2.cloudfunctions.net/morpheAI")!
 
     /// Set by the store: a fresh Firebase ID token for the signed-in
-    /// account, nil when signed out.
-    static var relayTokenProvider: (() async -> String?)?
+    /// account, nil when signed out or unreachable.
+    @MainActor static var relayTokenProvider: (() async -> String?)?
+    /// Set by the app at launch (after Firebase is configured): an App
+    /// Check token, nil when none can be minted. Tests leave it nil.
+    @MainActor static var appCheckTokenProvider: (() async -> String?)?
     /// Set by the store: the member turned Morphe AI online on, is signed
     /// in, and is 18 or older. Checked on every request, never cached.
-    static var relayEligibility: (() -> Bool)?
+    /// MainActor-typed (audit 2026-10-14, P0): the store state it reads
+    /// lives on the main actor — asserting that from a pool thread trapped.
+    @MainActor static var relayEligibility: (@MainActor () -> Bool)?
 
-    static var relayAllowed: Bool { relayEligibility?() ?? false }
+    @MainActor static var relayAllowed: Bool { relayEligibility?() ?? false }
 
     /// True when Claude can be reached one way or the other.
-    static var isEnabled: Bool { apiKey?.isEmpty == false || relayAllowed }
+    @MainActor static var isEnabled: Bool { apiKey?.isEmpty == false || relayAllowed }
+
+    /// Why `credential()` came back empty, so the line shown is the true one.
+    enum NoCredential: Error { case notEligible, tokenUnavailable }
+
+    /// The door for the next request. Throws `.tokenUnavailable` when the
+    /// member is eligible but no ID token could be fetched (offline with an
+    /// expired token) — that is a network problem, not a signed-out one.
+    @MainActor static func credentialOrReason() async -> Result<Credential, NoCredential> {
+        if let key = apiKey, !key.isEmpty { return .success(.personalKey(key)) }
+        guard relayAllowed else { return .failure(.notEligible) }
+        guard let token = await relayTokenProvider?(), !token.isEmpty else { return .failure(.tokenUnavailable) }
+        let appCheck = await appCheckTokenProvider?()
+        return .success(.relay(token: token, appCheck: appCheck))
+    }
 
     /// The door for the next request, or nil (built-in answers only).
-    static func credential() async -> Credential? {
-        if let key = apiKey, !key.isEmpty { return .personalKey(key) }
-        guard relayAllowed, let token = await relayTokenProvider?(), !token.isEmpty else { return nil }
-        return .relay(token: token)
+    @MainActor static func credential() async -> Credential? {
+        try? await credentialOrReason().get()
     }
 
     @discardableResult
@@ -133,15 +152,17 @@ enum MorpheIntelligence {
         case ageRestricted
         case dailyLimit
         case budget
+        case busy
 
         var errorDescription: String? {
             switch self {
             case .signInNeeded: return "Sign in again to use Morphe AI online."
-            case .ageRestricted: return "Morphe AI online is for members 18 and older — your age is set in Profile → Your Details."
+            case .ageRestricted: return "Morphe AI online is for members 18 and older. If you just added your age in Profile → Your Details, give it a moment and ask again."
+            case .busy: return "Morphe AI is still answering your last question — one at a time."
             case .dailyLimit: return "You've used today's online answers — the built-in brain still works, and it resets at midnight UTC."
             case .budget: return "Morphe's AI budget for this month is used up — the built-in answers still work until it resets."
             case .badKey: return "That API key was rejected — check it in Profile → Morphe Intelligence."
-            case .rateLimited: return "Anthropic is rate-limiting your key right now — try again in a minute."
+            case .rateLimited: return "Claude is rate-limiting right now — try again in a minute."
             case .overloaded: return "Claude is overloaded right now — try again shortly."
             case .network: return "I couldn't reach Claude — check your connection."
             case .declined: return "Claude declined to answer that one."
@@ -157,7 +178,7 @@ enum MorpheIntelligence {
     /// never sent back to Claude as if Claude had said them.
     static func isFailureNote(_ text: String) -> Bool {
         let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong,
-                                          .signInNeeded, .ageRestricted, .dailyLimit, .budget]
+                                          .signInNeeded, .ageRestricted, .dailyLimit, .budget, .busy]
         if notes.contains(where: { $0.errorDescription == text }) { return true }
         return text.hasPrefix("I couldn't reach Claude.") || text.hasPrefix("I hit a snag reaching Claude")
     }
@@ -254,9 +275,10 @@ enum MorpheIntelligence {
             request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
             request.setValue(key, forHTTPHeaderField: "x-api-key")
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        case .relay(let token):
+        case .relay(let token, let appCheck):
             request = URLRequest(url: relayURL)
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            if let appCheck { request.setValue(appCheck, forHTTPHeaderField: "X-Firebase-AppCheck") }
         }
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
@@ -275,6 +297,8 @@ enum MorpheIntelligence {
         case (403, "age"): return .ageRestricted
         case (429, "daily_limit"): return .dailyLimit
         case (429, "budget"): return .budget
+        case (429, "busy"): return .busy
+        case (429, "rate_limit_error"), (503, _): return .overloaded
         case (401, _), (403, _): return .badKey
         case (429, _): return .rateLimited
         case (500..., _): return .overloaded

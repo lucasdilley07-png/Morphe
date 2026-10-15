@@ -1301,7 +1301,7 @@ private struct AIAgentMessageRow: View {
                                       : (selected ? "hand.thumbsdown.fill" : "hand.thumbsdown"))
                 .font(.caption)
                 .foregroundStyle(selected ? MorpheTheme.accentText : MorpheTheme.textMuted)
-                .frame(width: 44, height: 36)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

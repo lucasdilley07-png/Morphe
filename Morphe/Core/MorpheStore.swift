@@ -4205,6 +4205,9 @@ final class MorpheAppStore {
 
     func updateAge(_ years: Int) {
         clientProfile.age = max(0, min(120, years))
+        // The relay reads the age from the cloud profile — push it now, not
+        // in 30 s, so "add your age, then ask" works (audit 2026-10-14).
+        forceNextProfileCloudPush = true
         persistLocalProfile()
         showToast(clientProfile.age == 0 ? "Age cleared." : "Age saved.")
     }
@@ -5967,7 +5970,7 @@ final class MorpheAppStore {
         } else if let product {
             record = FoodCheckService.record(from: product, usedPhoto: jpeg != nil)
         } else if barcode != nil {
-            showToast("That barcode isn't in Open Food Facts yet. With your own key in Profile → Morphe Intelligence, Morphe can read the package from a photo instead.")
+            showToast("That barcode isn't in Open Food Facts yet. Turn on Morphe AI online in Profile → Morphe Intelligence (or add your own key) and Morphe can read the package from a photo instead.")
             return nil
         } else {
             showToast("To check a meal from a photo, add your Anthropic key in Profile → Morphe Intelligence — or scan the product's barcode.")
@@ -11225,12 +11228,23 @@ final class MorpheAppStore {
     /// the account's token. Idempotent; called whenever prefs load.
     private func wireIntelligence() {
         MorpheIntelligence.relayEligibility = { [weak self] in
-            guard let self else { return false }
-            return MainActor.assumeIsolated { self.onlineAIEligible }
+            self?.onlineAIEligible ?? false
         }
         MorpheIntelligence.relayTokenProvider = { [weak self] in
             guard let self else { return nil }
             return await self.authService.idToken()
+        }
+    }
+
+    /// The door for a chat or voice reply, or the honest reason there is
+    /// none: signed out reads as "sign in", an unreachable token (offline,
+    /// expired) as a connection problem (audit 2026-10-14, P2).
+    func resolveCredential() async throws -> MorpheIntelligence.Credential {
+        switch await MorpheIntelligence.credentialOrReason() {
+        case .success(let credential): return credential
+        case .failure(.tokenUnavailable): throw MorpheIntelligence.IntelligenceError.network
+        case .failure(.notEligible):
+            throw authUser == nil ? MorpheIntelligence.IntelligenceError.signInNeeded : .network
         }
     }
 
@@ -11250,7 +11264,8 @@ final class MorpheAppStore {
     /// Thumbs on an AI answer. Stored with the account only when the
     /// member opted in; the preceding user message is the question.
     func rateAIAnswer(_ message: ThreadMessage, helpful: Bool) {
-        guard message.sender == .ai, !MorpheIntelligence.isFailureNote(message.text), message.text != "\u{2026}" else { return }
+        guard message.sender == .ai, !MorpheIntelligence.isFailureNote(message.text), message.text != "\u{2026}",
+              ratedAIMessages[message.id] == nil else { return }
         ratedAIMessages[message.id] = helpful
         Haptics.selection()
         guard aiImprovementOptIn, let uid = authUser?.id else { return }
@@ -11589,9 +11604,7 @@ final class MorpheAppStore {
             // same honest error copy safeReply produces.
             var landedFirstDelta = false
             do {
-                guard let credential = await MorpheIntelligence.credential() else {
-                    throw MorpheIntelligence.IntelligenceError.signInNeeded
-                }
+                guard let credential = try await self?.resolveCredential() else { return }
                 _ = try await MorpheIntelligence.streamReply(
                     system: system, turns: turns, credential: credential, timeout: 20
                 ) { partial in
@@ -11698,9 +11711,7 @@ final class MorpheAppStore {
             var enqueuedCount = 0
             var openedSpeech = false
             do {
-                guard let credential = await MorpheIntelligence.credential() else {
-                    throw MorpheIntelligence.IntelligenceError.signInNeeded
-                }
+                guard let credential = try await self?.resolveCredential() else { return }
                 let full = try await MorpheIntelligence.streamReply(
                     system: system, turns: turns, credential: credential, timeout: 12
                 ) { partial in

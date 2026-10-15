@@ -1634,6 +1634,16 @@ final class FirebaseCloudBackup: CloudBackingUp {
             for path in ["verificationRequests", "coachApplications"] {
                 try await db.collection(path).document(uid).delete()
             }
+            // Rated Morphe AI exchanges ("Help improve Morphe AI") go with
+            // the account (audit 2026-10-14: the copy promised it).
+            while true {
+                let snap = try await db.collection("aiFeedback").whereField("uid", isEqualTo: uid).limit(to: 400).getDocuments()
+                guard !snap.documents.isEmpty else { break }
+                let batch = db.batch()
+                for doc in snap.documents { batch.deleteDocument(doc.reference) }
+                try await batch.commit()
+                if snap.documents.count < 400 { break }
+            }
             for sub in ["appointments", "savedPosts", "following", "blocked"] {
                 // Page until empty (fix wave 2026-10-13): one 500-doc pass
                 // left the rest behind.
