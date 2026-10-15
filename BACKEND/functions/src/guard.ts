@@ -144,7 +144,7 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
   if (body.messages.length > MAX_MESSAGES) {
     throw new RelayRequestError(400, "bad_request", "too many messages");
   }
-  const messages = body.messages.map((m, i) => {
+  const messages = body.messages.map((m, i): SanitizedBody["messages"][number] => {
     const msg = (m ?? {}) as Record<string, unknown>;
     const role = msg.role;
     if (role !== "user" && role !== "assistant") {
