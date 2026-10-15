@@ -221,7 +221,7 @@ export const morpheAI = onRequest(
         system: (body.system.length ? body.system : [{ type: "text" as const, text: "You are Morphe." }])
           .map((block, i) => (i === 0 ? { ...block, cache_control: { type: "ephemeral" as const } } : block)),
         messages: body.messages as Anthropic.Beta.BetaMessageParam[],
-        output_config: { effort: body.effort },
+        output_config: { effort: body.effort, ...(body.format ? { format: body.format } : {}) },
         // A policy decline is retried server-side on Anthropic's
         // recommended model for that category instead of reaching the
         // member as a refusal.

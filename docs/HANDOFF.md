@@ -262,6 +262,23 @@ the review says front-on depth is estimated, side-on measured). NOT done:
 the clip harness and threshold validation (needs Lucas's ~15 clips per
 pattern), 3D pose on LiDAR phones. 422 tests.
 
+**Wave 3 shipped (2026-10-15, Food Check)**: `LabelOCR` (end of
+MorpheIntelligence.swift) reads a package on-device first
+(`RecognizeDocumentsRequest` on iOS 26, `VNRecognizeTextRequest` below;
+`LabelOCR.parse` pulls kcal/macros/serving by regex) and those numbers
+OVERRIDE Claude's; `FoodCheckService.reportSchema` enforces the report via
+structured outputs (`output_config.format`, GA) with `items`
+(name, grams range, kcal range, confidence) + `caloriesLow/High` for
+plates; a 400 with the search tool falls back once to the prose report;
+each item is matched to the USDA library (`FoodLibrary.bestMatch`) so
+numbers are cited where possible; `FuelEstimateSheet` shows per-item gram
+steppers (default = range middle) and logs through `logPlateToFuel` with
+the source named ("USDA · photo-identified" / "+ photo estimate"); the
+report shows a calorie range for plates; the relay forwards a json_schema
+format (≤12k chars). Web search stays ON (Lucas). Fixed: double-log guard
+read the caller's copy. NOT done: multi-photo, DataScanner live capture.
+427 tests.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

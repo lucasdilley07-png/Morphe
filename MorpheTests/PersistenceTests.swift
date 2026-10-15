@@ -9090,3 +9090,103 @@ final class FormCheckWaveTwoTests: XCTestCase {
         XCTAssertEqual(FramingState.tiltLimitDegrees, 20)
     }
 }
+
+/// AI rebuild Wave 3 (Food Check): plate items, database matching, and
+/// the honest logging path — pure parts, no network.
+@MainActor
+final class FoodCheckWaveThreeTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    func testLibraryMatchDropsCookingWordsAndFallsBackToTheTail() {
+        XCTAssertNotNil(FoodLibrary.bestMatch(for: "grilled chicken breast"))
+        XCTAssertNotNil(FoodLibrary.bestMatch(for: "a cup of cooked white rice"))
+        XCTAssertNil(FoodLibrary.bestMatch(for: "zzqx unobtainium"))
+    }
+
+    func testItemTotalsPreferTheMatchedRowAndFallBackToTheEstimate() {
+        var matched = FoodCheckItem(name: "chicken breast", gramsLow: 120, gramsHigh: 180)
+        matched.kcal100 = 165; matched.protein100 = 31
+        XCTAssertEqual(matched.gramsMid, 150)
+        XCTAssertEqual(matched.totals(grams: 200)?.calories, 330)
+        XCTAssertEqual(matched.totals(grams: 200)?.protein, 62)
+
+        var guess = FoodCheckItem(name: "mystery sauce", gramsLow: 20, gramsHigh: 40)
+        guess.kcalLow = 60; guess.kcalHigh = 100       // for the 30 g mid portion
+        XCTAssertEqual(guess.totals(grams: 60)?.calories, 160, "the estimate scales with the grams")
+        XCTAssertEqual(guess.totals(grams: 60)?.protein, 0, "no macros without a row")
+        XCTAssertNil(FoodCheckItem(name: "nothing", gramsLow: 10, gramsHigh: 20).totals(grams: 10))
+    }
+
+    func testPlateLogsConfirmedGramsAndNamesItsSource() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+
+        var record = FoodCheckRecord()
+        record.usedPhoto = true
+        var chicken = FoodCheckItem(name: "chicken breast", gramsLow: 120, gramsHigh: 180)
+        chicken.kcal100 = 165; chicken.protein100 = 31; chicken.matchSource = "USDA"; chicken.matchName = "Chicken, breast"
+        var sauce = FoodCheckItem(name: "sauce", gramsLow: 20, gramsHigh: 40)
+        sauce.kcalLow = 60; sauce.kcalHigh = 100
+        record.items = [chicken, sauce]
+        store.rememberFoodCheck(record)
+
+        let before = store.nutrition.caloriesConsumed
+        XCTAssertTrue(store.logPlateToFuel(record, grams: [chicken.id: 200, sauce.id: 30]))
+        let meal = try! XCTUnwrap(store.nutrition.meals.last)
+        XCTAssertEqual(meal.calories, 330 + 80)
+        XCTAssertEqual(meal.protein, 62)
+        XCTAssertEqual(meal.source, "USDA + photo estimate", "the entry says which numbers are cited and which are guessed")
+        XCTAssertEqual(store.nutrition.caloriesConsumed - before, 410)
+        XCTAssertFalse(store.logPlateToFuel(record, grams: [:]), "a logged plate never logs twice")
+    }
+
+    func testLabelParserReadsANutritionPanel() {
+        let read = LabelOCR.parse("""
+        Nutrition Facts
+        Serving size 2/3 cup (55g)
+        Calories 230
+        Total Fat 8g
+        Sodium 160mg
+        Total Carbohydrate 37g
+        Dietary Fiber 4g
+        Total Sugars 12g
+        Protein 3g
+        """)
+        XCTAssertEqual(read.calories, 230)
+        XCTAssertEqual(read.fat, 8)
+        XCTAssertEqual(read.carbs, 37)
+        XCTAssertEqual(read.fiber, 4)
+        XCTAssertEqual(read.sugar, 12)
+        XCTAssertEqual(read.protein, 3)
+        XCTAssertEqual(read.sodiumMg, 160)
+        XCTAssertEqual(read.servingGrams, 55)
+        XCTAssertTrue(read.looksLikeLabel)
+        XCTAssertFalse(LabelOCR.parse("a bowl of salad").looksLikeLabel)
+    }
+
+    func testReportParserReadsPlateItemsAndRanges() {
+        let object: [String: Any] = [
+            "name": "Chicken and rice", "items": [
+                ["name": "grilled chicken breast", "gramsLow": 120, "gramsHigh": 180, "kcalLow": 200, "kcalHigh": 300, "confidence": "high"],
+                ["name": "white rice", "gramsLow": 150, "gramsHigh": 250, "kcalLow": 190, "kcalHigh": 330, "confidence": "medium"],
+                ["name": "", "gramsLow": 1, "gramsHigh": 2]
+            ],
+            "calories": NSNull(), "verdict": "Solid plate."
+        ]
+        let record = FoodCheckService.record(fromReport: object)
+        XCTAssertEqual(record.items.count, 2, "nameless items are dropped")
+        XCTAssertEqual(record.items[0].gramsMid, 150)
+        XCTAssertEqual(record.items[0].kcalHigh, 300)
+        XCTAssertEqual(record.caloriesLow, 390)
+        XCTAssertEqual(record.caloriesHigh, 630)
+        XCTAssertNil(record.calories, "a plate has a range, not a point")
+    }
+}

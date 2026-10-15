@@ -64,6 +64,12 @@ test("sanitizeBody keeps the bounded fields and nothing else", () => {
   assert.deepEqual(body.messages, [{ role: "user", content: "hi" }]);
 });
 
+test("a json_schema format is forwarded, anything else refused", () => {
+  const ok = sanitizeBody({ messages: [{ role: "user", content: "hi" }], output_config: { format: { type: "json_schema", schema: { type: "object", additionalProperties: false, required: [], properties: {} } } } });
+  assert.equal(ok.format?.type, "json_schema");
+  assert.throws(() => sanitizeBody({ messages: [{ role: "user", content: "hi" }], output_config: { format: { type: "text" } } }), RelayRequestError);
+});
+
 test("system prompt blocks keep only their text", () => {
   const body = sanitizeBody({
     system: [{ type: "text", text: "stable", cache_control: { type: "ephemeral", ttl: "1h" } }, { type: "text", text: "live" }],

@@ -1938,6 +1938,67 @@ struct FuelEstimateSheet: View {
     @State private var multiplier = 1.0
     @State private var slot: MealSlot = .suggested
     @State private var showReport = false
+    /// Confirmed grams per plate item (Wave 3); starts at each range's middle.
+    @State private var itemGrams: [UUID: Int] = [:]
+
+    private func grams(for item: FoodCheckItem) -> Int { itemGrams[item.id] ?? item.gramsMid }
+
+    private var plateTotals: (calories: Int, protein: Int) {
+        record.items.reduce((0, 0)) { sum, item in
+            guard let t = item.totals(grams: grams(for: item)) else { return sum }
+            return (sum.0 + t.calories, sum.1 + t.protein)
+        }
+    }
+
+    /// Recognise → database → confirm: each item with its own portion,
+    /// numbers from the matched row where one exists.
+    private var plateItems: some View {
+        GlassCard(.quiet) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("ON THE PLATE")
+                    .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                ForEach(record.items) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            Stepper("\(grams(for: item)) g", value: Binding(
+                                get: { grams(for: item) },
+                                set: { itemGrams[item.id] = $0 }), in: 5...1500, step: 5)
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize()
+                        }
+                        HStack(spacing: 8) {
+                            if let t = item.totals(grams: grams(for: item)) {
+                                Text("\(t.calories) cal" + (item.isMatched ? " · \(t.protein) g protein" : ""))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            Text(item.isMatched ? "\(item.matchSource ?? "USDA"): \(item.matchName ?? item.name)" : "Estimate — no database match")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .lineLimit(1)
+                        }
+                        Text("Seen as \(item.gramsLow)–\(item.gramsHigh) g")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+                Divider().overlay(MorpheTheme.strokeSubtle)
+                HStack(spacing: 8) {
+                    MetricPill(label: "Calories", value: "\(plateTotals.calories)")
+                    MetricPill(label: "Protein", value: "\(plateTotals.protein)g")
+                    if let low = record.caloriesLow, let high = record.caloriesHigh {
+                        MetricPill(label: "Photo range", value: "\(low)–\(high)")
+                    }
+                }
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -1966,6 +2027,9 @@ struct FuelEstimateSheet: View {
                     }
                     .pickerStyle(.segmented)
 
+                    if !record.items.isEmpty {
+                        plateItems
+                    } else {
                     GlassCard(.quiet) {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
@@ -1992,15 +2056,19 @@ struct FuelEstimateSheet: View {
                             }
                         }
                     }
+                    }
 
-                    Button("Add to \(slot.rawValue.lowercased())") {
-                        if store.logFoodCheckToFuel(record, multiplier: multiplier, slot: slot) {
+                    Button(record.items.isEmpty ? "Add to \(slot.rawValue.lowercased())" : "Add \(record.items.count) item\(record.items.count == 1 ? "" : "s") to \(slot.rawValue.lowercased())") {
+                        let ok = record.items.isEmpty
+                            ? store.logFoodCheckToFuel(record, multiplier: multiplier, slot: slot)
+                            : store.logPlateToFuel(record, grams: itemGrams, slot: slot)
+                        if ok {
                             Haptics.success()
                             dismiss()
                         }
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .disabled(record.calories == nil && record.protein == nil)
+                    .disabled(record.items.isEmpty && record.calories == nil && record.protein == nil)
 
                     Button("Full report — origin, processing, additives") { showReport = true }
                         .buttonStyle(SecondaryCTAButtonStyle())
@@ -2629,7 +2697,10 @@ struct FoodCheckReportSheet: View {
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             } else {
                                 HStack(spacing: 8) {
-                                    MetricPill(label: "Calories", value: current.calories.map { "\($0)" } ?? "—")
+                                    MetricPill(label: "Calories", value: {
+                                        if let low = current.caloriesLow, let high = current.caloriesHigh, current.usedPhoto, !current.isPer100g { return "\(low)–\(high)" }
+                                        return current.calories.map { "\($0)" } ?? "—"
+                                    }())
                                     MetricPill(label: "Protein", value: current.protein.map { "\($0)g" } ?? "—")
                                     MetricPill(label: "Carbs", value: current.carbs.map { "\($0)g" } ?? "—")
                                     MetricPill(label: "Fat", value: current.fat.map { "\($0)g" } ?? "—")

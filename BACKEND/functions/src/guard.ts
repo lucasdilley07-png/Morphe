@@ -168,6 +168,8 @@ export interface SanitizedBody {
   stream: boolean;
   effort: "low" | "medium";
   webSearchUses: number | null;
+  /** A JSON schema for structured output, when the client sent one. */
+  format: { type: "json_schema"; schema: Record<string, unknown> } | null;
 }
 
 /** Keeps only what the relay forwards, bounded. The model, pricing, caching
@@ -245,6 +247,16 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
 
   const config = (body.output_config ?? {}) as Record<string, unknown>;
   const effort = config.effort === "medium" ? "medium" : "low";
+  // Structured outputs (GA): the schema itself is forwarded, bounded.
+  let format: SanitizedBody["format"] = null;
+  const rawFormat = config.format as Record<string, unknown> | undefined;
+  if (rawFormat) {
+    const schema = rawFormat.schema;
+    if (rawFormat.type !== "json_schema" || !schema || typeof schema !== "object" || JSON.stringify(schema).length > 12_000) {
+      throw new RelayRequestError(400, "bad_request", "output_config.format must be a json_schema under 12k characters");
+    }
+    format = { type: "json_schema", schema: schema as Record<string, unknown> };
+  }
 
   let webSearchUses: number | null = null;
   if (Array.isArray(body.tools)) {
@@ -259,5 +271,5 @@ export function sanitizeBody(raw: unknown): SanitizedBody {
     }
   }
 
-  return { totalChars, system, messages, maxTokens, stream: body.stream === true, effort, webSearchUses };
+  return { totalChars, system, messages, maxTokens, stream: body.stream === true, effort, webSearchUses, format };
 }

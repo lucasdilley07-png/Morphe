@@ -5949,10 +5949,14 @@ final class MorpheAppStore {
             }
         }
         let jpeg = image.flatMap { FoodCheckService.jpeg(from: $0) }
+        // The phone reads a label itself first (Wave 3): near-exact, free,
+        // and the numbers are the label's even when Claude misreads.
+        var label: LabelOCR.LabelRead?
+        if let image { label = await LabelOCR.read(image) }
         var record: FoodCheckRecord?
         if let credential = await MorpheIntelligence.credential() {
             do {
-                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, barcode: barcode, credential: credential)
+                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, barcode: barcode, label: label, credential: credential)
                 // A barcode the database doesn't know and Claude couldn't
                 // identify either is a miss, not a report.
                 if product == nil, jpeg == nil,
@@ -5976,24 +5980,63 @@ final class MorpheAppStore {
             showToast("That barcode isn't in Open Food Facts yet. Turn on Morphe AI online in Profile → Morphe Intelligence (or add your own key) and Morphe can read the package from a photo instead.")
             return nil
         } else {
-            showToast("To check a meal from a photo, add your Anthropic key in Profile → Morphe Intelligence — or scan the product's barcode.")
+            showToast("To check a meal from a photo, turn on Morphe AI online in Profile → Morphe Intelligence (or add your own key) — or scan the product's barcode.")
             return nil
         }
         guard var result = record else { return nil }
         if result.name.isEmpty { result.name = barcode.map { "Product \($0)" } ?? "Unnamed food" }
-        foodChecks.insert(result, at: 0)
+        rememberFoodCheck(result)
+        track("food_check")
+        return result
+    }
+
+    /// Keeps a check at the top of the list (newest first, 300 kept).
+    func rememberFoodCheck(_ record: FoodCheckRecord) {
+        foodChecks.insert(record, at: 0)
         if foodChecks.count > 300 { foodChecks.removeLast(foodChecks.count - 300) }
         saveSeries(foodChecks, key: foodChecksKey, cap: 300)
         mirrorExtrasToCloud()
-        track("food_check")
-        return result
     }
 
     /// The checked food lands in today's fuel with its own numbers; the
     /// record remembers which meal so it never double-logs.
     @discardableResult
+    /// A plate read item by item (Wave 3): the confirmed grams per item,
+    /// numbers from the matched database rows where there are any, the
+    /// model's estimate where there aren't — and the entry says which.
+    func logPlateToFuel(_ record: FoodCheckRecord, grams: [UUID: Int], slot: MealSlot = .suggested) -> Bool {
+        // The STORED record decides whether it was logged (the caller may
+        // hold an older copy).
+        guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !foodChecks[index].isLogged, !record.items.isEmpty else { return false }
+        var calories = 0, protein = 0, carbs = 0, fat = 0, matched = 0, counted = 0
+        for item in record.items {
+            let portion = grams[item.id] ?? item.gramsMid
+            guard portion > 0, let t = item.totals(grams: portion) else { continue }
+            counted += 1
+            if item.isMatched { matched += 1 }
+            calories += t.calories; protein += t.protein; carbs += t.carbs; fat += t.fat
+        }
+        guard counted > 0, calories + protein + carbs + fat > 0 else {
+            showToast("No numbers to log for this one.")
+            return false
+        }
+        nutrition.caloriesConsumed += calories
+        nutrition.proteinConsumed += protein
+        let names = record.items.prefix(3).map(\.name).joined(separator: ", ")
+        let source = matched == counted ? "USDA · photo-identified"
+            : matched > 0 ? "USDA + photo estimate" : "Photo estimate"
+        nutrition.meals.append(MealLogEntry(
+            mealType: slot.rawValue, name: String(names.prefix(60)), calories: calories, protein: protein, logged: true,
+            carbs: carbs, fat: fat, grams: nil, source: source))
+        persistLocalProfile()
+        foodChecks[index].loggedMealID = nutrition.meals.last?.id
+        saveSeries(foodChecks, key: foodChecksKey, cap: 300)
+        mirrorExtrasToCloud()
+        return true
+    }
+
     func logFoodCheckToFuel(_ record: FoodCheckRecord, grams: Int? = nil, multiplier: Double = 1, slot: MealSlot = .suggested) -> Bool {
-        guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !record.isLogged else { return false }
+        guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !foodChecks[index].isLogged else { return false }
         var name = record.displayName.isEmpty ? "Checked food" : record.displayName
         var factor = max(0.1, min(multiplier, 5))
         // Label numbers are per 100 g (audit 2026-10-10): scale to the

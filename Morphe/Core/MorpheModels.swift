@@ -3752,6 +3752,68 @@ enum FoodCheckMethod: String, Codable {
 /// processed, and the numbers — every field says how sure it is and
 /// where it came from. Tolerant decoding so an older record never
 /// breaks a newer build.
+/// One thing on the plate as the photo read it (AI rebuild Wave 3,
+/// 2026-10-15): a name, a portion RANGE in grams, and — once matched — a
+/// row from the USDA library or Open Food Facts whose numbers replace
+/// the model's guess. The user confirms the grams before anything logs.
+struct FoodCheckItem: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var name: String
+    var gramsLow: Int
+    var gramsHigh: Int
+    var confidence: FoodConfidence = .unknown
+    /// The model's own calorie range for its mid portion — used only
+    /// when no database row matched, and always labelled an estimate.
+    var kcalLow: Int?
+    var kcalHigh: Int?
+    /// The matched source row, when one was found.
+    var matchName: String?
+    var matchSource: String?
+    var kcal100: Double?
+    var protein100: Double?
+    var carbs100: Double?
+    var fat100: Double?
+
+    init(id: UUID = UUID(), name: String, gramsLow: Int, gramsHigh: Int, confidence: FoodConfidence = .unknown) {
+        self.id = id; self.name = name; self.gramsLow = gramsLow; self.gramsHigh = gramsHigh; self.confidence = confidence
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        gramsLow = (try? c.decodeIfPresent(Int.self, forKey: .gramsLow)) ?? 0
+        gramsHigh = (try? c.decodeIfPresent(Int.self, forKey: .gramsHigh)) ?? 0
+        confidence = (try? c.decodeIfPresent(FoodConfidence.self, forKey: .confidence)) ?? .unknown
+        kcalLow = try? c.decodeIfPresent(Int.self, forKey: .kcalLow)
+        kcalHigh = try? c.decodeIfPresent(Int.self, forKey: .kcalHigh)
+        matchName = try? c.decodeIfPresent(String.self, forKey: .matchName)
+        matchSource = try? c.decodeIfPresent(String.self, forKey: .matchSource)
+        kcal100 = try? c.decodeIfPresent(Double.self, forKey: .kcal100)
+        protein100 = try? c.decodeIfPresent(Double.self, forKey: .protein100)
+        carbs100 = try? c.decodeIfPresent(Double.self, forKey: .carbs100)
+        fat100 = try? c.decodeIfPresent(Double.self, forKey: .fat100)
+    }
+
+    var isMatched: Bool { kcal100 != nil }
+    /// The middle of the portion range — the default the user adjusts.
+    var gramsMid: Int { max(1, (gramsLow + gramsHigh) / 2) }
+
+    /// Calories, protein, carbs, fat for a portion: from the matched row
+    /// when there is one, else the model's mid estimate scaled to the
+    /// grams (calories only — macros unknown).
+    func totals(grams: Int) -> (calories: Int, protein: Int, carbs: Int, fat: Int)? {
+        let f = Double(grams) / 100
+        if let kcal100 {
+            return (Int((kcal100 * f).rounded()), Int(((protein100 ?? 0) * f).rounded()),
+                    Int(((carbs100 ?? 0) * f).rounded()), Int(((fat100 ?? 0) * f).rounded()))
+        }
+        guard let kcalLow, let kcalHigh, gramsMid > 0 else { return nil }
+        let perGram = Double(kcalLow + kcalHigh) / 2 / Double(gramsMid)
+        return (Int((perGram * Double(grams)).rounded()), 0, 0, 0)
+    }
+}
+
 struct FoodCheckRecord: Codable, Equatable, Identifiable {
     var id = UUID()
     var date = Date()
@@ -3783,6 +3845,12 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
     var usedWebSearch = false
     var usedPhoto = false
     var loggedMealID: UUID?
+    /// Photo reads (Wave 3): what was on the plate, each with a portion
+    /// range and, when matched, a database row. Empty for label reads.
+    var items: [FoodCheckItem] = []
+    /// The honest spread for a plate estimate; nil for label numbers.
+    var caloriesLow: Int?
+    var caloriesHigh: Int?
 
     init() {}
 
@@ -3812,6 +3880,9 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
         fiber = try? c.decodeIfPresent(Int.self, forKey: .fiber)
         sodiumMg = try? c.decodeIfPresent(Int.self, forKey: .sodiumMg)
         servingNote = (try? c.decodeIfPresent(String.self, forKey: .servingNote)) ?? ""
+        items = (try? c.decodeIfPresent([FoodCheckItem].self, forKey: .items)) ?? []
+        caloriesLow = try? c.decodeIfPresent(Int.self, forKey: .caloriesLow)
+        caloriesHigh = try? c.decodeIfPresent(Int.self, forKey: .caloriesHigh)
         sources = (try? c.decodeIfPresent([FoodSourceLink].self, forKey: .sources)) ?? []
         verdict = (try? c.decodeIfPresent(String.self, forKey: .verdict)) ?? ""
         usedWebSearch = (try? c.decodeIfPresent(Bool.self, forKey: .usedWebSearch)) ?? false
