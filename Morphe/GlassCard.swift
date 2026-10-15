@@ -1866,7 +1866,6 @@ struct SportModeSelector: View {
 
     private let featuredSports: [SportFocus] = [
         .generalFitness,
-        .weightLoss,
         .boxing,
         .soccer,
         .basketball,
@@ -2933,6 +2932,9 @@ extension View {
 /// Anywhere the brand NAME appears as a logo, use this — never typed text.
 struct MorpheWordmark: View {
     var height: CGFloat
+    /// The blue under-glow; off where the mark sits in a toolbar (the AI
+    /// chat header, Lucas 2026-10-15).
+    var glows: Bool = true
 
     var body: some View {
         Image("MorpheWordmark")
@@ -2943,7 +2945,7 @@ struct MorpheWordmark: View {
             .frame(height: height)
             // A slight blue glow underneath (Lucas 2026-10-13): Spartan
             // blue, sitting just below the letters, scaled to the mark.
-            .shadow(color: MorpheTheme.brandBlue.opacity(0.55), radius: max(2, height * 0.35), x: 0, y: max(1, height * 0.18))
+            .shadow(color: glows ? MorpheTheme.brandBlue.opacity(0.55) : .clear, radius: max(2, height * 0.35), x: 0, y: max(1, height * 0.18))
             .accessibilityLabel("Morphe")
     }
 }

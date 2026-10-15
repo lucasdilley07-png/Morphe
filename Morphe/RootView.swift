@@ -481,7 +481,10 @@ struct RootView: View {
             // And it slides off to the right while "Hey Morphe" has the
             // stage (Lucas 2026-10-04): the voice is already the door, so
             // the button gets out of the way and returns when it's done.
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage {
+            // It also steps aside while Today's three tiles are on screen —
+            // no size of button fits the margin beside them (2026-10-15).
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage
+                && !(store.selectedClientTab == .today && store.glanceRowVisible) {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
@@ -512,6 +515,9 @@ struct RootView: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.2)
                    : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
                    value: voiceHasTheStage)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2)
+                   : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
+                   value: store.glanceRowVisible)
         // The celebrations are the app's ONE emotional beat — the banner and
         // the full-screen stamp get a spring pop where everything else stays
         // mechanical.
@@ -888,6 +894,7 @@ private struct FloatingAIAgentButton: View {
         // A live Train session always compacts (screen space is training's).
         store.hasUsedAIAgent
             || (store.selectedClientTab == .train && store.isWorkoutSessionActive)
+
     }
 
     var body: some View {
@@ -1112,7 +1119,7 @@ private struct MorpheAIAgentSheet: View {
                         .fill(MorpheTheme.textMuted.opacity(0.6))
                         .frame(width: 36, height: 4)
                         .accessibilityHidden(true)
-                    MorpheWordmark(height: 14)
+                    MorpheWordmark(height: 14, glows: false)
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }

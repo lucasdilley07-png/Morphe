@@ -366,6 +366,12 @@ enum ChatSender: String, Identifiable, Codable {
 }
 
 enum SportFocus: String, CaseIterable, Identifiable, Codable {
+    /// What the pickers offer. "Weight Loss" stays a case so existing
+    /// profiles and catalog tags still decode, but it's a goal ("Lose
+    /// weight"), not a sport — listing it twice confused onboarding
+    /// (audit 2026-10-15).
+    static var pickable: [SportFocus] { allCases.filter { $0 != .weightLoss } }
+
     case generalFitness = "General Fitness"
     case weightLoss = "Weight Loss"
     case strength = "Strength"

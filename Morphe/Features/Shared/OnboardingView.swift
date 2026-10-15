@@ -997,7 +997,7 @@ private struct SportSelectionStep: View {
                     .foregroundStyle(MorpheTheme.textMuted)
 
                 WrapStack(spacing: 10) {
-                    ForEach(SportFocus.allCases) { sport in
+                    ForEach(SportFocus.pickable) { sport in
                         Button(sport.rawValue) {
                             store.toggleOnboardingSport(sport)
                         }

@@ -8180,7 +8180,7 @@ struct WorkoutBuilderSheet: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textSecondary)
                         Picker("Focus", selection: $sport) {
-                            ForEach(SportFocus.allCases) { option in
+                            ForEach(SportFocus.pickable) { option in
                                 Text(option.rawValue).tag(option)
                             }
                         }

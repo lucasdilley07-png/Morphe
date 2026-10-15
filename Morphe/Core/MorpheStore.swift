@@ -10961,6 +10961,9 @@ final class MorpheAppStore {
     /// pill to its compact circle for good (the wide label is an intro,
     /// not furniture).
     var hasUsedAIAgent: Bool = UserDefaults.standard.bool(forKey: "morphe.ai.used")
+    /// Today's three-tile row is on screen: the wide pill would sit on the
+    /// Progress tile, so it shows as the orb meanwhile (audit 2026-10-15).
+    var glanceRowVisible = false
 
     func openAIAgent() {
         // The pill keeps its "Morphe AI" label for the first few opens —
