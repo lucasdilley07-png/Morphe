@@ -961,7 +961,9 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid', 'helpful', 'question', 'answer', 'source', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'helpful', 'question', 'answer', 'source', 'promptVersion', 'createdAt'])
+        && request.resource.data.promptVersion is string
+        && request.resource.data.promptVersion.size() <= 80
         && request.resource.data.helpful is bool
         && request.resource.data.question is string
         && request.resource.data.question.size() <= 2000

@@ -328,7 +328,7 @@ enum MorpheIntelligence {
 
     /// Shared request builder for both paths.
     static func makeRequest(system: SystemPrompt, turns: [Turn], credential: Credential,
-                            timeout: TimeInterval, stream: Bool) throws -> URLRequest {
+                            timeout: TimeInterval, stream: Bool, format: [String: Any]? = nil) throws -> URLRequest {
         var request = baseRequest(credential: credential, timeout: timeout)
         var messages: [[String: Any]] = []
         for turn in turns.drop(while: { !$0.isUser }) {
@@ -348,6 +348,8 @@ enum MorpheIntelligence {
         // The relay chooses its own model; a personal key runs Opus.
         if case .personalKey = credential { body["model"] = "claude-opus-5-5" }
         if stream { body["stream"] = true }
+        // Structured outputs (GA): a JSON schema the answer must match.
+        if let format { body["output_config"] = ["effort": "low", "format": ["type": "json_schema", "schema": format]] }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
@@ -356,9 +358,9 @@ enum MorpheIntelligence {
     /// short (voice-first: the system prompt caps spoken length) — the
     /// VOICE path uses this; chat streams via streamReply.
     static func reply(system: SystemPrompt, turns: [Turn], credential: Credential,
-                      timeout: TimeInterval = 30) async throws -> String {
+                      timeout: TimeInterval = 30, format: [String: Any]? = nil) async throws -> String {
         let request = try makeRequest(system: system, turns: turns, credential: credential,
-                                      timeout: timeout, stream: false)
+                                      timeout: timeout, stream: false, format: format)
         let data: Data
         let response: URLResponse
         do {

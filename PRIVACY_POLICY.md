@@ -241,11 +241,23 @@ Keys are stored in the iOS Keychain on your device and are never backed
 up to your Morphe account or sent to us. Remove a key at any time to stop
 all traffic to that provider.
 
+**Morphe remembers (optional, off by default).** If you turn it on in
+Profile → What Morphe has learned, then after each chat Morphe asks the
+assistant (through Morphe's server with Morphe AI online, or on your own
+key) for the durable things *you* said — a fact, a preference, an injury,
+a goal, what worked — as short lines in your words. They are stored with
+your account (backed up like your training data, included in your export),
+shown in full in that section with their source and date, sent to
+Anthropic as context with every later answer, and deleted when you remove
+a line, tap "Forget everything", or delete your account. Nothing is used to
+train a model.
+
 **Help improve Morphe AI (optional, off by default).** If you turn it on,
 thumbs up and down appear under Morphe AI's answers. When you rate an
 answer, the question, the answer, your rating and your account id are
 stored with your account, along with which door answered (Morphe's server
-or your key), and read by the founder to improve Morphe AI.
+or your key) and a version label of the prompt and memory that produced
+the answer, and read by the founder to improve Morphe AI.
 They are never shown to other members, never published, and never used to
 train a model outside Morphe. Turn it off any time; they are deleted with
 your account.

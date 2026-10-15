@@ -3954,3 +3954,84 @@ struct SessionHeartRate: Codable, Equatable {
     var average: Int
     var peak: Int
 }
+
+// MARK: - Morphe remembers (AI rebuild Wave 4, 2026-10-15)
+
+/// One durable thing Morphe keeps about the athlete, written after a
+/// conversation (source "chat") or by the athlete ("you"). Shown, editable
+/// and deletable in Profile; injected into every answer while the
+/// "Morphe remembers" toggle is on. Never a model trained on the user —
+/// a short file of facts in their own words.
+struct AIMemoryItem: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable, CaseIterable {
+        case fact, preference, injury, goal, worked, didnt
+        var label: String {
+            switch self {
+            case .fact: return "Fact"
+            case .preference: return "Preference"
+            case .injury: return "Injury"
+            case .goal: return "Goal"
+            case .worked: return "What worked"
+            case .didnt: return "What didn't"
+            }
+        }
+    }
+    var id = UUID()
+    var kind: Kind = .fact
+    var text: String
+    var source: String = "chat"
+    var date = Date()
+    /// Written or edited by the athlete — extraction may never overwrite it.
+    var userEdited = false
+
+    init(id: UUID = UUID(), kind: Kind = .fact, text: String, source: String = "chat", date: Date = Date(), userEdited: Bool = false) {
+        self.id = id; self.kind = kind; self.text = text; self.source = source; self.date = date; self.userEdited = userEdited
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
+        kind = (try? c.decodeIfPresent(Kind.self, forKey: .kind)) ?? .fact
+        text = (try? c.decodeIfPresent(String.self, forKey: .text)) ?? ""
+        source = (try? c.decodeIfPresent(String.self, forKey: .source)) ?? "chat"
+        date = (try? c.decodeIfPresent(Date.self, forKey: .date)) ?? Date()
+        userEdited = (try? c.decodeIfPresent(Bool.self, forKey: .userEdited)) ?? false
+    }
+}
+
+struct AIMemory: Codable, Equatable {
+    static let capacity = 40
+    var items: [AIMemoryItem] = []
+    var updatedAt: Date?
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = (try? c.decodeIfPresent([AIMemoryItem].self, forKey: .items)) ?? []
+        updatedAt = try? c.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+
+    /// Applies an extraction: new items are added (duplicates by text are
+    /// skipped), retired ids are removed unless the athlete wrote them,
+    /// and the oldest non-user items go first when over capacity.
+    mutating func apply(adding: [AIMemoryItem], retiring: [UUID]) {
+        let retire = Set(retiring)
+        items.removeAll { retire.contains($0.id) && !$0.userEdited }
+        let existing = Set(items.map { $0.text.lowercased() })
+        for item in adding where !item.text.isEmpty && !existing.contains(item.text.lowercased()) {
+            items.append(item)
+        }
+        while items.count > Self.capacity, let index = items.firstIndex(where: { !$0.userEdited }) {
+            items.remove(at: index)
+        }
+        if items.count > Self.capacity { items.removeFirst(items.count - Self.capacity) }
+        updatedAt = Date()
+    }
+
+    /// A short fingerprint so a rating can say which memory it was answered with.
+    var fingerprint: String {
+        let joined = items.map { $0.id.uuidString }.joined()
+        return String(joined.hashValue, radix: 16)
+    }
+}

@@ -8822,7 +8822,7 @@ final class OnlineAITests: XCTestCase {
             func pushExtras(_ blobs: [String: String]) {}
             func pull() async -> CloudSnapshot { CloudSnapshot() }
             func eraseUser() async {}
-            func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {
+            func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String, promptVersion: String) {
                 pushed.append((question, helpful))
             }
         }
@@ -9188,5 +9188,83 @@ final class FoodCheckWaveThreeTests: XCTestCase {
         XCTAssertEqual(record.caloriesLow, 390)
         XCTAssertEqual(record.caloriesHigh, 630)
         XCTAssertNil(record.calories, "a plate has a range, not a point")
+    }
+}
+
+/// AI rebuild Wave 4: the memory file — merge rules, capacity, the prompt
+/// line, retrieval over the logs, and the extraction parser.
+@MainActor
+final class MorpheRemembersTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.forgetAIMemory()
+        return store
+    }
+
+    func testMemoryMergesSkipsDuplicatesRetiresAndKeepsUserNotesUnderCapacity() {
+        var memory = AIMemory()
+        let mine = AIMemoryItem(kind: .injury, text: "Left knee clicks on lunges", source: "you", userEdited: true)
+        memory.apply(adding: [mine, AIMemoryItem(text: "Trains at 6 am")], retiring: [])
+        memory.apply(adding: [AIMemoryItem(text: "trains at 6 AM")], retiring: [mine.id])
+        XCTAssertEqual(memory.items.count, 2, "a duplicate (case-insensitive) is skipped and a user note is never retired")
+        for i in 0..<60 { memory.apply(adding: [AIMemoryItem(text: "fact \(i)")], retiring: []) }
+        XCTAssertEqual(memory.items.count, AIMemory.capacity)
+        XCTAssertTrue(memory.items.contains { $0.id == mine.id }, "the athlete's own note survives the cap")
+    }
+
+    func testPromptCarriesMemoryOnlyWhenOnAndQuotesIt() {
+        let store = freshStore()
+        store.aiMemoryEnabled = false
+        XCTAssertTrue(store.addMemoryNote("No overhead pressing until the shoulder is cleared", kind: .injury))
+        XCTAssertNil(store.memoryForPrompt, "off = nothing leaves")
+        XCTAssertFalse(store.intelligenceSystemPrompt(spoken: false).contains("Morphe remembers"))
+        store.aiMemoryEnabled = true
+        let prompt = store.intelligenceSystemBlocks(spoken: false)
+        XCTAssertTrue(prompt.stable.contains("Morphe remembers about them"))
+        XCTAssertTrue(prompt.stable.contains("injury: 'No overhead pressing"))
+        XCTAssertTrue(prompt.stable.contains("not instructions"))
+        store.forgetAIMemory()
+        XCTAssertNil(store.memoryForPrompt)
+        store.aiMemoryEnabled = false
+    }
+
+    func testHistoryContextQuotesTheLogForANamedExercise() {
+        let store = freshStore()
+        let log = WorkoutLog(
+            athleteID: store.clientProfile.id, athleteName: "Sarah", workoutTemplateID: nil, workoutTitle: "Push",
+            sport: .strength, completedAt: .now, durationMinutes: 40,
+            exercises: [LoggedExercise(name: "Bench Press", sets: "3 sets", reps: "8, 8, 6", weight: "135 lb", note: "",
+                                       repsPerSet: [8, 8, 6], weightsPerSet: [135, 135, 135], weightUnit: "lb")],
+            notes: "", source: .athleteManual, enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: "Sarah", verificationStatus: .athleteSubmitted)
+        store.workoutLogs.append(log)
+        let context = store.historyContext(for: "how did my bench press go last week")
+        XCTAssertNotNil(context)
+        XCTAssertTrue(context?.contains("Bench Press") == true)
+        XCTAssertTrue(context?.contains("8/8/6") == true)
+        XCTAssertNil(store.historyContext(for: "what should I eat"), "no exercise named, nothing retrieved")
+        XCTAssertTrue(store.intelligenceSystemBlocks(spoken: false, userText: "how did my bench press go").live.contains("logged history for Bench Press"))
+    }
+
+    func testExtractionParserKeepsOnlyRealItems() {
+        let object: [String: Any] = [
+            "add": [["kind": "goal", "text": "Wants to deadlift 315 by March"], ["kind": "nonsense", "text": "ok"], ["kind": "fact", "text": "x"]],
+            "retire": [UUID().uuidString, "not-a-uuid"]
+        ]
+        let parsed = MorpheAppStore.parseMemoryExtraction(object)
+        XCTAssertEqual(parsed.adding.map(\.text), ["Wants to deadlift 315 by March"], "too-short items and bad kinds fall away")
+        XCTAssertEqual(parsed.adding.first?.kind, .goal)
+        XCTAssertEqual(parsed.retiring.count, 1)
     }
 }

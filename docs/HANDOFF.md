@@ -279,6 +279,24 @@ format (≤12k chars). Web search stays ON (Lucas). Fixed: double-log guard
 read the caller's copy. NOT done: multi-photo, DataScanner live capture.
 427 tests.
 
+**Motion + Wave 4 (2026-10-15)**: motion kit at the end of GlassCard.swift
+(`blurIn`, `TypewriterText`, `RingPulse`, `SweepWord`, `RadialReveal`,
+`BeatSequence`; all Reduce-Motion-aware); onboarding opener in
+`WelcomeLandingStep` (tagline string `WelcomeLandingStep.tagline` =
+"TRAIN HONEST"; the helmet mark is `matchedGeometryEffect("brandMark")`
+into `NameStep`); the tour's welcome page carries `TourTrainWithGrid`
+(RootView) — Voice card opens the real `MorpheOrbView`. Wave 4 memory:
+`AIMemory`/`AIMemoryItem` (MorpheModels), store section "Morphe
+remembers" (extras key `aiMemory`, pref `aiMemoryEnabled` default OFF,
+`scheduleMemoryExtraction` after a chat reply via `MorpheIntelligence.reply(format:)`
+with `memoryExtractionSchema`, `memoryForPrompt` in the STABLE block,
+`historyContext(for:)` retrieval over the logs in the live block,
+`forgetAIMemory`/`deleteMemoryItem`/`addMemoryNote`), ratings carry
+`promptVersion` (+ memory fingerprint; rules updated), the
+`MorpheRemembersSettings` UI in Profile → What Morphe has learned, policy
+section. NOT done: the weekly eval script over aiFeedback (needs data).
+431 tests. Gameplan: `docs/LAUNCH-GAMEPLAN-2026-10-15.md`.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

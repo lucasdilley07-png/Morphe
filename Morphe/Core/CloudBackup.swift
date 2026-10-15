@@ -87,11 +87,11 @@ protocol CloudBackingUp: AnyObject {
     /// "Help improve Morphe AI" (Lucas 2026-10-14): one rated exchange,
     /// written only when the member opted in. Read by the founder's
     /// service account to improve Morphe AI; never shown to anyone.
-    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String)
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String, promptVersion: String)
 }
 
 extension CloudBackingUp {
-    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {}
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String, promptVersion: String) {}
     func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool {
         await pushLogs(logs)
     }
@@ -1423,13 +1423,16 @@ final class FirebaseCloudBackup: CloudBackingUp {
         self.uid = uid
     }
 
-    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String, promptVersion: String) {
         db.collection("aiFeedback").addDocument(data: [
             "uid": uid,
             "helpful": helpful,
             "question": String(question.prefix(2000)),
             "answer": String(answer.prefix(4000)),
             "source": source,
+            // Which prompt and memory answered — so a rating can be
+            // reproduced in the weekly eval (Wave 4).
+            "promptVersion": String(promptVersion.prefix(80)),
             "createdAt": FieldValue.serverTimestamp()
         ])
     }

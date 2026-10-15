@@ -1380,7 +1380,7 @@ struct ProfileView: View {
     private var settingsSearchIsDry: Bool {
         let sections: [(String, String)] = [
             ("Make it yours", Self.makeItYoursKeywords),
-            ("What Morphe has learned", "personalization learned patterns ai adapt"),
+            ("What Morphe has learned", "personalization learned patterns ai adapt memory remembers forget"),
             ("Your account", "name username handle referrals invite share"),
             ("How you train", Self.howYouTrainKeywords),
             ("Voice", "hey morphe voice speech microphone hands free wake"),
@@ -1416,7 +1416,7 @@ struct ProfileView: View {
 
     private static let sectionMeta: [String: (icon: String, summary: String)] = [
         "Make it yours": ("paintbrush", "Sounds, character, voice, tour"),
-        "What Morphe has learned": ("brain.head.profile", "What it knows about how you train"),
+        "What Morphe has learned": ("brain.head.profile", "Morphe remembers, and what it learned from your logs"),
         "Your account": ("person.crop.circle", "Name, username, invites"),
         "How you train": ("figure.strengthtraining.traditional", "Days, limits, rest timer, units"),
         "Voice": ("waveform", "Hey Morphe, hands-free"),
@@ -1766,7 +1766,9 @@ struct ProfileView: View {
 
             }
 
-            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt") {
+            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt memory remembers forget") {
+                MorpheRemembersSettings()
+                Divider().overlay(MorpheTheme.strokeSubtle)
                 if store.styleProfile.hasLearnedAnything {
                     VStack(alignment: .leading, spacing: 8) {
                         if let intensity = store.styleProfile.preferredIntensity {
@@ -3217,6 +3219,119 @@ private struct NeuralVoiceKeyEditor: View {
                     Text("That doesn't look like an ElevenLabs key \u{2014} check what you pasted and try again.")
                         .font(.caption)
                         .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+}
+
+/// "Morphe remembers" (AI rebuild Wave 4, 2026-10-15): a short, visible,
+/// editable file of things the athlete said. Off by default — health-type
+/// facts stay out until they choose. Every item shows its source and
+/// date and can be removed; "Forget everything" wipes it.
+private struct MorpheRemembersSettings: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showConsent = false
+    @State private var showForget = false
+    @State private var note = ""
+    @State private var noteKind: AIMemoryItem.Kind = .fact
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Morphe remembers")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(store.aiMemoryEnabled
+                         ? "On — after a chat, Morphe keeps the durable things you said (facts, preferences, injuries, goals, what worked) in your own words, and reads them in every answer. All of it is below; remove any line."
+                         : "Off — Morphe forgets each conversation. Turn it on and it keeps the durable things you say, in your words, visible here and removable any time.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Toggle("Morphe remembers", isOn: Binding(
+                    get: { store.aiMemoryEnabled },
+                    set: { wanted in
+                        if wanted { showConsent = true } else { store.aiMemoryEnabled = false }
+                    }))
+                    .labelsHidden()
+                    .tint(MorpheTheme.accent)
+            }
+            .confirmationDialog("Let Morphe remember?", isPresented: $showConsent, titleVisibility: .visible) {
+                Button("Agree and turn on") {
+                    store.aiMemoryEnabled = true
+                    Haptics.success()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("After each chat, Morphe asks Claude (through Morphe\u{2019}s server, or on your own key) for the durable things you said \u{2014} never what Morphe said, never a guess. They are stored with your account, shown here with their source, sent to Anthropic with every later answer as context, and deleted when you remove them, tap Forget everything, or delete your account. Nothing is used to train a model.")
+            }
+
+            if store.aiMemoryEnabled {
+                if store.aiMemory.items.isEmpty {
+                    Text("Nothing remembered yet. It fills in after your next conversation, or add a note below.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else {
+                    ForEach(store.aiMemory.items.reversed()) { item in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.text)
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("\(item.kind.label) · \(item.source == "you" ? "you wrote it" : "from a chat") · \(item.date.formatted(date: .abbreviated, time: .omitted))")
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Button {
+                                store.deleteMemoryItem(item)
+                                Haptics.selection()
+                            } label: {
+                                Image(systemName: "minus.circle")
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Forget: \(item.text)")
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Something Morphe should remember", text: $note, axis: .vertical)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .lineLimit(1...3)
+                    HStack(spacing: 12) {
+                        Picker("Kind", selection: $noteKind) {
+                            ForEach(AIMemoryItem.Kind.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(MorpheTheme.accentText)
+                        Spacer()
+                        Button("Add") {
+                            if store.addMemoryNote(note, kind: noteKind) { note = ""; Haptics.success() }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(minHeight: 44)
+                        .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityLabel("Add the note to what Morphe remembers")
+                    }
+                }
+
+                if !store.aiMemory.items.isEmpty {
+                    Button("Forget everything", role: .destructive) { showForget = true }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.danger)
+                        .frame(minHeight: 44)
+                        .confirmationDialog("Forget everything Morphe remembers?", isPresented: $showForget, titleVisibility: .visible) {
+                            Button("Forget everything", role: .destructive) { store.forgetAIMemory() }
+                            Button("Cancel", role: .cancel) {}
+                        }
                 }
             }
         }
