@@ -36,9 +36,9 @@
   --accent: #2957D9;            /* Spartan blue: the only accent */
   --accent-ink: #2957D9;        /* the accent as text, AA on this field */
   --accent-deep: #1E44B8;
-  --field-top: #3366E6;         /* the brand field: the loading screen's gradient */
-  --field-mid: #2957D9;
-  --field-bottom: #1E44B8;
+  --field-top: #0A1C5C;         /* the brand field: the loading screen's navy (2026-10-15) */
+  --field-mid: #06123F;
+  --field-bottom: #030A24;
   --on-field: #FFFFFF;
   --good: #1F9D55;
   --font-display: "Manrope", -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -95,7 +95,7 @@ p { margin: 0; }
 .btn-primary:hover { background: var(--accent-deep); }
 .btn-ghost { background: transparent; color: var(--fg); border-color: var(--hair); }
 .btn-ghost:hover { border-color: var(--fg-3); }
-.btn-on-field { background: var(--on-field); color: var(--field-mid); }
+.btn-on-field { background: var(--on-field); color: #1E44B8; }
 .btn-on-field:hover { background: #EEF2FF; }
 .btn-field-ghost { background: transparent; color: var(--on-field); border-color: rgba(255,255,255,0.45); }
 .btn-field-ghost:hover { border-color: #FFFFFF; }
@@ -118,7 +118,13 @@ p { margin: 0; }
 @media (max-width: 640px) { .nav-links a:not(.btn):not(.nav-keep) { display: none; } .nav-links .btn { margin-left: 0; } }
 
 /* Hero: the brand field, the helmet, the thesis. */
-.hero { background: linear-gradient(180deg, var(--field-top) 0%, var(--field-mid) 52%, var(--field-bottom) 100%); color: var(--on-field); position: relative; overflow: hidden; }
+.hero { background: var(--field-bottom); color: var(--on-field); position: relative; overflow: hidden; isolation: isolate; }
+/* The loading screen's waves, drifting slowly behind the copy — the same
+   art as the app's cold open (still under reduced motion). */
+.hero::before { content: ""; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(3,10,36,0.82) 0%, rgba(3,10,36,0.35) 55%, rgba(3,10,36,0.1) 100%), url("assets/waves.jpg") right 30% / cover no-repeat;
+  animation: wave-drift 18s ease-in-out infinite alternate; }
+@keyframes wave-drift { from { transform: scale(1) rotate(-0.4deg) translate3d(0, 0, 0); } to { transform: scale(1.06) rotate(0.8deg) translate3d(-1.5%, -1%, 0); } }
 .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.05;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
 .hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; padding-block: clamp(64px, 8vw, 128px); }
@@ -130,7 +136,7 @@ p { margin: 0; }
 .hero .lede { color: rgba(255,255,255,0.84); font-size: 1.2rem; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .hero-mark { display: grid; place-items: center; }
-.hero-mark img { width: min(240px, 60vw); filter: drop-shadow(0 0 22px rgba(255,255,255,0.45)) drop-shadow(0 24px 40px rgba(10, 20, 80, 0.45)); animation: lift 1.2s ease-out both; }
+.hero-mark img { width: min(240px, 60vw); filter: drop-shadow(0 0 26px rgba(80,140,255,0.55)) drop-shadow(0 24px 40px rgba(2, 6, 30, 0.6)); animation: lift 1.2s ease-out both; }
 @keyframes lift { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
 .hero-foot { position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.18); }
 .hero-foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; padding-block: 16px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: rgba(255,255,255,0.78); }
@@ -185,7 +191,7 @@ p { margin: 0; }
 @media (max-width: 540px) { .grid { grid-template-columns: 1fr; } }
 .product { display: grid; grid-template-rows: auto 1fr auto; border: 1px solid var(--hair); border-radius: 20px; overflow: hidden; background: var(--bg); min-width: 0; }
 .product[hidden] { display: none; }
-.product-art { aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center; background: linear-gradient(160deg, var(--field-top), var(--field-bottom)); position: relative; }
+.product-art { aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center; background: linear-gradient(160deg, rgba(10,28,92,0.55), rgba(3,10,36,0.9)), url("assets/waves.jpg") center 35% / cover no-repeat; position: relative; }
 .product-art.gear { background: linear-gradient(160deg, #1F2230, #121214); }
 .product-art img { width: 38%; filter: drop-shadow(0 0 16px rgba(255,255,255,0.4)); }
 .product-art .tag { position: absolute; top: 12px; left: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #FFFFFF; background: rgba(0,0,0,0.35); padding: 6px 9px; border-radius: 999px; }
@@ -221,7 +227,7 @@ p { margin: 0; }
 .drawer footer .note { color: var(--fg-3); font-size: 12px; text-align: center; }
 
 /* Download */
-.download { background: linear-gradient(180deg, var(--field-top), var(--field-bottom)); color: var(--on-field); }
+.download { background: linear-gradient(180deg, rgba(3,10,36,0.55), rgba(3,10,36,0.9)), url("assets/waves.jpg") center 75% / cover no-repeat, var(--field-bottom); color: var(--on-field); }
 .download .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 40px; align-items: center; }
 @media (max-width: 760px) { .download .wrap { grid-template-columns: 1fr; } }
 .download .micro { color: #FFFFFF; }
@@ -277,7 +283,7 @@ p { margin: 0; }
   <div class="wrap">
     <div class="hero-copy">
       <p class="micro">The Spartan in your pocket</p>
-      <h1>TRAIN HONEST<span class="line2">Every number is earned.</span></h1>
+      <h1>TRAIN SMARTER<span class="line2">Every number is earned.</span></h1>
       <p class="lede">Morphe is a Spartan training guardian. It plans the session — or builds one with you — logs real sets, counts real reps through the camera, reads what you eat, and never invents a number. Ten ranks you can only earn. A community that is human only. No ads. No trackers. Nothing fake.</p>
       <div class="hero-actions">
         <a class="btn btn-on-field" href="#download">Download Morphe</a>
@@ -412,7 +418,7 @@ p { margin: 0; }
 
 <footer class="footer">
   <div class="wrap">
-    <span>© 2026 Morphe · TRAIN HONEST</span>
+    <span>© 2026 Morphe · TRAIN SMARTER</span>
     <div class="links">
       <a href="privacy.html">Privacy policy</a>
       <a href="terms.html">Terms of use</a>

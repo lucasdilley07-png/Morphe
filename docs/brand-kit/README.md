@@ -13,7 +13,7 @@ edit the tool, not the PNGs. Ships with the coach content kit
 | `morphe-mark-black.png` | Black on transparent — light surfaces only |
 | `morphe-mark-ink-tile.png` | Mark on ink square — avatar-safe tile |
 | `morphe-wordmark-gold.png` / `-white.png` | MORPHE wordmark, SF Mono black, tracked |
-| `morphe-lockup-ink.png` | Mark + wordmark + TRAIN HONEST on ink — social avatar / header |
+| `morphe-lockup-ink.png` | Mark + wordmark + TRAIN SMARTER on ink — social avatar / header |
 
 Colors: yellow `#FFD600`, ink `#050506`, white. No other brand colors
 exist; don't recolor the mark.

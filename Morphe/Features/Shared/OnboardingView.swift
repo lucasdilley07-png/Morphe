@@ -2,96 +2,238 @@ import SwiftUI
 
 struct LaunchSequenceView: View {
     @Environment(MorpheAppStore.self) private var store
-    @State private var message = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hasStarted = false
+    @State private var revealed = false
+    @State private var progress: CGFloat = 0
 
-    /// A fresh install has no recovery, goals, or plan to "read" — claiming
-    /// otherwise was the app's first lie. New users get one honest brand beat;
-    /// returning users get their plan status.
-    private var launchMessage: String {
-        store.hasCompletedOnboarding
-            ? "Today's plan is ready."
-            : "TRANSFORM. EVOLVE. BECOME."
-    }
+    /// The cold-open beat (2026-10-15 loading screen): long enough for the
+    /// bar to fill and the waves to be seen moving, cold starts only.
+    static let beat: Duration = .milliseconds(1400)
 
     var body: some View {
-        ZStack {
-            // The launch beat lives on the accent field (Lucas 2026-10-02
-            // brand field; 2026-10-10: the rank color): the gradient in
-            // BOTH appearances, the icy helmet lit on it, white type. The
-            // system splash (solid brand blue + the same helmet) hands off
-            // into this.
-            MorpheTheme.accentField.ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack {
+                // The system splash is the same navy with the same helmet
+                // in the same spot (LaunchField + LaunchHelmet, baked by
+                // Tools/make_launch_splash.py) — the waves fade in around it.
+                Color("LaunchField").ignoresSafeArea()
 
-            VStack(spacing: 22) {
-                Spacer()
+                LoadingWaves(animates: !reduceMotion)
+                    .opacity(revealed ? 1 : 0)
+                    .ignoresSafeArea()
 
-                MorpheLoadingMark(size: 132)
+                LoadingHelmet(animates: !reduceMotion)
+                    .frame(width: LoadingHelmet.width, height: LoadingHelmet.height)
+                    // Screen centre lifted by LoadingHelmet.lift — exactly
+                    // where UILaunchScreen centres the baked splash image.
+                    .position(x: geo.size.width / 2, y: geo.size.height / 2 - LoadingHelmet.lift)
+                    .ignoresSafeArea()
 
-                MorpheWordmark(height: 30)
-                    .foregroundStyle(.white)
-
-                // A non-empty placeholder holds the line's height on the
-                // first frame, so the mark never shifts when the message
-                // lands (it sits where the system splash drew it).
-                Text((message.isEmpty ? " " : message).uppercased())
-                    .font(MorpheTheme.microLabel(12))
-                    .tracking(1.8)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .transition(.opacity)
-
-                Spacer()
+                VStack(spacing: 14) {
+                    MorpheWordmark(height: 40)
+                        .foregroundStyle(.white)
+                    Text(MorpheTheme.tagline)
+                        .font(MorpheTheme.microLabel(13))
+                        .tracking(6)
+                        .foregroundStyle(.white.opacity(0.92))
+                    LoadingGlassBar(progress: progress, animates: !reduceMotion)
+                        .frame(width: 210, height: 9)
+                        .padding(.top, 22)
+                    Text("LOADING…")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(3.5)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                .opacity(revealed ? 1 : 0)
+                .offset(y: revealed ? 0 : 8)
+                .position(x: geo.size.width / 2,
+                          y: geo.size.height / 2 - LoadingHelmet.lift + LoadingHelmet.height / 2 + 96)
+                .ignoresSafeArea()
             }
-            .padding(24)
         }
+        .ignoresSafeArea()
+        .preferredColorScheme(.dark)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Morphe. \(MorpheTheme.tagline). Loading.")
         .task {
             guard !hasStarted else { return }
             hasStarted = true
-
-            message = launchMessage
-            // One short brand beat on every cold open (Lucas 2026-10-02:
-            // the blue field and the helmet ARE the opening; a zero-wait
-            // launch showed nothing but the system splash flash). Store
-            // init is already done, so this is the only cost — 0.6s, cold
-            // starts only, never on a foreground return.
-            try? await Task.sleep(for: .milliseconds(600))
+            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.45)) { revealed = true }
+            withAnimation(.easeInOut(duration: 1.25)) { progress = 1 }
+            // One brand beat on every cold open (Lucas 2026-10-02: the
+            // opening IS the helmet). Store init is already done; this is
+            // the only cost, cold starts only, never on a foreground return.
+            try? await Task.sleep(for: Self.beat)
             store.finishLaunchSequence()
         }
     }
 }
 
-/// The helmet with a blue arc orbiting it — Morphe's loading spinner.
-struct MorpheLoadingMark: View {
-    var size: CGFloat = 132
-    @State private var isSpinning = false
+/// The waves: Lucas's art with its lettering and helmet painted out
+/// (LoadingPlate), moving without being resampled — a slow drift and
+/// breath of the whole plate, a pulse of light that travels along the
+/// waves' own pixels, and data motes rising through it.
+private struct LoadingWaves: View {
+    let animates: Bool
+    @State private var drift = false
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                plate
+                    .scaleEffect(drift ? 1.06 : 1.0)
+                    .rotationEffect(.degrees(drift ? 1.4 : -0.6))
+                    .offset(x: drift ? -6 : 4, y: drift ? -10 : 6)
+                if animates {
+                    // The cyber pulse: the same plate added onto itself
+                    // through a moving band — only lit wave pixels brighten.
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                        let t = timeline.date.timeIntervalSinceReferenceDate
+                        let phase = CGFloat((t / 2.6).truncatingRemainder(dividingBy: 1))
+                        plate
+                            .scaleEffect(drift ? 1.06 : 1.0)
+                            .rotationEffect(.degrees(drift ? 1.4 : -0.6))
+                            .offset(x: drift ? -6 : 4, y: drift ? -10 : 6)
+                            .mask {
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .clear, location: 0),
+                                        .init(color: .white, location: 0.5),
+                                        .init(color: .clear, location: 1)
+                                    ],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                                .frame(height: geo.size.height * 0.45)
+                                .rotationEffect(.degrees(-24))
+                                .offset(y: (phase * 1.9 - 0.95) * geo.size.height)
+                            }
+                            .blendMode(.plusLighter)
+                            .opacity(0.55)
+                    }
+                    LoadingMotes()
+                        .blendMode(.plusLighter)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+        }
+        .onAppear {
+            guard animates else { return }
+            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) { drift = true }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var plate: some View {
+        Image("LoadingPlate")
+            .resizable()
+            .interpolation(.high)
+            .scaledToFill()
+    }
+}
+
+/// Data motes: small electric-blue points rising and twinkling.
+private struct LoadingMotes: View {
+    private struct Mote { let x, y, speed, size, phase: Double }
+    private static let motes: [Mote] = (0..<46).map { i in
+        var g = SystemRandomNumberGenerator()
+        _ = i
+        return Mote(x: .random(in: 0...1, using: &g), y: .random(in: 0...1, using: &g),
+                    speed: .random(in: 0.015...0.05, using: &g), size: .random(in: 1.2...3.2, using: &g),
+                    phase: .random(in: 0...(2 * .pi), using: &g))
+    }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            Canvas { context, size in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                for mote in Self.motes {
+                    let y = (mote.y - t * mote.speed).truncatingRemainder(dividingBy: 1)
+                    let py = (y < 0 ? y + 1 : y) * size.height
+                    let px = mote.x * size.width + sin(t * 0.6 + mote.phase) * 6
+                    let twinkle = 0.35 + 0.65 * (0.5 + 0.5 * sin(t * 2.2 + mote.phase))
+                    let r = mote.size
+                    context.fill(Path(ellipseIn: CGRect(x: px - r * 2, y: py - r * 2, width: r * 4, height: r * 4)),
+                                 with: .color(Color(red: 0.25, green: 0.5, blue: 1).opacity(0.18 * twinkle)))
+                    context.fill(Path(ellipseIn: CGRect(x: px - r / 2, y: py - r / 2, width: r, height: r)),
+                                 with: .color(Color(red: 0.7, green: 0.85, blue: 1).opacity(0.9 * twinkle)))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// The glass helmet from the art, lit from behind: its glow breathes.
+private struct LoadingHelmet: View {
+    static let width: CGFloat = 236
+    static let height: CGFloat = 380
+    /// Matches LIFT_PT in Tools/make_launch_splash.py.
+    static let lift: CGFloat = 110
+    let animates: Bool
+    @State private var breathe = false
 
     var body: some View {
         ZStack {
-            // The helmet alone (Lucas 2026-10-02) — the same mark, in the
-            // same spot, the system splash (LaunchHelmet) just drew.
-            MorpheHelmetMark(glowRadius: size * 0.08, onBrandField: true)
-                .frame(width: size, height: size)
-
-            // The spinner: a white arc sweeping a ring around the helmet.
-            Circle()
-                .trim(from: 0, to: 0.28)
-                .stroke(
-                    AngularGradient(
-                        colors: [Color.white.opacity(0), Color.white.opacity(0.9)],
-                        center: .center,
-                        startAngle: .degrees(0),
-                        endAngle: .degrees(100)
-                    ),
-                    style: StrokeStyle(lineWidth: max(size * 0.04, 3), lineCap: .round)
-                )
-                .frame(width: size * 1.5, height: size * 1.5)
-                .rotationEffect(.degrees(isSpinning ? 360 : 0))
-                .animation(.linear(duration: 1.1).repeatForever(autoreverses: false), value: isSpinning)
+            Image("LoadingHelmet")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .blur(radius: 18)
+                .opacity(breathe ? 0.75 : 0.35)
+                .scaleEffect(1.04)
+                .blendMode(.plusLighter)
+            Image("LoadingHelmet")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
         }
-        // Reserve the ring's full footprint so surrounding layout never jumps.
-        .frame(width: size * 1.5, height: size * 1.5)
-        .onAppear { isSpinning = true }
-        .accessibilityLabel("Morphe is loading")
+        .onAppear {
+            guard animates else { return }
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { breathe = true }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// A glass capsule (Liquid Glass on iOS 26) with an electric fill and a
+/// bright head, as in the art.
+private struct LoadingGlassBar: View {
+    let progress: CGFloat
+    let animates: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = max(geo.size.height, geo.size.width * progress)
+            ZStack(alignment: .leading) {
+                track
+                Capsule()
+                    .fill(LinearGradient(
+                        colors: [Color(red: 0.12, green: 0.36, blue: 0.95), Color(red: 0.35, green: 0.72, blue: 1.0)],
+                        startPoint: .leading, endPoint: .trailing))
+                    .frame(width: w)
+                    .shadow(color: Color(red: 0.3, green: 0.6, blue: 1).opacity(0.9), radius: 6)
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: geo.size.height * 0.9, height: geo.size.height * 0.9)
+                    .shadow(color: .white, radius: 4)
+                    .offset(x: w - geo.size.height * 0.95)
+                    .opacity(progress > 0.02 ? 1 : 0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var track: some View {
+        if #available(iOS 26.0, *) {
+            Capsule().fill(Color.white.opacity(0.04))
+                .glassEffect(.regular.tint(Color(red: 0.05, green: 0.12, blue: 0.4).opacity(0.5)), in: Capsule())
+                .overlay(Capsule().strokeBorder(Color(red: 0.45, green: 0.6, blue: 1).opacity(0.55), lineWidth: 1))
+        } else {
+            Capsule().fill(.ultraThinMaterial)
+                .overlay(Capsule().strokeBorder(Color(red: 0.45, green: 0.6, blue: 1).opacity(0.55), lineWidth: 1))
+        }
     }
 }
 

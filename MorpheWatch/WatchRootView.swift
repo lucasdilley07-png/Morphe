@@ -41,7 +41,7 @@ struct WatchRootView: View {
                         .font(.headline)
                 }
                 .tint(gold)
-                Text("TRAIN HONEST")
+                Text("TRAIN SMARTER")
                     .font(.system(size: 10, weight: .semibold))
                     .tracking(1.5)
                     .foregroundStyle(.secondary)

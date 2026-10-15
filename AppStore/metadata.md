@@ -10,14 +10,14 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 > Optional keyword variant (helps search): `Morphe: Workout Tracker` (23 chars)
 
 ## Subtitle (≤30 chars)
-**Train honest. Log real sets.** (28 chars)
+**Train smarter. Log real sets.** (29 chars)
 
 > Keyword-heavy alternative if search rank matters more than brand at
 > launch: `Workout builder & tracker` — the keyword field below already
 > carries workout/tracker/gym either way.
 
 ## Promotional text (≤170 chars, editable any time without review)
-Train honest. Real sets, a camera that counts reps on your device, a food check that reads labels, and a score that only states what you logged. Humans only. (159 chars)
+Train smarter. Real sets, a camera that counts reps on your device, a food check that reads labels, and a score that only states what you logged. Humans only. (158 chars)
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,nutrition,builder`
@@ -25,7 +25,7 @@ Train honest. Real sets, a camera that counts reps on your device, a food check 
 ## Description (≤4000 chars)
 Morphe is the Spartan in your pocket: a training guardian that plans the session, logs real sets, counts real reps through the camera, and never invents a number. Plan your workouts, log every set with real weight and reps, and watch a Morphe Score that reflects what you actually did.
 
-TRAIN HONEST — THE HOUSE RULES
+TRAIN SMARTER — THE HOUSE RULES
 • Real scores only — every stat is computed from sets you logged
 • No ads, no trackers — your numbers are never sold or used to target you
 • Your data, your export, and every safety feature stay free, always

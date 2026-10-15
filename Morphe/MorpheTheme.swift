@@ -7,7 +7,7 @@ enum MorpheTheme {
     /// The motto, in one place (2026-10-15: the opener and the manifesto
     /// showed two different lines on one screen). Change it here and the
     /// app, the share cards, the stories and Morphe AI all follow.
-    static let tagline = "TRAIN HONEST"
+    static let tagline = "TRAIN SMARTER"
 
     // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
     // flat surfaces, hairline strokes, monospaced micro-labels; no glass
@@ -153,9 +153,9 @@ enum MorpheTheme {
         static let pageTopToday: CGFloat = 0
         static let pageTopTrain: CGFloat = 0
         static let pageTopStacked: CGFloat = 60   // Discover (NavigationStack)
-        // The tab row is a 44pt button whose label sits mid-row — pull the
-        // row up so the label lands on the reference line.
-        static let pageTopNetwork: CGFloat = -12
+        // Page frame (2026-10-15): Network opens on its title like every
+        // tab; this lands the title on the same line as Train's.
+        static let pageTopNetwork: CGFloat = -7
         static let pageTopCompact: CGFloat = 0    // Learn
     }
 

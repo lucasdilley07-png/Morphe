@@ -79,26 +79,18 @@ struct MoreView: View {
 
     /// Title + chip row, repeated at the top of every page's scroll.
     private var learnHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitleView(
+        VStack(alignment: .leading, spacing: 14) {
+            MorphePageTitle(
                 title: "Learn",
-                subtitle: "Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.",
-                titleSize: 16
+                subtitle: "Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything."
             )
-
-            // Centered chip row (Lucas 2026-08-16): three chips balance on
-            // the page's center line, matching the app-wide symmetry.
-            HStack(spacing: 20) {
-                ForEach(Self.tabs) { feature in
-                    Button(chipTitle(for: feature)) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            store.selectedHubFeature = feature
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
-                }
-            }
-            .frame(maxWidth: .infinity)
+            // Page frame (reformat 2026-10-15): the three parts as one
+            // full-width control.
+            MorpheSegmentedTabs(
+                items: Self.tabs.map { .init(id: $0, title: chipTitle(for: $0)) },
+                selection: activeFeature,
+                onSelect: { store.selectedHubFeature = $0 }
+            )
         }
     }
 

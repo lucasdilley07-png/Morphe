@@ -23,7 +23,7 @@ starts at TestFlight.
 ## Building now, in this order (me)
 1. **Transition kit + onboarding opener** (today): blur-in/out, typewriter,
    ring pulse, colour sweep, radial reveal, chip→field stretch; the helmet
-   mark morphs in, ring, "Meet Morphe · TRAIN HONEST", the mark becomes
+   mark morphs in, ring, "Meet Morphe · TRAIN SMARTER", the mark becomes
    the name field; Reduce Motion fallbacks. (Tagline is one string.)
 2. **Tour grid** "Train with Voice · Form · Fuel · Morphe AI" with the real
    orb stage for Voice — SHIPPED 2026-10-15 (cards are doors: icon + line,
@@ -55,10 +55,10 @@ starts at TestFlight.
    switch the four targets to the paid team, App Attest entitlement back,
    enforce App Check (flip `MORPHE_AI_REQUIRE_APP_CHECK=true`), archive →
    TestFlight → 10 testers → submit. The 90-day clock starts at TestFlight.
-3. **Tagline** — "TRAIN HONEST" everywhere since 2026-10-15 (app, watch,
-   share cards, Morphe AI, site, store copy), one constant
-   `MorpheTheme.tagline`; say the word if it should be something else. The
-   brand-kit PNGs need `Tools/make_brand_assets.swift` re-run.
+3. **Tagline** — settled: "TRAIN SMARTER" (Lucas 2026-10-15) everywhere
+   (app, watch, share cards, site, store copy), one constant
+   `MorpheTheme.tagline`. The brand-kit PNGs need
+   `Tools/make_brand_assets.swift` re-run.
 4. **One Form Check clip** for the tour card; **~15 clips per movement** for
    the harness (can be the same session).
 5. **Sign in on the Pro Max simulator** once so I can take the store

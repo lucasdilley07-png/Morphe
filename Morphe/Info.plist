@@ -25,7 +25,7 @@
 		<key>UIImageName</key>
 		<string>LaunchHelmet</string>
 		<key>UIImageRespectsSafeAreaInsets</key>
-		<true/>
+		<false/>
 	</dict>
 </dict>
 </plist>

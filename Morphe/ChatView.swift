@@ -90,82 +90,43 @@ struct CommunityView: View {
     /// Fixed chrome above the swipe panes: two mono section tabs with the
     /// gold page tick, plus the camera door. HUD skin, not borrowed chrome.
     private var networkHeader: some View {
-        // Centered on the page (alive wave symmetry) — the tab group sits
-        // on the center line, matching Train's header. The camera door
-        // rides a trailing overlay so it never pushes the tabs off-center
-        // when the feed relights.
-        // Equal columns, each label centered (Lucas 2026-10-10: more
-        // separated, symmetrical — same as Discover's).
-        HStack(alignment: .bottom, spacing: 0) {
-            sectionTab("CHATS", .contact, badgeCount: store.networkBadgeCount)
-            if FeatureFlags.socialFeedEnabled {
-                sectionTab("FEED", .forYou)
-            } else {
-                // Launch shape: people, standings, schedule. The Feed is in
-                // Discover (Lucas 2026-10-10).
-                sectionTab("BOARD", .board)
-                sectionTab("CALENDAR", .calendar)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .overlay(alignment: .bottomTrailing) {
-            if FeatureFlags.socialFeedEnabled {
-                Button {
-                    showFormCamera = true
-                } label: {
-                    // A bare camera glyph in a social header reads as "post a
-                    // photo" — and now it IS one. Form Check rides inside.
-                    Image(systemName: "camera.fill")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .frame(width: 48, height: 48)
-                        .background(Circle().fill(MorpheTheme.panelStrong))
+        // Page frame (reformat 2026-10-15): the name, one plain line, then
+        // the parts as one full-width control. The camera door (feed builds
+        // only) rides beside the title.
+        let sections: [MorpheSegmentedTabs<ClientCommunitySection>.Item] = FeatureFlags.socialFeedEnabled
+            ? [.init(id: .contact, title: "Chats", badge: store.networkBadgeCount), .init(id: .forYou, title: "Feed")]
+            // Launch shape: people, standings, schedule. The Feed is in
+            // Discover (Lucas 2026-10-10).
+            : [.init(id: .contact, title: "Chats", badge: store.networkBadgeCount),
+               .init(id: .board, title: "Board"), .init(id: .calendar, title: "Calendar")]
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                MorphePageTitle(title: "Network", subtitle: "Chats, the weekly board, and your calendar.")
+                if FeatureFlags.socialFeedEnabled {
+                    Button {
+                        showFormCamera = true
+                    } label: {
+                        // A bare camera glyph in a social header reads as "post a
+                        // photo" — and now it IS one. Form Check rides inside.
+                        Image(systemName: "camera.fill")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(width: 48, height: 48)
+                            .background(Circle().fill(MorpheTheme.panelStrong))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Camera — shoot a photo or clip")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Camera — shoot a photo or clip")
             }
+            MorpheSegmentedTabs(
+                items: sections,
+                selection: store.selectedCommunitySection,
+                onSelect: { store.selectedCommunitySection = $0 }
+            )
         }
         .padding(.horizontal, 20)
         .padding(.top, topPadding)
         .padding(.bottom, 6)
-    }
-
-    private func sectionTab(_ label: String, _ section: ClientCommunitySection,
-                            badgeCount: Int = 0) -> some View {
-        let showsBadge = badgeCount > 0
-        let isActive = store.selectedCommunitySection == section
-        return Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                store.selectedCommunitySection = section
-            }
-        } label: {
-            VStack(alignment: .center, spacing: 5) {
-                HStack(spacing: 5) {
-                    Text(label)
-                        .font(MorpheTheme.microLabel(16))
-                        .tracking(1.6)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
-                }
-                .overlay(alignment: .topTrailing) {
-                    if showsBadge {
-                        // The count sits top-right of the title (Lucas 2026-10-10),
-                        // as an overlay so the title never shifts.
-                        CountBadge(count: badgeCount)
-                            .offset(x: 14, y: -8)
-                    }
-                }
-                Rectangle()
-                    .fill(isActive ? MorpheTheme.accent : .clear)
-                    .frame(width: 34, height: 3)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottom)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(showsBadge ? "\(label.capitalized), \(badgeCount) new" : label.capitalized)
-        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
     private var forYouScreen: some View {
@@ -337,12 +298,11 @@ struct CommunityView: View {
                 selectedStory = story
             }
 
-            Picker("Community Section", selection: $store.selectedCommunitySection) {
-                ForEach(ClientCommunitySection.allCases) { section in
-                    Text(section.rawValue).tag(section)
-                }
-            }
-            .pickerStyle(.segmented)
+            MorpheSegmentedTabs(
+                items: ClientCommunitySection.allCases.map { .init(id: $0, title: $0.rawValue) },
+                selection: store.selectedCommunitySection,
+                onSelect: { store.selectedCommunitySection = $0 }
+            )
         }
     }
 }

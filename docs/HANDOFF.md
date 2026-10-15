@@ -282,8 +282,8 @@ read the caller's copy. NOT done: multi-photo, DataScanner live capture.
 **Motion + Wave 4 (2026-10-15)**: motion kit at the end of GlassCard.swift
 (`blurIn`, `TypewriterText`, `RingPulse`, `SweepWord`, `RadialReveal`,
 `BeatSequence`; all Reduce-Motion-aware); onboarding opener in
-`WelcomeLandingStep` (tagline string `WelcomeLandingStep.tagline` =
-"TRAIN HONEST"; the helmet mark is `matchedGeometryEffect("brandMark")`
+`WelcomeLandingStep` (tagline `MorpheTheme.tagline` — "TRAIN SMARTER"
+since 2026-10-15; the helmet mark is `matchedGeometryEffect("brandMark")`
 into `NameStep`); the tour's welcome page carries `TourTrainWithGrid`
 (RootView) — Voice card opens the real `MorpheOrbView`. Wave 4 memory:
 `AIMemory`/`AIMemoryItem` (MorpheModels), store section "Morphe
@@ -390,4 +390,45 @@ Still open, in priority order:
    missing from the sign-out list; directory hits store the handle as a
    name; retired global-board code + tests; `Int(d.rounded())` trap in AI
    builder parsing; web-search count wording; `web_search_20250305` tool
-   version check; "TRAIN SMARTER" vs TRAIN HONEST in one string.
+   version check. (Tagline settled: TRAIN SMARTER, one constant.)
+
+## Brand marks + page frame (2026-10-15, wave 2)
+
+- **Tagline: TRAIN SMARTER** (Lucas 2026-10-15) — `MorpheTheme.tagline`
+  in the app; the Watch, site, README, store copy and brand tool carry the
+  literal. "Train honest" survives only as the internal principle in code
+  comments and archived audits.
+- **Marks** (sources in `BrandSource/`): app icon = the glass tile with
+  the helmet 5% smaller (iOS + Watch); Morphe AI button = the side-helmet
+  glass orb (`MorpheAIButtonMark`); Hey Morphe = the front-helmet orb, cut
+  into `MorpheAIOrbBase` + `MorpheAIHelmet` so `MorpheOrbView`'s motion is
+  unchanged.
+- **Loading screen** (`LaunchSequenceView`, OnboardingView.swift): Lucas's
+  art cut into `LoadingPlate` (waves, lettering + helmet painted out) and
+  `LoadingHelmet` (`Tools/make_loading_layers.py`). The plate drifts and
+  breathes, a light pulse runs along its own pixels (plusLighter through a
+  moving band), data motes rise; the wordmark, tagline and a glass progress
+  capsule are live type. 1.4 s, cold starts only; Reduce Motion = still.
+  The system splash is the same helmet on `LaunchField` navy, placed by
+  `Tools/make_launch_splash.py` (236 pt wide, 110 pt above screen centre,
+  `UIImageRespectsSafeAreaInsets = false`) so the handoff never jumps.
+  iOS caches launch screens: reboot the simulator / reinstall to see a change.
+- **Page frame** (end of GlassCard.swift): `MorphePageTitle` (wide heavy
+  title + one line), `MorpheSegmentedTabs` (one track, accent fill slides),
+  `MorpheSectionHeader` (mono label + "View all"). Every tab and full-page
+  sheet opens on it: Today (greeting, title2 — the workout still out-weighs
+  it), TRAIN, DISCOVER, NETWORK, LEARN, Progress, Search, Partner Session,
+  Set Review. Rule: segmented control for a page's sections, chips only for
+  choices and filters, native pickers only inside forms. `SectionTitleView`
+  (the centred ruled header) is gone. Titles land on one line across tabs
+  (`Spacing.pageTopNetwork` = -7).
+- **Onboarding**: Back/Next pinned above the home indicator with a solid
+  backdrop and a status-bar fade; the gate is read in `body` (inset content
+  sits outside observation tracking).
+- **Website**: hero, product art and download panel use the loading
+  screen's navy waves (`docs/assets/waves.jpg`, CSS drift, still under
+  reduced motion); icon, AI bubble, helmet and share card are the new marks.
+- **Open (personalization, untouched on purpose)**: the plan ranks workouts
+  by sport, level, equipment, injuries and styles — goals aren't an input,
+  so a Gain-muscle beginner can be handed a weight-loss HIIT first.
+

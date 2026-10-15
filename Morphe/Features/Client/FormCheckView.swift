@@ -2411,7 +2411,7 @@ private struct FormSummarySheet: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionTitleView(title: "Set Review", subtitle: "What the camera measured this set.")
+                    MorphePageTitle(title: "Set Review", subtitle: "What the camera measured this set.")
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {

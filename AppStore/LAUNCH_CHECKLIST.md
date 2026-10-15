@@ -120,7 +120,7 @@ Your data.
 (`docs/archive/LAUNCH-CONTENT-CALENDAR.md`): the audits, the $99 gate, the
 human-only policy, the 595-exercise library, the rank ladder.
 
-**Posters / flyers** — one design (helmet + TRAIN HONEST + QR); 100
+**Posters / flyers** — one design (helmet + TRAIN SMARTER + QR); 100
 flyers ~$25–50, 50–100 posters ~$36–85; ask the gym owner, pitch the
 coach pilot (`docs/archive/COACH-PITCH.md`) in the same conversation.
 

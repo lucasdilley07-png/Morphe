@@ -169,8 +169,8 @@ renderPNG(width: 1600, height: 1600, name: "morphe-lockup-ink.png") { rect in
     let w = textWidth("MORPHE", font: font, kern: kern)
     drawText("MORPHE", at: CGPoint(x: (rect.width - w) / 2, y: 1180), font: font, color: .white, kern: kern)
     let tagFont = mono(44, .semibold), tagKern: CGFloat = 18
-    let tw = textWidth("TRAIN HONEST", font: tagFont, kern: tagKern)
-    drawText("TRAIN HONEST", at: CGPoint(x: (rect.width - tw) / 2, y: 1370),
+    let tw = textWidth("TRAIN SMARTER", font: tagFont, kern: tagKern)
+    drawText("TRAIN SMARTER", at: CGPoint(x: (rect.width - tw) / 2, y: 1370),
              font: tagFont, color: yellow, kern: tagKern)
 }
 
@@ -213,7 +213,7 @@ func drawCardChrome(_ rect: NSRect, dateLabel: String, username: String) {
     NSRect(x: pad, y: rect.height - pad - 84, width: rect.width - pad * 2, height: 3).fill()
     drawText(username.uppercased(), at: CGPoint(x: pad, y: rect.height - pad - 42),
              font: mono(36, .semibold), color: white(0.7), kern: 4.8)
-    drawText("TRAIN HONEST", at: CGPoint(x: rect.width - pad, y: rect.height - pad - 42),
+    drawText("TRAIN SMARTER", at: CGPoint(x: rect.width - pad, y: rect.height - pad - 42),
              font: mono(36, .bold), color: yellow, kern: 4.8, rightAligned: true)
 }
 
