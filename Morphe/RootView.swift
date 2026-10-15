@@ -701,6 +701,22 @@ private struct ClientExperienceShell: View {
         // mode. Each page's top padding (MorpheTheme.Spacing.pageTop*)
         // sets its title just under the row.
         .overlay(alignment: .top) {
+            // Scrolled content dissolves under the status bar and the icon
+            // row instead of colliding with the clock (audit 2026-10-15) —
+            // a fade, not a band, so the icons still float on the page.
+            LinearGradient(
+                stops: [
+                    .init(color: MorpheTheme.ink, location: 0),
+                    .init(color: MorpheTheme.ink, location: 0.62),
+                    .init(color: MorpheTheme.ink.opacity(0), location: 1)
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: topInset + 72)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
+        }
+        .overlay(alignment: .top) {
             // Overlays keep to the safe area on their own — no extra inset.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
@@ -1352,7 +1368,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     static let shared = HeyMorpheEngine()
 
     private(set) var state: VoiceState = .off {
-        didSet { levelTapLive = state == .active }
+        didSet {
+            levelTapLive = state == .active
+            // Every capture starts fresh: no stale "still talking" from the
+            // last one, no extensions carried over (2026-10-15).
+            if state == .active, oldValue != .active {
+                lastVoicedAt = .distantPast
+                settleExtensions = 0
+                captureStartedAt = nil
+            } else if state != .active {
+                captureStartedAt = nil
+                settleExtensions = 0
+            }
+        }
     }
     /// Audio-thread read of "does anyone want mic levels" — see the tap.
     private var levelTapLive = false
@@ -1537,6 +1565,46 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // Fast attack, slow release — the ring jumps with speech and
         // settles between words instead of flickering.
         voiceLevel = raw > voiceLevel ? raw : voiceLevel * 0.82 + raw * 0.18
+        // The ear's own voice-activity read (2026-10-15, "shuts down on me
+        // mid sentence"): a room floor that sinks fast and rises slowly,
+        // and the last moment the mic heard something clearly above it.
+        noiseFloor = raw < noiseFloor ? raw : noiseFloor + (raw - noiseFloor) * 0.01
+        if Self.isVoiced(level: raw, floor: noiseFloor) { lastVoicedAt = Date() }
+    }
+
+    /// Room level the mic settles to between words.
+    private var noiseFloor: Double = 0.05
+    /// When the mic last heard speech-loud sound during a capture.
+    private var lastVoicedAt = Date.distantPast
+    /// How many times this capture already waited for a still-talking user.
+    private var settleExtensions = 0
+    /// When the current capture started listening for words (wake or follow-up).
+    private var captureStartedAt: Date?
+
+    /// Speech, not room tone: clearly above the floor in both absolute and
+    /// relative terms. Pure so tests pin it.
+    nonisolated static func isVoiced(level: Double, floor: Double) -> Bool {
+        level > floor + 0.08 && level > floor * 2
+    }
+
+    /// The settle timer fired: if the mic heard the user in the last
+    /// 0.45 s they are still talking (the recognizer's partials lag the
+    /// voice), so wait a little longer instead of firing half a sentence.
+    /// A 30 s ceiling keeps a loud gym from holding the capture open.
+    private func settleOrFire() {
+        guard state == .active else { return }
+        let started = captureStartedAt ?? Date()
+        let stillTalking = Date().timeIntervalSince(lastVoicedAt) < 0.45
+        if stillTalking, Date().timeIntervalSince(started) < 30, settleExtensions < 40 {
+            settleExtensions += 1
+            let timer = Timer(timeInterval: 0.5, repeats: false) { [weak self] _ in
+                DispatchQueue.main.async { self?.settleOrFire() }
+            }
+            commandTimer = timer
+            RunLoop.main.add(timer, forMode: .common)
+            return
+        }
+        fireCommand()
     }
     var onWake: (() -> Void)?
     /// (command, isFollowUp). A follow-up command was spoken in the short
@@ -2696,8 +2764,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     onWake?()
                     armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : Self.settleWindow(for: command))
                 } else if !isBargeCapture, let began = followUpCaptureStart,
-                          Date().timeIntervalSince(began) > 8
-                            || text.split(separator: " ").count > 12 {
+                          Date().timeIntervalSince(began) > 16
+                            || text.split(separator: " ").count > 30 {
                     // Ceiling (audit 17, P1): continuous background speech
                     // re-arms the settle timer forever — the wake path got
                     // this fix in audit 14; the follow-up path needs its
@@ -2887,10 +2955,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     static let unfinishedSettleWindow: TimeInterval = 2.8
 
     /// How long to wait after the last heard word before firing.
+    /// A question or a sentence (six words and up) gets more room than a
+    /// command: people pause mid-question to think (2026-10-15).
+    static let sentenceSettleWindow: TimeInterval = 2.1
+
     static func settleWindow(for transcript: String) -> TimeInterval {
         let words = transcript.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber })
         guard let last = words.last else { return settleWindow }
-        return continuationWords.contains(String(last)) ? unfinishedSettleWindow : settleWindow
+        if continuationWords.contains(String(last)) { return unfinishedSettleWindow }
+        return words.count >= 6 ? sentenceSettleWindow : settleWindow
     }
 
     /// When the live transcript last changed — the ear's own clock.
@@ -2909,8 +2982,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         }
         // .common mode (audit 12, P2-7): a .default-mode timer pauses
         // while the user scrolls, so commands never fired mid-scroll.
+        if captureStartedAt == nil { captureStartedAt = Date() }
         let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async { self?.fireCommand() }
+            DispatchQueue.main.async { self?.settleOrFire() }
         }
         commandTimer = timer
         RunLoop.main.add(timer, forMode: .common)
@@ -2965,6 +3039,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func fireCommand() {
         guard state == .active else { return }
         activeSince = nil
+        captureStartedAt = nil
+        settleExtensions = 0
         pendingPromptWindow = nil
         let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         let wasFollowUp = activeIsFollowUp && !directCaptureSession

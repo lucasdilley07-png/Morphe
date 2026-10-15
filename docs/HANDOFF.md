@@ -503,3 +503,22 @@ Still open, in priority order:
 - **Still on Lucas**: Blaze → `firebase functions:secrets:set
   ANTHROPIC_API_KEY` → `firebase deploy --only functions` for real Claude
   answers.
+
+## Hey Morphe endpointing + audit fixes (2026-10-15, wave 6)
+
+- **Hey Morphe no longer cuts users off**: the settle timer now checks the
+  mic itself — if the user was voiced (RMS clearly above a tracked room
+  floor, `HeyMorpheEngine.isVoiced`) in the last 0.45 s, it waits another
+  0.5 s instead of firing (`settleOrFire`, 30 s ceiling). Sentences of six
+  words or more get 2.1 s (`sentenceSettleWindow`); dangling words keep 2.8 s;
+  follow-up capture ceiling raised to 16 s / 30 words. The recognizer's
+  partials lag the voice, which is why a timer on text alone cut people off.
+- **Onboarding**: step label matches the opener (name = STEP 1 / 4); Next
+  stays disabled while the @handle is invalid (it lit up beside "Start with
+  a letter" and silently did nothing); the handle field stops at 20
+  characters (it took 26 and kept 20); no goal picked now defaults to
+  Build consistency, not "Improve conditioning".
+- **Shell**: a solid-to-clear fade sits behind the status bar and icon row
+  so scrolled content no longer collides with the clock.
+- **Open**: "Weight Loss" is both a sport and a goal in onboarding; the
+  floating Morphe AI pill can sit over the Progress tile at one scroll spot.

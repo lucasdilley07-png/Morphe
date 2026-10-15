@@ -945,6 +945,9 @@ struct ProfileView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
                             TextField("username", text: $usernameDraft)
+                                .onChange(of: usernameDraft) { _, value in
+                                    if value.count > UsernameRules.maxLength { usernameDraft = String(value.prefix(UsernameRules.maxLength)) }
+                                }
                                 .textFieldStyle(MorpheFieldStyle())
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()

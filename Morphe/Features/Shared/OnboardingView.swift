@@ -201,12 +201,14 @@ struct OnboardingFlowView: View {
             let hasName = !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && store.onboardingDraft.meetsMinimumAge
             if currentStep == .name { return hasName }
+            // The handle's own rules gate the button too (audit 2026-10-15:
+            // "2001jl" showed "Start with a letter" under a lit Next).
             return hasName
-                && UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
+                && UsernameRules.validationError(UsernameRules.normalize(usernameEntry)) == nil
                 && !isReservingUsername
         }
         if currentStep == .username {
-            return UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
+            return UsernameRules.validationError(UsernameRules.normalize(usernameEntry)) == nil
                 && !isReservingUsername
         }
         if currentStep == .week {
@@ -271,7 +273,10 @@ struct OnboardingFlowView: View {
                                     )
 
                                     HStack(spacing: 8) {
-                                        Text("STEP \(stepIndex + 1) / \(steps.count)")
+                                        // Numbered like the opener's list: name is 01,
+                                        // the plan Morphe builds is 04 (audit 2026-10-15:
+                                        // the first question read "STEP 2 / 4").
+                                        Text("STEP \(stepIndex) / \(steps.count)")
                                             .font(MorpheTheme.microLabel(10))
                                             .tracking(1.4)
                                             .foregroundStyle(MorpheTheme.textMuted)
@@ -316,16 +321,19 @@ struct OnboardingFlowView: View {
                 // Content scrolling under the Dynamic Island fades out
                 // instead of colliding with the clock.
                 .overlay(alignment: .top) {
-                    Color.clear
-                        .frame(height: 10)
-                        .background(
-                            LinearGradient(
-                                colors: [MorpheTheme.ink, MorpheTheme.ink.opacity(0)],
-                                startPoint: .top, endPoint: .bottom
-                            )
+                    // Solid behind the clock and island, then a short fade —
+                    // the old all-gradient band let text read through.
+                    LinearGradient(
+                        colors: [MorpheTheme.ink, MorpheTheme.ink.opacity(0)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: 18)
+                    .background(alignment: .top) {
+                        MorpheTheme.ink
+                            .frame(height: 0)
                             .ignoresSafeArea(edges: .top)
-                        )
-                        .allowsHitTesting(false)
+                    }
+                    .allowsHitTesting(false)
                 }
                 // A long step scrolled to its Next button must not leave the
                 // NEXT step's title off-screen.
@@ -544,9 +552,14 @@ private struct UsernameStep: View {
                     .textFieldStyle(MorpheFieldStyle())
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    // What you type is what you claim (audit 2026-10-15: the
+                    // field took 26 characters, the handle kept 20).
+                    .onChange(of: entry) { _, value in
+                        if value.count > UsernameRules.maxLength { entry = String(value.prefix(UsernameRules.maxLength)) }
+                    }
                     .onAppear {
                         guard entry.isEmpty else { return }
-                        let base = UsernameRules.normalize(suggestedBase)
+                        let base = String(UsernameRules.normalize(suggestedBase).prefix(UsernameRules.maxLength - 2))
                         guard !base.isEmpty else { return }
                         entry = "\(base)\(Int.random(in: 10...99))"
                     }
@@ -557,7 +570,7 @@ private struct UsernameStep: View {
                     // the user edits it.
                     .onChange(of: suggestedBase) { _, base in
                         guard entry.isEmpty || entry == lastSuggestion else { return }
-                        let clean = UsernameRules.normalize(base)
+                        let clean = String(UsernameRules.normalize(base).prefix(UsernameRules.maxLength - 2))
                         guard !clean.isEmpty else { return }
                         lastSuggestion = "\(clean)\(suggestionDigits)"
                         entry = lastSuggestion

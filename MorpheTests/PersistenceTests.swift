@@ -9389,5 +9389,14 @@ final class MorpheRemembersTests: XCTestCase {
         let limited = store.onlineFallbackAnswer(for: MorpheIntelligence.IntelligenceError.dailyLimit, prompt: "how do i do a bodyweight squat?")
         XCTAssertTrue(limited.contains("today's online answers"), "actionable reasons still say so")
     }
+
+    func testHeyMorpheWaitsForTheWholeSentence() {
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "next exercise"), HeyMorpheEngine.settleWindow, "commands stay snappy")
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "how many push ups did I do"), HeyMorpheEngine.unfinishedSettleWindow, "a dangling word waits longest")
+        XCTAssertEqual(HeyMorpheEngine.settleWindow(for: "what should I eat after my workout tonight"), HeyMorpheEngine.sentenceSettleWindow, "a sentence gets room to think")
+        XCTAssertTrue(HeyMorpheEngine.isVoiced(level: 0.4, floor: 0.05), "speech over a quiet room")
+        XCTAssertFalse(HeyMorpheEngine.isVoiced(level: 0.09, floor: 0.05), "room tone isn't speech")
+        XCTAssertFalse(HeyMorpheEngine.isVoiced(level: 0.5, floor: 0.4), "a loud gym's steady noise isn't speech")
+    }
 }
 

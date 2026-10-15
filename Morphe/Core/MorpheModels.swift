@@ -2695,7 +2695,10 @@ struct OnboardingDraft: Hashable {
     var avatarStyle: AvatarStyle = .cleanStarter
 
     var goal: FitnessGoalOption {
-        get { selectedGoals.first ?? .improveConditioning }
+        // No goal picked → Build consistency, which is also the first
+        // phase (audit 2026-10-15: the review showed "Improve conditioning"
+        // — a goal nobody chose — and promised conditioning sessions).
+        get { selectedGoals.first ?? .buildConsistency }
         set { selectedGoals = [newValue] }
     }
 
