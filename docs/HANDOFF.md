@@ -245,7 +245,22 @@ MorpheApp) and speak the door's line. API verification: Apple's
 `SpeechDetector` reports NO speech start/end (results stay empty by
 design), so endpointing stays Morphe's adaptive window; `SpeechTranscriber`
 has no contextual-strings bias, so the wake scan stays on
-SFSpeechRecognizer. Remaining Wave 1: streaming TTS. 419 tests.
+SFSpeechRecognizer. Streaming TTS parked on purpose: the pipeline already renders sentence
+N+1 while N plays, and true PCM streaming means re-plumbing the engine
+that also runs the mic — not shippable unheard. 419 tests.
+
+**Wave 2a shipped (2026-10-15, Form Check)**: One-Euro filter per joint
+(`OneEuroFilter`/`JointFilter`, replaces the EMA); `FormViewAngle.oblique`
+(shoulder/torso ratio 0.42–0.52 — knee-spread and front-lean reads are
+refused there, the lock label asks for square or side-on; the hip-drop
+depth estimate is used for any non-side view); `FramingState.tilted` from
+CoreMotion gravity (>20° off upright → "LEVEL THE PHONE", not trackable);
+re-calibration when the leg length drifts >10 % for 20 frames; 720p @ 30
+fps; `resetGeneration` locked; one `recognizedPoints` per candidate; hold
+stillness judged on RAW joints; honest copy ("knees drifted in on camera";
+the review says front-on depth is estimated, side-on measured). NOT done:
+the clip harness and threshold validation (needs Lucas's ~15 clips per
+pattern), 3D pose on LiDAR phones. 422 tests.
 
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed

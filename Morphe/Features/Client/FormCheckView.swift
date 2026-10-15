@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import CoreMotion
 import Photos
 import Vision
 
@@ -253,7 +254,13 @@ struct FormPatternSpec {
 /// How the athlete is standing relative to the camera. Some checks only
 /// make sense from one angle: knee tracking needs the front, hinge depth
 /// and hip line read best from the side.
-enum FormViewAngle: String, Codable { case front, side }
+enum FormViewAngle: String, Codable {
+    case front, side
+    /// Between the two (AI rebuild Wave 2, 2026-10-15): the knee-spread
+    /// and front-lean reads are refused here — from an angled phone they
+    /// are noise — and the framing guide asks for square or side-on.
+    case oblique
+}
 
 /// The athlete's build, read from still frames: every proportional check
 /// (framing, knee spread, elbow drift, airtime) is measured against these
@@ -266,9 +273,17 @@ struct BodyCalibration: Equatable {
     var standingHipY: CGFloat?      // hip height at rest (jump airtime)
     var viewAngle: FormViewAngle
 
-    /// A side-on athlete shows shoulders close together relative to the torso.
+    /// A side-on athlete shows shoulders close together relative to the
+    /// torso; square-on they are wide. The band between is an angled
+    /// phone, which neither view's maths can trust.
+    static let sideRatioLimit: CGFloat = 0.42
+    static let frontRatioFloor: CGFloat = 0.52
     static func viewAngle(shoulderWidth: CGFloat, torsoLength: CGFloat) -> FormViewAngle {
-        torsoLength > 0 && shoulderWidth / torsoLength < 0.42 ? .side : .front
+        guard torsoLength > 0 else { return .front }
+        let ratio = shoulderWidth / torsoLength
+        if ratio < sideRatioLimit { return .side }
+        if ratio < frontRatioFloor { return .oblique }
+        return .front
     }
 }
 
@@ -332,6 +347,52 @@ struct BodyCalibrator {
     }
 }
 
+// MARK: One-Euro filter (AI rebuild Wave 2, 2026-10-15)
+
+/// The standard pose filter: a low-pass whose cutoff rises with speed, so
+/// a still joint stops shimmering and a fast rep is not lagged. Pure and
+/// per-axis; the controller keeps one per joint coordinate.
+struct OneEuroFilter {
+    var minCutoff: Double = 1.0   // Hz — lower = smoother at rest
+    var beta: Double = 0.02       // speed coefficient — higher = less lag when moving
+    var derivativeCutoff: Double = 1.0
+    private var previous: Double?
+    private var previousDerivative: Double = 0
+    private var previousTime: Double?
+
+    mutating func reset() { previous = nil; previousDerivative = 0; previousTime = nil }
+
+    private static func alpha(cutoff: Double, dt: Double) -> Double {
+        let tau = 1 / (2 * .pi * cutoff)
+        return 1 / (1 + tau / dt)
+    }
+
+    mutating func filter(_ value: Double, at time: Double) -> Double {
+        guard let prev = previous, let prevTime = previousTime, time > prevTime else {
+            previous = value; previousTime = time; previousDerivative = 0
+            return value
+        }
+        let dt = min(max(time - prevTime, 1.0 / 240), 0.5)
+        let derivative = (value - prev) / dt
+        let aD = Self.alpha(cutoff: derivativeCutoff, dt: dt)
+        let smoothedDerivative = previousDerivative + aD * (derivative - previousDerivative)
+        let cutoff = minCutoff + beta * abs(smoothedDerivative)
+        let a = Self.alpha(cutoff: cutoff, dt: dt)
+        let result = prev + a * (value - prev)
+        previous = result; previousDerivative = smoothedDerivative; previousTime = time
+        return result
+    }
+}
+
+/// One joint's pair of filters.
+struct JointFilter {
+    var x = OneEuroFilter()
+    var y = OneEuroFilter()
+    mutating func filter(_ p: CGPoint, at time: Double) -> CGPoint {
+        CGPoint(x: x.filter(Double(p.x), at: time), y: y.filter(Double(p.y), at: time))
+    }
+}
+
 // MARK: Pose geometry (pure helpers shared by the detector and analyzer)
 
 enum PoseMath {
@@ -361,7 +422,7 @@ enum PoseMath {
     /// against the athlete's own leg length instead of the foreshortened
     /// 2D knee angle (see `frontViewKneeAngle`).
     static func primaryAngle(_ joints: PoseJoints, spec: FormPatternSpec, calibration: BodyCalibration? = nil) -> CGFloat? {
-        if [.squat, .lunge, .jump].contains(spec.pattern), let cal = calibration, cal.viewAngle == .front,
+        if [.squat, .lunge, .jump].contains(spec.pattern), let cal = calibration, cal.viewAngle != .side,
            let estimate = frontViewKneeAngle(joints, calibration: cal) {
             return estimate
         }
@@ -744,6 +805,7 @@ enum FramingState: Equatable {
     case tooClose   // red — filling too much of the frame
     case tooFar     // yellow — almost there, come closer
     case feetCut    // yellow — standing patterns need the feet in frame
+    case tilted     // yellow — the phone is leaning; the depth maths assume level
     case good       // green — framed for tracking
 
     var label: String {
@@ -752,9 +814,14 @@ enum FramingState: Equatable {
         case .tooClose: return "STEP BACK"
         case .tooFar:   return "MOVE CLOSER"
         case .feetCut:  return "STEP BACK — SHOW YOUR FEET"
+        case .tilted:   return "LEVEL THE PHONE"
         case .good:     return "FRAMED — HOLD THERE"
         }
     }
+
+    /// Past this much lean from upright the hip-drop depth estimate and
+    /// the front-view reads drift; the athlete is asked to level the phone.
+    static let tiltLimitDegrees: Double = 20
 
     /// Literal traffic-light semantics per the feature spec. This is a
     /// functional signal, so it steps outside the brand palette on purpose
@@ -763,7 +830,7 @@ enum FramingState: Equatable {
         switch self {
         case .noPerson: return Color.white.opacity(0.35)
         case .tooClose: return Color(red: 0.92, green: 0.26, blue: 0.28)
-        case .tooFar, .feetCut: return MorpheTheme.warning
+        case .tooFar, .feetCut, .tilted: return MorpheTheme.warning
         case .good:     return Color(red: 0.30, green: 0.85, blue: 0.45)
         }
     }
@@ -1089,7 +1156,7 @@ enum FormAnalyzer {
     static func liveCue(for m: FormRepMetrics, repNumber: Int) -> String {
         let spec = m.pattern.spec
         let prefix = "Rep \(repNumber) · "
-        if spec.readsKnees, let v = m.valgusRatio, v < valgusRatio { return prefix + "knees caved in" }
+        if spec.readsKnees, let v = m.valgusRatio, v < valgusRatio { return prefix + "knees drifted in on camera" }
         if m.pattern == .push, let bend = m.hipLineDeviation, bend > hipSag { return prefix + "hips off the line" }
         if m.pattern == .press, let lean = m.torsoLean, lean > pressLean { return prefix + "leaned back" }
         if [.squat, .lunge].contains(m.pattern), let lean = m.torsoLean, lean > (m.pattern == .squat ? squatLean : lungeLean) {
@@ -1281,9 +1348,19 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private var startedAt: Double?
     private let history = FormCheckFilePersistence()
 
-    /// Per-joint exponential smoothing: enough to stop the skeleton
-    /// shimmering, not enough to lag a real movement.
-    private static let smoothing: CGFloat = 0.55
+    /// Per-joint One-Euro filters (AI rebuild Wave 2): still joints stop
+    /// shimmering, fast reps are not lagged. Reset with `smoothed`.
+    @ObservationIgnored private var filters: [VNHumanBodyPoseObservation.JointName: JointFilter] = [:]
+    /// Phone lean from upright, degrees, read on the video queue.
+    @ObservationIgnored private var tiltDegrees: Double = 0
+    private let motion = CMMotionManager()
+    /// Delivers motion on the video queue (set up in init), so the tilt is
+    /// read and written on one queue.
+    private let motionQueue = OperationQueue()
+    /// Frames in a row whose leg length disagrees with the calibration —
+    /// the athlete moved closer or farther; the build is re-read.
+    @ObservationIgnored private var driftFrames = 0
+    private let generationLock = NSLock()
     /// Pose confidence floor — low-certainty joints stay out of the math;
     /// they were the biggest source of wrong depth and knee readings.
     private static let confidenceFloor: Float = 0.5
@@ -1293,6 +1370,8 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         self.pattern = pattern
         self.detector = RepDetector(spec: pattern.spec)
         super.init()
+        motionQueue.underlyingQueue = videoQueue
+        motionQueue.maxConcurrentOperationCount = 1
     }
 
     // MARK: Lifecycle
@@ -1327,8 +1406,24 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             }
 
             self.session.beginConfiguration()
-            self.session.sessionPreset = .high
+            // 720p is all the pose model uses; 1080p only cost buffer time.
+            // 30 fps caps Vision's load on phones whose default is 60.
+            self.session.sessionPreset = self.session.canSetSessionPreset(.hd1280x720) ? .hd1280x720 : .high
             self.session.addInput(input)
+            if let device = (input as? AVCaptureDeviceInput)?.device, (try? device.lockForConfiguration()) != nil {
+                device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 30)
+                device.unlockForConfiguration()
+            }
+            if self.motion.isDeviceMotionAvailable {
+                self.motion.deviceMotionUpdateInterval = 0.2
+                self.motion.startDeviceMotionUpdates(to: self.motionQueue) { [weak self] data, _ in
+                    guard let self, let g = data?.gravity else { return }
+                    // Upright portrait: gravity points down the device's
+                    // y axis. Lean = angle between gravity and that axis.
+                    let down = max(-1.0, min(1.0, -g.y))
+                    self.tiltDegrees = acos(down) * 180 / .pi
+                }
+            }
 
             let output = AVCaptureVideoDataOutput()
             output.alwaysDiscardsLateVideoFrames = true
@@ -1459,6 +1554,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     }
 
     func stop() {
+        motion.stopDeviceMotionUpdates()
         sessionQueue.async { [weak self] in
             if self?.session.isRunning == true { self?.session.stopRunning() }
             DispatchQueue.main.async { self?.isRunning = false }
@@ -1467,7 +1563,12 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     /// Bumped on every reset; a rep dispatched from a frame processed just
     /// before the reset carries the old value and is dropped on arrival.
-    @ObservationIgnored private var resetGeneration = 0
+    @ObservationIgnored private var resetGenerationStorage = 0
+    /// Written on main, read on the video queue — locked (audit 2026-10-14).
+    private var resetGeneration: Int {
+        get { generationLock.lock(); defer { generationLock.unlock() }; return resetGenerationStorage }
+        set { generationLock.lock(); resetGenerationStorage = newValue; generationLock.unlock() }
+    }
 
     func resetReps() {
         repCount = 0
@@ -1518,12 +1619,12 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
         // Several people in frame: follow the one the camera reads best
         // (most confident joints), not whoever Vision listed first.
-        let observation = (poseRequest.results ?? []).max { a, b in
-            let ca = (try? a.recognizedPoints(.all))?.values.filter { $0.confidence > Self.confidenceFloor }.count ?? 0
-            let cb = (try? b.recognizedPoints(.all))?.values.filter { $0.confidence > Self.confidenceFloor }.count ?? 0
-            return ca < cb
-        }
-        guard let observation, let points = try? observation.recognizedPoints(.all) else {
+        let candidates: [(points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint], confident: Int)] =
+            (poseRequest.results ?? []).compactMap { observation in
+                guard let points = try? observation.recognizedPoints(.all) else { return nil }
+                return (points, points.values.filter { $0.confidence > Self.confidenceFloor }.count)
+            }
+        guard let points = candidates.max(by: { $0.confident < $1.confident })?.points else {
             lostPerson(at: frameTime)
             return
         }
@@ -1538,20 +1639,21 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         guard raw.count >= 5 else { lostPerson(at: frameTime); return }
         framesWithoutPerson = 0
 
-        // Exponential smoothing per joint; a joint that just reappeared
-        // snaps to its new position rather than sliding in from stale data.
+        // One-Euro per joint; a joint that just reappeared starts its
+        // filter fresh rather than sliding in from stale data.
         var next: PoseJoints = [:]
         for (name, p) in raw {
-            if let prev = smoothed[name] {
-                let a = Self.smoothing
-                next[name] = CGPoint(x: prev.x + (p.x - prev.x) * a, y: prev.y + (p.y - prev.y) * a)
-            } else {
-                next[name] = p
-            }
+            var filter = filters[name] ?? JointFilter()
+            next[name] = filter.filter(p, at: frameTime)
+            filters[name] = filter
         }
+        for name in filters.keys where raw[name] == nil { filters[name] = nil }
         smoothed = next
 
-        let framing = FramingState.judge(next, posture: spec.posture, spec: spec)
+        var framing = FramingState.judge(next, posture: spec.posture, spec: spec)
+        // A leaning phone breaks the hip-drop depth estimate and the
+        // front-view reads: ask for level before tracking (Wave 2).
+        if framing == .good, tiltDegrees > FramingState.tiltLimitDegrees { framing = .tilted }
 
         // The build is read from still, framed frames; once known it feeds
         // every proportional check in the detector.
@@ -1559,6 +1661,18 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             calibrator.ingest(next, posture: spec.posture)
             if detector.calibration == nil, let cal = calibrator.calibration {
                 detector.calibration = cal
+            }
+            // Re-read the build when the athlete's distance changed: a leg
+            // length a tenth off the calibration for 20 frames (Wave 2).
+            if spec.posture == .standingFull, let cal = calibrator.calibration, let calLeg = cal.legLength, calLeg > 0,
+               let hipJ = next[.leftHip] ?? next[.rightHip], let ankle = next[.leftAnkle] ?? next[.rightAnkle] {
+                let leg = hypot(hipJ.x - ankle.x, hipJ.y - ankle.y)
+                driftFrames = abs(leg - calLeg) / calLeg > 0.10 ? driftFrames + 1 : 0
+                if driftFrames >= 20 {
+                    driftFrames = 0
+                    calibrator.reset()
+                    detector.calibration = nil
+                }
             }
         }
         let calState: CalibrationState = {
@@ -1574,14 +1688,14 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         // Holds accumulate still time; timed sets just run.
         var elapsed: Double?
         if pattern == .hold {
-            if let last = lastFrameTime, framing.isTrackable, Self.isStill(next, previous: smoothedBeforeHold) {
+            if let last = lastFrameTime, framing.isTrackable, Self.isStill(raw, previous: rawBeforeHold) {
                 holdAccumulated += max(0, min(0.2, frameTime - last))
             }
             elapsed = holdAccumulated
         } else if pattern == .untracked, let startedAt {
             elapsed = frameTime - startedAt
         }
-        smoothedBeforeHold = next
+        rawBeforeHold = raw
         lastFrameTime = frameTime
 
         DispatchQueue.main.async { [weak self] in
@@ -1601,7 +1715,9 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         }
     }
 
-    private var smoothedBeforeHold: PoseJoints = [:]
+    /// Stillness is judged on the RAW joints (Wave 2): the filter itself
+    /// made a slow sway look still.
+    private var rawBeforeHold: PoseJoints = [:]
 
     /// Still enough to count as holding: the tracked joints barely moved.
     private static func isStill(_ now: PoseJoints, previous: PoseJoints) -> Bool {
@@ -1618,6 +1734,8 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         lastFrameTime = time
         // Stale joints must not slide back in when the person reappears.
         smoothed = [:]
+        filters = [:]
+        driftFrames = 0
         // A third of a second gone mid-rep: that rep is abandoned, never
         // banked on the first frame back.
         if framesWithoutPerson == 10 { detector.reset() }
@@ -2074,7 +2192,12 @@ struct FormCheckView: View {
         switch session.calibrationState {
         case .waiting: return nil
         case .reading(let p): return "READING YOUR BUILD · \(Int(p * 100))%"
-        case .ready(let view): return "LOCKED · \(view == .front ? "FRONT" : "SIDE") VIEW"
+        case .ready(let view):
+            switch view {
+            case .front: return "LOCKED · FRONT VIEW"
+            case .side: return "LOCKED · SIDE VIEW"
+            case .oblique: return "ANGLED — TURN SQUARE OR SIDE-ON"
+            }
         }
     }
 
@@ -2314,6 +2437,13 @@ private struct FormSummarySheet: View {
                                 Text(spec.rangeNote)
                                     .font(.caption2)
                                     .foregroundStyle(MorpheTheme.textMuted)
+                                if spec.readsKnees {
+                                    // Honesty (Lucas 2026-10-14, decision 5).
+                                    Text("Side-on, the angle is measured. Front-on, depth is estimated from how far your hips dropped. Knee drift is what the camera saw, not a risk call.")
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             } else if summary.pattern == .hold {
                                 HStack(spacing: 8) {
                                     MetricPill(label: "Held still", value: clock(summary.holdSeconds))

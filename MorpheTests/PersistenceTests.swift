@@ -4304,7 +4304,8 @@ final class FormAnalyzerTests: XCTestCase {
     }
 
     func testLiveCueReflectsTheWorstIssue() {
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 88, valgus: 0.7), repNumber: 3).contains("caved"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 88, valgus: 0.7), repNumber: 3).contains("drifted in on camera"),
+                      "what the camera saw, never a risk call (Lucas 2026-10-14, decision 5)")
         XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 130), repNumber: 2).contains("above parallel"))
         XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 88), repNumber: 1).contains("clean"))
         XCTAssertTrue(FormAnalyzer.liveCue(for: rep(.press, peak: 140, rest: 70, valgus: nil), repNumber: 1).contains("lockout"))
@@ -9050,5 +9051,42 @@ final class VoiceIntentRouterTests: XCTestCase {
         XCTAssertNotNil(MorpheAppStore.parseSetCommand("log 1x8 at 135"))
         XCTAssertTrue(MorpheAppStore.isMutatingVoiceCommand("8 at 135"), "a routed set still needs the wake word")
         XCTAssertFalse(MorpheAppStore.isMutatingVoiceCommand("next exercise"))
+    }
+}
+
+/// AI rebuild Wave 2 (Form Check): the filter, the view-angle band, the
+/// framing guard — pure parts, tested without a camera.
+final class FormCheckWaveTwoTests: XCTestCase {
+
+    func testOneEuroSettlesOnAStepAndDampsJitter() {
+        var filter = OneEuroFilter()
+        var value = 0.0
+        for i in 0..<60 { value = filter.filter(1.0, at: Double(i) / 30) }
+        XCTAssertEqual(value, 1.0, accuracy: 0.02, "a step settles within two seconds")
+
+        // Still joint with ±0.01 jitter: the output moves less than the input.
+        var still = OneEuroFilter()
+        var swing = 0.0
+        var previous = 0.5
+        for i in 0..<90 {
+            let noisy = 0.5 + (i % 2 == 0 ? 0.01 : -0.01)
+            let out = still.filter(noisy, at: 1 + Double(i) / 30)
+            if i > 30 { swing = max(swing, abs(out - previous)) }
+            previous = out
+        }
+        XCTAssertLessThan(swing, 0.01, "jitter is damped at rest")
+    }
+
+    func testViewAngleHasAnObliqueBand() {
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.10, torsoLength: 0.30), .side)
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.15, torsoLength: 0.30), .oblique)
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.21, torsoLength: 0.30), .front)
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.2, torsoLength: 0), .front)
+    }
+
+    func testTiltedFramingIsNotTrackable() {
+        XCTAssertFalse(FramingState.tilted.isTrackable)
+        XCTAssertEqual(FramingState.tilted.label, "LEVEL THE PHONE")
+        XCTAssertEqual(FramingState.tiltLimitDegrees, 20)
     }
 }
