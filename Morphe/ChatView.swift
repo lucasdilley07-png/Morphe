@@ -572,6 +572,7 @@ private struct NetworkStoriesRail: View {
             }
             .padding(.vertical, 4)
         }
+        .pageSwipeExempt()
     }
 
     private func avatar(for sport: SportFocus) -> String {
@@ -1019,6 +1020,7 @@ private struct AthleteContactRow: View {
                         }
                     }
                 }
+                .pageSwipeExempt()
                 .padding(.leading, 56)
             }
         }
@@ -2012,6 +2014,7 @@ private struct TrainedTodayRow: View {
                 }
                 .padding(.vertical, 2)
             }
+            .pageSwipeExempt()
         }
     }
 }
@@ -4126,14 +4129,15 @@ struct MorpheThreadRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // Morphe's avatar is the Spartan helmet on black (Lucas
+            // 2026-10-15), in both appearances.
             ZStack {
-                Circle().fill(MorpheTheme.accent.opacity(0.18))
-                Image("MorpheAIMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 30, height: 30)
+                Circle().fill(Color.black)
+                MorpheHelmetMark(glowRadius: 3, onBrandField: true)
+                    .frame(width: 26, height: 26)
             }
             .frame(width: 44, height: 44)
+            .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -4476,6 +4480,7 @@ struct CreatorFeed: View {
                     }
                 }
             }
+            .pageSwipeExempt()
 
             if items.isEmpty {
                 GlassCard(.quiet) {

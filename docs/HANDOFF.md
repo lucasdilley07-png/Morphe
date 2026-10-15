@@ -483,3 +483,23 @@ Still open, in priority order:
 - **Orbs swapped by mode** (Lucas): the white art (`*-light.png`) shows in
   DARK mode, the dark art (`*-dark.png`) in LIGHT mode — Morphe AI button,
   Hey Morphe base and helmet.
+
+## Swipe, avatar, Morphe AI fallback (2026-10-15, wave 5)
+
+- **Page swipe vs rails**: `InTabPageSwipe` ignores drags that start in a
+  `.pageSwipeExempt()` area (every horizontal ScrollView on Discover,
+  Network, Learn is tagged) — "New this week" scrolls, the page doesn't flip.
+- **Morphe's chat avatar**: the helmet on black (`MorpheThreadRow`).
+- **Morphe AI errors — root cause**: the relay is NOT deployed (Cloud
+  Functions API never enabled on morphe-3c5c2 → Blaze not active); the URL
+  answers 404, which mapped to "Something went wrong on my end". Now 404 →
+  `.relayUnavailable`, the relay is parked for the session
+  (`MorpheIntelligence.relayDown`), and every failure the athlete can't
+  act on answers with the built-in brain (`onlineFallbackAnswer`).
+- **Built-in brain**: technique answers from the on-device library
+  (`exerciseReply`: steps, cue, muscles, mistakes, easier version, swaps;
+  "how do I deadlift" → Conventional Deadlift via head-word + base-movement
+  match); the last-resort line lists what it can answer.
+- **Still on Lucas**: Blaze → `firebase functions:secrets:set
+  ANTHROPIC_API_KEY` → `firebase deploy --only functions` for real Claude
+  answers.

@@ -10019,7 +10019,7 @@ final class MorpheAppStore {
             do {
                 answer = try await MorpheIntelligence.reply(system: intelligenceSystemBlocks(spoken: false, userText: clean), turns: turns, credential: credential, timeout: 30)
             } catch {
-                answer = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription ?? "I couldn't reach Claude. The built-in answer: " + athleteAgentReply(to: clean)
+                answer = onlineFallbackAnswer(for: error, prompt: clean)
             }
         } else {
             answer = athleteAgentReply(to: clean)
@@ -12044,8 +12044,8 @@ final class MorpheAppStore {
                 self?.scheduleMemoryExtraction()
             } catch {
                 guard let self else { return }
-                let message = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription
-                    ?? MorpheIntelligence.IntelligenceError.network.errorDescription ?? "I couldn't reach Claude."
+                let asked = self.athleteAIAgentConversation.last(where: { $0.sender == .user })?.text ?? ""
+                let message = self.onlineFallbackAnswer(for: error, prompt: asked)
                 if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
                     self.athleteAIAgentConversation[i].text = message
                 }
@@ -12194,9 +12194,7 @@ final class MorpheAppStore {
                     self.heyMorphe.cancelStreamedSpeech()
                     return
                 }
-                let message = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription
-                    ?? MorpheIntelligence.IntelligenceError.network.errorDescription
-                    ?? "I couldn't reach Claude."
+                let message = self.onlineFallbackAnswer(for: error, prompt: raw)
                 let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: message, timestamp: "Now")
                 self.athleteAIAgentConversation.append(aiMessage)
                 if openedSpeech {
@@ -18123,6 +18121,84 @@ final class MorpheAppStore {
         }
     }
 
+    /// What the athlete sees when an online answer fails (2026-10-15: every
+    /// question read "Something went wrong on my end" while the relay wasn't
+    /// deployed). Failures they can't act on get the built-in answer, no
+    /// error line; the ones they can act on name it, then still answer.
+    func onlineFallbackAnswer(for error: Error, prompt: String) -> String {
+        typealias E = MorpheIntelligence.IntelligenceError
+        let failure = error as? E
+        if failure == .relayUnavailable { MorpheIntelligence.relayDown = true }
+        let builtIn = athleteAgentReply(to: prompt)
+        switch failure {
+        case .busy?:
+            return E.busy.errorDescription ?? builtIn
+        case .signInNeeded?, .ageRestricted?, .dailyLimit?, .budget?, .badKey?:
+            return "\(failure?.errorDescription ?? "")\n\n\(builtIn)"
+        default:
+            return builtIn
+        }
+    }
+
+    // MARK: Technique answers (offline, 2026-10-15)
+
+    /// Words reduced for matching: lowercase letters, plurals trimmed
+    /// ("Push-Ups" → ["push", "up"]).
+    nonisolated static func matchWords(_ text: String) -> [String] {
+        text.lowercased()
+            .split(whereSeparator: { !$0.isLetter })
+            .map { word -> String in
+                let w = String(word)
+                return w.count > 3 && w.hasSuffix("s") && !w.hasSuffix("ss") ? String(w.dropLast()) : w
+            }
+    }
+
+    /// Answers a question about a NAMED exercise from the bundled technique
+    /// library: steps, cue, muscles, mistakes, easier version, swaps. Nil
+    /// when no library exercise is named, so the rest of the chain runs.
+    static func exerciseReply(to prompt: String, library: [ExerciseReference]) -> String? {
+        let words = Set(matchWords(prompt))
+        guard !words.isEmpty else { return nil }
+        // The longest library name whose every word is in the question.
+        let named = library.map { (item: $0, words: matchWords($0.name)) }
+        let exact = named
+            .filter { !$0.words.isEmpty && $0.words.allSatisfy(words.contains) && $0.words.joined().count >= 4 }
+            .max { $0.words.joined().count < $1.words.joined().count }?.item
+        // "How do I deadlift?" names no exact entry ("Conventional
+        // Deadlift", "Pause Deadlift", …): take the entry whose head word was
+        // asked for, preferring the base movement the variations point to.
+        let baseCounts = Dictionary(library.compactMap(\.variationOf).map { ($0, 1) }, uniquingKeysWith: +)
+        let headMatch = named
+            .filter { entry in
+                guard let head = entry.words.last, head.count >= 4 else { return false }
+                return words.contains(head)
+            }
+            .min { a, b in
+                let ka = (-(baseCounts[a.item.id] ?? 0), a.item.variationOf == nil ? 0 : 1, a.words.count)
+                let kb = (-(baseCounts[b.item.id] ?? 0), b.item.variationOf == nil ? 0 : 1, b.words.count)
+                return ka < kb
+            }?.item
+        guard let ex = exact ?? headMatch else { return nil }
+        let source = ex.sourceName.isEmpty ? "" : " (technique checked against \(ex.sourceName))"
+        func has(_ cues: [String]) -> Bool { cues.contains(where: prompt.contains) }
+
+        if has(["muscle", "work", "target", "hit", "train"]) && !ex.musclesWorked.isEmpty {
+            return "\(ex.name) works \(ex.musclesWorked.lowercased()). Cue: \(ex.formCue)"
+        }
+        if has(["mistake", "wrong", "avoid", "hurt", "pain"]) && !ex.commonMistakes.isEmpty {
+            return "\(ex.name) — the common mistakes: \(ex.commonMistakes) Cue: \(ex.formCue)"
+        }
+        if has(["easier", "beginner", "modif", "regress", "can't do", "cant do", "too hard"]) && !ex.beginnerModification.isEmpty {
+            return "Easier \(ex.name): \(ex.beginnerModification)"
+        }
+        if has(["instead", "alternative", "swap", "replace", "substitute", "similar"]) && !ex.alternatives.isEmpty {
+            return "Instead of \(ex.name), try \(ex.alternatives.prefix(3).joined(separator: ", ")). Say \"swap\" in a session and I'll change it there."
+        }
+        let steps = ex.instructions.prefix(4).enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: " ")
+        guard !steps.isEmpty else { return "\(ex.name): \(ex.formCue)" }
+        return "\(ex.name)\(source): \(steps) Cue: \(ex.formCue)"
+    }
+
     // MARK: Log recall (offline, 2026-10-15)
 
     /// Answers "what / how many did I do" questions straight from the
@@ -18213,6 +18289,10 @@ final class MorpheAppStore {
         // no model needed (audit 2026-10-15: the offline brain declined).
         if let recall = Self.logRecallReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, unit: weightUnit) {
             return recall
+        }
+        // "How do I deadlift?" — the technique library is on the phone.
+        if let technique = Self.exerciseReply(to: lowercasedPrompt, library: allExercises) {
+            return technique
         }
         let primaryExercise = activeWorkoutExercise?.name ?? currentWorkout.exercises.first?.name ?? "your first movement"
         let firstWin = recentWins.first ?? "You kept showing up when the plan got busy."
@@ -18355,7 +18435,9 @@ final class MorpheAppStore {
         // ACCURACY over vibes: the old last resort was generic coach-tone
         // filler that pretended to answer anything. An honest assistant
         // says what it doesn't know and what it CAN do instead.
-        return "I don't have a real answer for that yet — I'm a training assistant, not a general chatbot. What I can do: start your workout (today's or by name), log sets (\"log 3x10 at 135\"), tell you what's next, flip Minimum Win on, switch lb/kg, and open any part of the app. Ask about your goals, readiness, or score and I'll answer from your real data."
+        return MorpheIntelligence.isEnabled
+            ? "I couldn't answer that one. Try asking it another way — or ask about your log (\"what did I do this week?\"), an exercise (\"how do I deadlift?\"), your goals, readiness, score or fuel."
+            : "That one needs Morphe AI online (Profile → Morphe Intelligence). Right now I answer from your own data: your log (\"what did I do this week?\"), any exercise in the library (\"how do I deadlift?\", \"easier push-up\"), what's next, your goals, readiness, score and fuel — and I can start a workout, log sets (\"log 3x10 at 135\"), or open any part of the app."
     }
 
     /// New chat (AI sheet toolbar): back to the seeded greeting. The old

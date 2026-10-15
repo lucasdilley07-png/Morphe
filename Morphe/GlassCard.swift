@@ -1893,6 +1893,7 @@ struct SportModeSelector: View {
                         }
                     }
                 }
+                .pageSwipeExempt()
             }
         }
     }
@@ -2957,19 +2958,51 @@ struct MorpheWordmark: View {
 struct InTabPageSwipe<Page: Hashable>: ViewModifier {
     let pages: [Page]
     @Binding var selection: Page
+    /// Areas that scroll sideways on their own (rails, chip rows): a drag
+    /// that STARTS in one belongs to it, never to the page (2026-10-15 —
+    /// swiping "New this week" flipped Discover to the Feed).
+    @State private var exemptFrames: [CGRect] = []
 
     func body(content: Content) -> some View {
-        content.simultaneousGesture(
-            DragGesture(minimumDistance: 30)
-                .onEnded { value in
-                    let dx = value.translation.width, dy = value.translation.height
-                    guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
-                          let index = pages.firstIndex(of: selection) else { return }
-                    let next = dx < 0 ? index + 1 : index - 1
-                    guard pages.indices.contains(next) else { return }
-                    Haptics.selection()
-                    withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
-                }
+        content
+            .coordinateSpace(name: PageSwipeSpace.name)
+            .onPreferenceChange(PageSwipeExemptKey.self) { exemptFrames = $0 }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 30, coordinateSpace: .named(PageSwipeSpace.name))
+                    .onEnded { value in
+                        guard !exemptFrames.contains(where: { $0.contains(value.startLocation) }) else { return }
+                        let dx = value.translation.width, dy = value.translation.height
+                        guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
+                              let index = pages.firstIndex(of: selection) else { return }
+                        let next = dx < 0 ? index + 1 : index - 1
+                        guard pages.indices.contains(next) else { return }
+                        Haptics.selection()
+                        withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
+                    }
+            )
+    }
+}
+
+enum PageSwipeSpace {
+    static let name = "morphe.inTabPageSwipe"
+}
+
+struct PageSwipeExemptKey: PreferenceKey {
+    static let defaultValue: [CGRect] = []
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
+/// Marks a sideways-scrolling area so the tab's page swipe leaves its drags
+/// alone. Harmless outside a paging tab (nothing reads the preference).
+struct PageSwipeExempt: ViewModifier {
+    func body(content: Content) -> some View {
+        content.background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: PageSwipeExemptKey.self,
+                                       value: [proxy.frame(in: .named(PageSwipeSpace.name))])
+            }
         )
     }
 }
@@ -3018,6 +3051,11 @@ extension View {
 
     func swipeBack(_ action: @escaping () -> Void) -> some View {
         modifier(SwipeBack(action: action))
+    }
+
+    /// See PageSwipeExempt.
+    func pageSwipeExempt() -> some View {
+        modifier(PageSwipeExempt())
     }
 }
 

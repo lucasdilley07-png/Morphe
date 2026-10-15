@@ -873,6 +873,7 @@ struct LearnLibraryPage: View {
                     }
                 }
             }
+            .pageSwipeExempt()
             exerciseList(store.filteredExercises)
         case .savedExercises:
             if store.savedExercises.isEmpty {

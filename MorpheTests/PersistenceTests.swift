@@ -7999,9 +7999,9 @@ final class AIChatUITests: XCTestCase {
 
         XCTAssertFalse(store.sendAIAgentPrompt("what's the meaning of life"))
         let reply = store.athleteAIAgentConversation.last?.text ?? ""
-        XCTAssertTrue(reply.contains("don't have a real answer"),
+        XCTAssertTrue(reply.contains("needs Morphe AI online"),
                       "unmatched asks must admit it, not vibe")
-        XCTAssertTrue(reply.contains("start your workout"), "and say what it CAN do")
+        XCTAssertTrue(reply.contains("start a workout") && reply.contains("how do I deadlift"), "and say what it CAN do")
     }
 
     func testNewChatResetsToGreeting() {
@@ -9363,6 +9363,31 @@ final class MorpheRemembersTests: XCTestCase {
     func testCurlyApostrophesMatchLikeStraightOnes() {
         XCTAssertEqual(MorpheAppStore.normalizedPrompt("What\u{2019}s next?"), "what's next?")
         XCTAssertNotNil(MorpheAppStore.logRecallReply(to: MorpheAppStore.normalizedPrompt("What did I do today?"), logs: [], unit: .pounds))
+    }
+
+    func testTechniqueAnswersComeFromTheLibrary() {
+        let store = MorpheAppStore()
+        let library = store.allExercises
+        guard let squat = library.first(where: { $0.name == "Bodyweight Squat" }) else { return XCTFail("library has Bodyweight Squat") }
+        let how = MorpheAppStore.exerciseReply(to: "how do i do a bodyweight squat?", library: library) ?? ""
+        XCTAssertTrue(how.hasPrefix("Bodyweight Squat"), how)
+        XCTAssertTrue(how.contains(squat.formCue), how)
+        let muscles = MorpheAppStore.exerciseReply(to: "what muscles do bodyweight squats work", library: library) ?? ""
+        XCTAssertTrue(muscles.contains(squat.musclesWorked.lowercased()), muscles)
+        XCTAssertNil(MorpheAppStore.exerciseReply(to: "what can you do?", library: library))
+        let dead = MorpheAppStore.exerciseReply(to: "how do i deadlift?", library: library) ?? ""
+        XCTAssertTrue(dead.hasPrefix("Conventional Deadlift"), "the base movement answers a bare name: \(dead)")
+    }
+
+    func testRelayNotDeployedFallsBackToTheBuiltInAnswer() {
+        XCTAssertEqual(MorpheIntelligence.error(status: 404, body: nil), .relayUnavailable)
+        let store = MorpheAppStore()
+        let answer = store.onlineFallbackAnswer(for: MorpheIntelligence.IntelligenceError.relayUnavailable, prompt: "how do i do a bodyweight squat?")
+        XCTAssertTrue(answer.hasPrefix("Bodyweight Squat"), "no error line, the built-in answer: \(answer)")
+        XCTAssertTrue(MorpheIntelligence.relayDown, "a 404 parks the relay for the session")
+        MorpheIntelligence.relayDown = false
+        let limited = store.onlineFallbackAnswer(for: MorpheIntelligence.IntelligenceError.dailyLimit, prompt: "how do i do a bodyweight squat?")
+        XCTAssertTrue(limited.contains("today's online answers"), "actionable reasons still say so")
     }
 }
 

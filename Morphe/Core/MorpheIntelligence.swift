@@ -80,7 +80,11 @@ enum MorpheIntelligence {
     /// lives on the main actor — asserting that from a pool thread trapped.
     @MainActor static var relayEligibility: (@MainActor () -> Bool)?
 
-    @MainActor static var relayAllowed: Bool { relayEligibility?() ?? false }
+    /// Set when the relay answered 404 this session: skip it until the next
+    /// launch instead of making every question wait on a dead URL.
+    @MainActor static var relayDown = false
+
+    @MainActor static var relayAllowed: Bool { !relayDown && (relayEligibility?() ?? false) }
 
     /// True when Claude can be reached one way or the other.
     @MainActor static var isEnabled: Bool { apiKey?.isEmpty == false || relayAllowed }
@@ -173,12 +177,16 @@ enum MorpheIntelligence {
         case dailyLimit
         case budget
         case busy
+        /// The relay isn't deployed / reachable at its URL (404) — Morphe AI
+        /// online isn't live yet, so the built-in brain answers instead.
+        case relayUnavailable
 
         var errorDescription: String? {
             switch self {
             case .signInNeeded: return "Sign in again to use Morphe AI online."
             case .ageRestricted: return "Morphe AI online is for members 18 and older. If you just added your age in Profile → Your Details, give it a moment and ask again."
             case .busy: return "Morphe AI is still answering your last question — one at a time."
+            case .relayUnavailable: return "Morphe AI online isn't live yet — the built-in brain is answering."
             case .dailyLimit: return "You've used today's online answers — the built-in brain still works, and it resets at midnight UTC."
             case .budget: return "Morphe's AI budget for this month is used up — the built-in answers still work until it resets."
             case .badKey: return "That API key was rejected — check it in Profile → Morphe Intelligence."
@@ -197,7 +205,7 @@ enum MorpheIntelligence {
     /// answer (fix wave 2026-10-13). They stay visible in the thread but are
     /// never sent back to Claude as if Claude had said them.
     static func isFailureNote(_ text: String) -> Bool {
-        let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong,
+        let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong, .relayUnavailable,
                                           .signInNeeded, .ageRestricted, .dailyLimit, .budget, .busy]
         if notes.contains(where: { $0.errorDescription == text }) { return true }
         return text.hasPrefix("I couldn't reach Claude.") || text.hasPrefix("I hit a snag reaching Claude")
@@ -321,6 +329,9 @@ enum MorpheIntelligence {
         case (429, "rate_limit_error"), (503, _): return .overloaded
         case (401, _), (403, _): return .badKey
         case (429, _): return .rateLimited
+        // No function at the relay URL (not deployed yet): not the
+        // athlete's fault and not worth an error line (2026-10-15).
+        case (404, _): return .relayUnavailable
         case (500..., _): return .overloaded
         default: return .badRequest
         }

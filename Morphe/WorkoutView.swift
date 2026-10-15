@@ -1993,6 +1993,7 @@ struct TechniqueLibraryView: View {
                         }
                     }
                 }
+                .pageSwipeExempt()
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -2006,6 +2007,7 @@ struct TechniqueLibraryView: View {
                         }
                     }
                 }
+                .pageSwipeExempt()
 
                 if results.isEmpty {
                     GlassCard {
@@ -4082,6 +4084,7 @@ private struct AddExerciseToSessionSheet: View {
                             }
                         }
                     }
+                    .pageSwipeExempt()
 
                     if isCreating {
                         VStack(alignment: .leading, spacing: 8) {
@@ -4910,6 +4913,7 @@ struct DiscoverCatalogSection: View {
                 }
             }
         }
+        .pageSwipeExempt()
     }
 
     /// Compact shelf card — tap opens the preview sheet.
@@ -5037,6 +5041,7 @@ struct DiscoverCatalogSection: View {
                 ) { $0.rawValue }
             }
         }
+        .pageSwipeExempt()
     }
 
     /// Menu dressed as a filter chip — Menu labels can't take a ButtonStyle,
@@ -5485,6 +5490,7 @@ private struct FlowingPillRow: View {
                 }
             }
         }
+        .pageSwipeExempt()
     }
 }
 
@@ -7514,6 +7520,7 @@ private struct SavedWorkoutsLibraryCard: View {
                         .accessibilityLabel("New folder")
                     }
                 }
+                .pageSwipeExempt()
                 .alert("New Folder", isPresented: $showNewFolderPrompt) {
                     TextField("Folder name", text: $newFolderName)
                     Button("Create") { store.createLibraryFolder(newFolderName) }
@@ -8342,6 +8349,7 @@ private struct ExercisePickerSheet: View {
                             }
                         }
                     }
+                    .pageSwipeExempt()
 
                     Button {
                         withAnimation { showCustomForm.toggle() }
