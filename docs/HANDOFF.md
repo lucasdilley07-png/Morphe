@@ -469,3 +469,17 @@ Still open, in priority order:
   Adults" can land for a 27-year-old); the live rest countdown is below the
   exercise card; Apple Health appears under Connections and Health; the
   9-page tour is long.
+
+## Final loading screen + orb swap (2026-10-15, wave 4)
+
+- **Loading screen** is Lucas's final art (`LoadingFinal`, source
+  `BrandSource/loading-screen-final.webp`), one image for light and dark:
+  scaled to fill, a 2% breathe, motes, and the glass bar + LOADING… under
+  the baked tagline (`barLine` 0.815 of the art's height). The system
+  splash is plain `LaunchField` navy (no image), so the art fades in on the
+  same colour. The layered LoadingPlate/LoadingHelmet/LaunchHelmet assets
+  were removed; `Tools/make_loading_layers.py`, `make_light_loading_layers.py`
+  and `make_launch_splash.py` are retired with them.
+- **Orbs swapped by mode** (Lucas): the white art (`*-light.png`) shows in
+  DARK mode, the dark art (`*-dark.png`) in LIGHT mode — Morphe AI button,
+  Hey Morphe base and helmet.

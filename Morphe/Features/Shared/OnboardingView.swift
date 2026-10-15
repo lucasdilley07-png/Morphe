@@ -3,142 +3,81 @@ import SwiftUI
 struct LaunchSequenceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hasStarted = false
     @State private var revealed = false
+    @State private var breathe = false
     @State private var progress: CGFloat = 0
 
-    /// The cold-open beat (2026-10-15 loading screen): long enough for the
-    /// bar to fill and the waves to be seen moving, cold starts only.
+    /// The cold-open beat: long enough for the bar to fill, cold starts only.
     static let beat: Duration = .milliseconds(1400)
 
-    private var isLight: Bool { colorScheme == .light }
-    /// The art's own type colours: near-black on the light field, white on navy.
-    private var ink: Color { isLight ? Color(red: 0.03, green: 0.04, blue: 0.09) : .white }
+    /// Where the art's tagline sits (fraction of its height) — the bar
+    /// rides just under it.
+    private static let barLine: CGFloat = 0.815
+    /// The art is 941 × 1672.
+    private static let artAspect: CGFloat = 941.0 / 1672.0
 
     var body: some View {
         GeometryReader { geo in
+            // The art fills the screen by height on every iPhone (it is
+            // wider than any phone), so its rows map straight onto screen y.
+            let artHeight = max(geo.size.height, geo.size.width / Self.artAspect)
+            let top = (geo.size.height - artHeight) / 2
             ZStack {
-                // The system splash is the same navy with the same helmet
-                // in the same spot (LaunchField + LaunchHelmet, baked by
-                // Tools/make_launch_splash.py) — the waves fade in around it.
-                Color("LaunchField").ignoresSafeArea()
+                // Same navy as the system splash (LaunchField), so the
+                // handoff is a fade-in, never a jump.
+                Color("LaunchField")
 
-                // Every layer has a light and a dark appearance (Lucas's
-                // two loading arts); the asset catalog picks by scheme.
-                LoadingWaves(animates: !reduceMotion, isLight: isLight)
+                // Lucas's final loading art (2026-10-15), one image for
+                // light and dark: helmet, wordmark and TRAIN SMARTER are
+                // his — nothing redrawn. Motion is a slow breath of the
+                // whole frame and the motes above it, so no pixel is
+                // resampled beyond a 2% scale.
+                Image("LoadingFinal")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .scaleEffect(breathe ? 1.02 : 1.0)
+                    .clipped()
                     .opacity(revealed ? 1 : 0)
-                    .ignoresSafeArea()
 
-                LoadingHelmet(animates: !reduceMotion, isLight: isLight)
-                    .frame(width: LoadingHelmet.width, height: LoadingHelmet.height)
-                    // Screen centre lifted by LoadingHelmet.lift — exactly
-                    // where UILaunchScreen centres the baked splash image.
-                    .position(x: geo.size.width / 2, y: geo.size.height / 2 - LoadingHelmet.lift)
-                    .ignoresSafeArea()
+                if !reduceMotion {
+                    LoadingMotes(isLight: false)
+                        .blendMode(.plusLighter)
+                        .opacity(revealed ? 0.8 : 0)
+                }
 
-                VStack(spacing: 14) {
-                    MorpheWordmark(height: 40)
-                        .foregroundStyle(ink)
-                    Text(MorpheTheme.tagline)
-                        .font(MorpheTheme.microLabel(13))
-                        .tracking(6)
-                        .foregroundStyle(ink.opacity(0.88))
-                    LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: isLight)
+                VStack(spacing: 12) {
+                    LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: false)
                         .frame(width: 210, height: 9)
-                        .padding(.top, 22)
                     Text("LOADING…")
                         .font(MorpheTheme.microLabel(10))
                         .tracking(3.5)
-                        .foregroundStyle(ink.opacity(0.6))
+                        .foregroundStyle(.white.opacity(0.6))
                 }
                 .opacity(revealed ? 1 : 0)
-                .offset(y: revealed ? 0 : 8)
-                .position(x: geo.size.width / 2,
-                          y: geo.size.height / 2 - LoadingHelmet.lift + LoadingHelmet.height / 2 + 96)
-                .ignoresSafeArea()
+                .position(x: geo.size.width / 2, y: top + artHeight * Self.barLine)
             }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea()
+        .preferredColorScheme(.dark)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Morphe. \(MorpheTheme.tagline). Loading.")
         .task {
             guard !hasStarted else { return }
             hasStarted = true
-            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.45)) { revealed = true }
+            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.4)) { revealed = true }
+            if !reduceMotion {
+                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { breathe = true }
+            }
             withAnimation(.easeInOut(duration: 1.25)) { progress = 1 }
-            // One brand beat on every cold open (Lucas 2026-10-02: the
-            // opening IS the helmet). Store init is already done; this is
-            // the only cost, cold starts only, never on a foreground return.
+            // One brand beat on every cold open; store init is already
+            // done, so this is the only cost — never on a foreground return.
             try? await Task.sleep(for: Self.beat)
             store.finishLaunchSequence()
         }
-    }
-}
-
-/// The waves: Lucas's art with its lettering and helmet painted out
-/// (LoadingPlate), moving without being resampled — a slow drift and
-/// breath of the whole plate, a pulse of light that travels along the
-/// waves' own pixels, and data motes rising through it.
-private struct LoadingWaves: View {
-    let animates: Bool
-    let isLight: Bool
-    @State private var drift = false
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                plate
-                    .scaleEffect(drift ? 1.06 : 1.0)
-                    .rotationEffect(.degrees(drift ? 1.4 : -0.6))
-                    .offset(x: drift ? -6 : 4, y: drift ? -10 : 6)
-                if animates {
-                    // The cyber pulse: the same plate added onto itself
-                    // through a moving band — only lit wave pixels brighten.
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                        let t = timeline.date.timeIntervalSinceReferenceDate
-                        let phase = CGFloat((t / 2.6).truncatingRemainder(dividingBy: 1))
-                        plate
-                            .scaleEffect(drift ? 1.06 : 1.0)
-                            .rotationEffect(.degrees(drift ? 1.4 : -0.6))
-                            .offset(x: drift ? -6 : 4, y: drift ? -10 : 6)
-                            .mask {
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: .clear, location: 0),
-                                        .init(color: .white, location: 0.5),
-                                        .init(color: .clear, location: 1)
-                                    ],
-                                    startPoint: .top, endPoint: .bottom
-                                )
-                                .frame(height: geo.size.height * 0.45)
-                                .rotationEffect(.degrees(-24))
-                                .offset(y: (phase * 1.9 - 0.95) * geo.size.height)
-                            }
-                            // Dark: light added along the waves. Light: the
-                            // waves deepen (white stays white under multiply).
-                            .blendMode(isLight ? .multiply : .plusLighter)
-                            .opacity(isLight ? 0.45 : 0.55)
-                    }
-                    LoadingMotes(isLight: isLight)
-                        .blendMode(isLight ? .normal : .plusLighter)
-                }
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .clipped()
-        }
-        .onAppear {
-            guard animates else { return }
-            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) { drift = true }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var plate: some View {
-        Image("LoadingPlate")
-            .resizable()
-            .interpolation(.high)
-            .scaledToFill()
     }
 }
 
@@ -174,39 +113,6 @@ private struct LoadingMotes: View {
             }
         }
         .allowsHitTesting(false)
-    }
-}
-
-/// The glass helmet from the art, lit from behind: its glow breathes.
-private struct LoadingHelmet: View {
-    static let width: CGFloat = 236
-    static let height: CGFloat = 380
-    /// Matches LIFT_PT in Tools/make_launch_splash.py.
-    static let lift: CGFloat = 110
-    let animates: Bool
-    let isLight: Bool
-    @State private var breathe = false
-
-    var body: some View {
-        ZStack {
-            Image("LoadingHelmet")
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .blur(radius: 18)
-                .opacity(isLight ? (breathe ? 0.45 : 0.15) : (breathe ? 0.75 : 0.35))
-                .scaleEffect(1.04)
-                .blendMode(isLight ? .normal : .plusLighter)
-            Image("LoadingHelmet")
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-        }
-        .onAppear {
-            guard animates else { return }
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { breathe = true }
-        }
-        .accessibilityHidden(true)
     }
 }
 
