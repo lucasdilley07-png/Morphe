@@ -111,8 +111,16 @@ struct MoreView: View {
             nutritionPanel
         default:
             Group {
-                CoachNotesCard()
-                learningPanel
+                // Coach notes lead once there are some; an empty card sits
+                // below the lessons instead of opening the page (audit
+                // 2026-10-15).
+                if store.creatorNotes.isEmpty {
+                    learningPanel
+                    CoachNotesCard()
+                } else {
+                    CoachNotesCard()
+                    learningPanel
+                }
             }
         }
     }
@@ -678,9 +686,17 @@ private struct QuizSheet: View {
                     .multilineTextAlignment(.center)
 
                 VStack(spacing: 8) {
-                    ForEach(Array(quiz.options.enumerated()), id: \.offset) { index, option in
-                        Button(option) {
+                    // Shown in a fixed per-question shuffle (audit 2026-10-15:
+                    // the right answer sat second in 14 of 20 quizzes). The
+                    // stored index stays the source of truth.
+                    ForEach(quiz.displayOrder, id: \.self) { index in
+                        let option = quiz.options[index]
+                        Button {
                             store.answerQuiz(quiz, with: index)
+                        } label: {
+                            Text(option)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity, minHeight: 32)
                         }
                         .buttonStyle(
                             FilterChipStyle(
@@ -2852,5 +2868,20 @@ struct FoodCheckReportSheet: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+extension MiniQuiz {
+    /// A stable shuffle of the option indices, seeded by the question text
+    /// (audit 2026-10-15: the right answer sat second in 14 of 20).
+    var displayOrder: [Int] {
+        var seed: UInt64 = 1469598103934665603
+        for byte in question.utf8 { seed = (seed ^ UInt64(byte)) &* 1099511628211 }
+        var order = Array(options.indices)
+        for i in stride(from: order.count - 1, to: 0, by: -1) {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            order.swapAt(i, Int(seed >> 33) % (i + 1))
+        }
+        return order
     }
 }

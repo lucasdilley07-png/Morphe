@@ -537,3 +537,19 @@ Still open, in priority order:
   pauses, an in-app banner + a passive notification say it listens again
   after the call, and on hang-up it re-arms and clears the notification.
 - The Morphe AI button no longer slides off on Today (reverted at Lucas's call).
+
+## Loading zoom + audit wave (2026-10-15, wave 8)
+
+- **Loading screen**: Lucas's final art cut into `LoadingFinalPlate` (field,
+  mark painted out) and `LoadingFinalMark` (helmet → tagline box)
+  by `Tools/make_loading_final_layers.py`. The field zooms 8% over the beat
+  (ease-in, "entering Morphe"); the mark and the glass bar draw at 85%;
+  the whole stack fades in as one composited layer.
+- **Audit fixes**: Discover workout detail pins Start / Set for today /
+  Save above the home indicator ("Train Today" relabelled — it sets the
+  workout without starting); quiz options show in a stable per-question
+  shuffle (`MiniQuiz.displayOrder` — the answer was 2nd in 14 of 20) as
+  full-width buttons; Learn's empty "From Coaches" card sits below the
+  lessons until a note exists; empty Progress has "Start today's workout".
+- **Open**: Discover category lists give every card a full-width Start
+  (three per screen); Calendar's empty state has only the small "Add".

@@ -259,6 +259,20 @@ struct ProgressScreenView: View {
                     showMetrics: store.todayExperienceTier >= 1
                 )
 
+                // An empty story needs a first line — one tap to it
+                // (audit 2026-10-15: the card said "log your first
+                // workout" with nowhere to go).
+                if logSummary.totalLogs == 0 {
+                    Button {
+                        store.showProgressSheet = false
+                        store.startTodayWorkout()
+                    } label: {
+                        Text("Start today's workout").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .accessibilityHint("Closes Progress and opens \(store.currentWorkout.name) in Train")
+                }
+
                 // Last completed week, shareable — hidden entirely when that
                 // week holds nothing (an empty recap is not a recap).
                 if let recap = store.weeklyRecapData {

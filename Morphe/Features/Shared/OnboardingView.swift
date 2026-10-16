@@ -5,61 +5,74 @@ struct LaunchSequenceView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hasStarted = false
     @State private var revealed = false
-    @State private var breathe = false
+    @State private var entering = false
     @State private var progress: CGFloat = 0
 
     /// The cold-open beat: long enough for the bar to fill, cold starts only.
     static let beat: Duration = .milliseconds(1400)
 
-    /// Where the art's tagline sits (fraction of its height) — the bar
-    /// rides just under it.
-    private static let barLine: CGFloat = 0.815
-    /// The art is 941 × 1672.
-    private static let artAspect: CGFloat = 941.0 / 1672.0
+    /// The art is 941 × 1672; the mark layer is its (40, 260)–(901, 1340) box.
+    private static let artSize = CGSize(width: 941, height: 1672)
+    private static let markBox = CGRect(x: 40, y: 260, width: 861, height: 1080)
+    /// Helmet, wordmark, tagline and bar at 85% of the art (Lucas 2026-10-15).
+    private static let markScale: CGFloat = 0.85
+    /// The field zooms 8% over the beat — entering Morphe.
+    private static let enterZoom: CGFloat = 1.08
+    /// Under the tagline, in art rows (its bottom is ~1265, scaled about the mark's centre).
+    private static let barArtY: CGFloat = 1395
 
     var body: some View {
         GeometryReader { geo in
             // The art fills the screen by height on every iPhone (it is
-            // wider than any phone), so its rows map straight onto screen y.
-            let artHeight = max(geo.size.height, geo.size.width / Self.artAspect)
-            let top = (geo.size.height - artHeight) / 2
+            // wider than any phone), so art coordinates map by one scale.
+            let scale = max(geo.size.height / Self.artSize.height, geo.size.width / Self.artSize.width)
+            let originX = (geo.size.width - Self.artSize.width * scale) / 2
+            let originY = (geo.size.height - Self.artSize.height * scale) / 2
+            let markCenter = CGPoint(x: originX + Self.markBox.midX * scale, y: originY + Self.markBox.midY * scale)
+            let barY = markCenter.y + (Self.barArtY - Self.markBox.midY) * scale * Self.markScale
             ZStack {
-                // Same navy as the system splash (LaunchField), so the
-                // handoff is a fade-in, never a jump.
+                // Same navy as the system splash (LaunchField).
                 Color("LaunchField")
 
-                // Lucas's final loading art (2026-10-15), one image for
-                // light and dark: helmet, wordmark and TRAIN SMARTER are
-                // his — nothing redrawn. Motion is a slow breath of the
-                // whole frame and the motes above it, so no pixel is
-                // resampled beyond a 2% scale.
-                Image("LoadingFinal")
+                // Lucas's final art, split in two (Tools/make_loading_final_layers.py):
+                // the field zooms toward the viewer, the mark holds still.
+                Image("LoadingFinalPlate")
                     .resizable()
                     .interpolation(.high)
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
-                    .scaleEffect(breathe ? 1.02 : 1.0)
+                    .scaleEffect(entering ? Self.enterZoom : 1.0)
                     .clipped()
-                    .opacity(revealed ? 1 : 0)
 
                 if !reduceMotion {
                     LoadingMotes(isLight: false)
                         .blendMode(.plusLighter)
-                        .opacity(revealed ? 0.8 : 0)
+                        .scaleEffect(entering ? Self.enterZoom : 1.0)
                 }
 
-                VStack(spacing: 12) {
+                Image("LoadingFinalMark")
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: Self.markBox.width * scale * Self.markScale,
+                           height: Self.markBox.height * scale * Self.markScale)
+                    .position(markCenter)
+
+                VStack(spacing: 10) {
                     LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: false)
-                        .frame(width: 210, height: 9)
+                        .frame(width: 178, height: 8)
                     Text("LOADING…")
-                        .font(MorpheTheme.microLabel(10))
-                        .tracking(3.5)
+                        .font(MorpheTheme.microLabel(8.5))
+                        .tracking(3)
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                .opacity(revealed ? 1 : 0)
-                .position(x: geo.size.width / 2, y: top + artHeight * Self.barLine)
+                .position(x: geo.size.width / 2, y: barY)
             }
+            // One layer for the fade: per-layer opacity showed the mark's
+            // box over the half-faded field.
+            .compositingGroup()
+            .opacity(revealed ? 1 : 0)
             .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
@@ -68,9 +81,10 @@ struct LaunchSequenceView: View {
         .task {
             guard !hasStarted else { return }
             hasStarted = true
-            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.4)) { revealed = true }
+            withAnimation(.easeOut(duration: reduceMotion ? 0.15 : 0.35)) { revealed = true }
             if !reduceMotion {
-                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { breathe = true }
+                // Slow at first, gathering speed — moving into the app.
+                withAnimation(.easeIn(duration: 1.6)) { entering = true }
             }
             withAnimation(.easeInOut(duration: 1.25)) { progress = 1 }
             // One brand beat on every cold open; store init is already

@@ -5374,32 +5374,41 @@ private struct DiscoverWorkoutDetailSheet: View {
                         }
                     }
 
-                    HStack(spacing: 10) {
-                        Button("Start") {
-                            dismiss()
-                            onStart()
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel("Start \(template.name) now")
-
-                        // "Stage Today" (was "Queue"): sets it as today's
-                        // workout in Train WITHOUT starting the session —
-                        // the old label read like a synonym for Start.
-                        Button("Train Today") {
-                            dismiss()
-                            store.openWorkoutTemplate(template)
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel("Stage \(template.name) as today's workout without starting")
-
-                        Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") {
-                            store.saveCatalogWorkout(template)
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel(store.isCatalogWorkoutSaved(template) ? "\(template.name) saved" : "Save \(template.name) to My Library")
-                    }
                 }
                 .padding(20)
+            }
+            // The actions ride above the home indicator (audit 2026-10-15:
+            // Start sat under an 8-exercise list, a full scroll away).
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HStack(spacing: 10) {
+                    Button("Start") {
+                        dismiss()
+                        onStart()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .accessibilityLabel("Start \(template.name) now")
+
+                    // "Stage Today" (was "Queue"): sets it as today's
+                    // workout in Train WITHOUT starting the session —
+                    // the old label read like a synonym for Start.
+                    Button("Set for today") {
+                        dismiss()
+                        store.openWorkoutTemplate(template)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Stage \(template.name) as today's workout without starting")
+
+                    Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") {
+                        store.saveCatalogWorkout(template)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel(store.isCatalogWorkoutSaved(template) ? "\(template.name) saved" : "Save \(template.name) to My Library")
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .background(MorpheTheme.ink.opacity(0.97).ignoresSafeArea(edges: .bottom))
+                .overlay(alignment: .top) { Divider().overlay(MorpheTheme.strokeSubtle) }
             }
             .background(PremiumBackground())
             .toolbar {

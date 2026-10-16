@@ -9398,5 +9398,14 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertFalse(HeyMorpheEngine.isVoiced(level: 0.09, floor: 0.05), "room tone isn't speech")
         XCTAssertFalse(HeyMorpheEngine.isVoiced(level: 0.5, floor: 0.4), "a loud gym's steady noise isn't speech")
     }
+
+    func testQuizAnswersAreNotAlwaysInTheSameSpot() {
+        let quizzes = MorpheDemoContent.quizzes
+        let shownAt = quizzes.map { quiz in quiz.displayOrder.firstIndex(of: quiz.correctIndex)! }
+        let most = Dictionary(grouping: shownAt, by: { $0 }).values.map(\.count).max() ?? 0
+        XCTAssertLessThan(most, quizzes.count * 6 / 10, "no single slot holds most answers: \(shownAt)")
+        XCTAssertEqual(quizzes[0].displayOrder, quizzes[0].displayOrder, "stable per quiz")
+        XCTAssertEqual(Set(quizzes[0].displayOrder), Set(quizzes[0].options.indices))
+    }
 }
 
