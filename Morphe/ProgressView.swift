@@ -2054,7 +2054,13 @@ private struct WorkoutHistoryCard: View {
             let weight = weights.indices.contains(index) ? weights[index] : 0
             let rpe = rpes.indices.contains(index) ? rpes[index] : 0
             if exercise.isTimedSet(index) {
-                return weight > 0 ? "Hold \(reps[index])s · \(String(format: "%g", weight)) \(unit)" : "Hold \(reps[index])s"
+                // The stored label ("Set 2: Round 3:00") names the unit;
+                // older logs fall back to "Hold".
+                let marker = "Set \(index + 1): "
+                let stored = exercise.note.components(separatedBy: " · ").first { $0.hasPrefix(marker) }
+                    .map { String($0.dropFirst(marker.count)) }
+                let label = stored.flatMap { WorkUnit.isTimedLabel($0) ? $0 : nil } ?? "Hold \(reps[index])s"
+                return weight > 0 ? "\(label) · \(String(format: "%g", weight)) \(unit)" : label
             }
             var line = weight > 0
                 ? "\(reps[index])×\(weight.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(weight)) : String(weight)) \(unit)"

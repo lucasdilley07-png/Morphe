@@ -496,6 +496,11 @@ struct RootView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
+        // The food check's refusal (Lucas 2026-10-16): one pop-up wherever
+        // the check was started from.
+        .alert(item: Binding(get: { store.foodCheckNotice }, set: { store.foodCheckNotice = $0 })) { notice in
+            Alert(title: Text(notice.title), message: Text(notice.message), dismissButton: .default(Text("OK")))
+        }
         // Morphe's own ask before the system one (audit 2026-10-16, U13):
         // what it will send, in one card, after the first logged session.
         .sheet(isPresented: Binding(

@@ -5961,6 +5961,15 @@ final class MorpheAppStore {
     /// Barcode → the database; photo → Claude with the user's key (and
     /// the database facts when a barcode came too). Returns nil, with an
     /// honest toast, when neither path can say anything real.
+    /// The food check's refusal pop-up (Lucas 2026-10-16): shown when the
+    /// model saw something other than food or drink, or couldn't tell.
+    struct FoodCheckNotice: Identifiable, Equatable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
+    var foodCheckNotice: FoodCheckNotice?
+
     func runFoodCheck(image: UIImage?, barcode: String?) async -> FoodCheckRecord? {
         guard !foodCheckBusy else { return nil }
         foodCheckBusy = true
@@ -6014,6 +6023,24 @@ final class MorpheAppStore {
             return nil
         }
         guard var result = record else { return nil }
+        // The gate: not food or drink → a pop-up, never a report.
+        switch result.subject {
+        case "notFood":
+            let seen = result.name.lowercased()
+            let detail = (seen.isEmpty || seen == "unknown") ? "" : " It saw: \(result.name)."
+            foodCheckNotice = FoodCheckNotice(
+                title: "That isn't food or a drink",
+                message: "Morphe AI detected something other than food or drink.\(detail) The food check is only built for food and drinks — try again with the plate, package, or glass in frame.")
+            track("food_check_refused")
+            return nil
+        case "unrecognized":
+            foodCheckNotice = FoodCheckNotice(
+                title: "Morphe AI couldn't recognize that",
+                message: "It couldn't tell what's in the photo. The food check is only built for food and drinks — get closer, add light, or scan the barcode instead.")
+            track("food_check_refused")
+            return nil
+        default: break
+        }
         if result.name.isEmpty { result.name = barcode.map { "Product \($0)" } ?? "Unnamed food" }
         rememberFoodCheck(result)
         track("food_check")
@@ -9020,10 +9047,14 @@ final class MorpheAppStore {
         pendingSetDrafts[exercise.id] = nil
         Haptics.impact(.light)
 
+        // The exercise's own unit in every toast (Lucas 2026-10-16): a
+        // round is not a set.
+        let unitName = WorkUnit.isTimedLabel(label) ? String(label.split(separator: " ").first ?? "Set") : "Set"
+        let unitValue = WorkUnit.isTimedLabel(label) ? String(label.dropFirst(unitName.count + 1)) : "\(reps) reps"
         if !isWarmup, updatedCount == targetSets {
             if isTrackedWorkoutComplete {
                 showCelebration(
-                    title: "All sets logged",
+                    title: unitName == "Set" ? "All sets logged" : "All \(unitName.lowercased())s logged",
                     detail: "Great work — finish the session when you're ready.",
                     symbol: "checkmark.seal.fill"
                 )
@@ -9032,7 +9063,9 @@ final class MorpheAppStore {
                 advanceToNextIncompleteExercise()
             }
         } else if updatedCount > targetSets {
-            showToast("Extra set logged — \(updatedCount) of \(targetSets) planned.")
+            showToast("Extra \(unitName.lowercased()) logged — \(updatedCount) of \(targetSets) planned.")
+        } else if unitName != "Set" {
+            showToast("\(unitName) \(updatedCount) of \(targetSets) done — \(unitValue).")
         } else if let weight, weight > 0, !isWarmup {
             // Instant strength feedback on working sets: the same Epley
             // estimate the Progress chart uses, marked as the estimate it
@@ -19314,8 +19347,8 @@ final class MorpheAppStore {
                 cameraCountedPerSet: trackedSetCamera[exercise.id, default: []].contains(true)
                     ? trackedSetCamera[exercise.id, default: []]
                     : nil,
-                timedPerSet: labelsLogged.contains(where: { $0.hasPrefix("Hold ") })
-                    ? labelsLogged.map { $0.hasPrefix("Hold ") }
+                timedPerSet: labelsLogged.contains(where: WorkUnit.isTimedLabel)
+                    ? labelsLogged.map(WorkUnit.isTimedLabel)
                     : nil
             )
         }

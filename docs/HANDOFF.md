@@ -627,3 +627,24 @@ Findings and the plan: `docs/AUDIT-USER-INVESTOR-2026-10-16.md`. Shipped:
   "SESSION LOGGED" (it said "complete" on a 2-of-5 day) and a first-ever
   lift no longer rides as "NEW PR" — a record needs an earlier loaded set
   of that movement (`latestSessionShareCardData`).
+
+## Food-check gate + work units (2026-10-16, wave 11)
+
+- **Food check refuses non-food** (Lucas): every photo is classified first
+  (`subject`: food / drink / package / notFood / unrecognized — in the
+  system prompt, the ask, and the structured-output schema). notFood →
+  pop-up "That isn't food or a drink… It saw: X. The food check is only
+  built for food and drinks"; unrecognized → "Morphe AI couldn't recognize
+  that". One `.alert` in RootView bound to `store.foodCheckNotice`, so it
+  fires from Log a plate and Check a photo alike. Drinks are named in the
+  prompt, the items list, and the UI copy ("Check a Food or Drink").
+- **Rounds, runs, intervals, laps, holds** (`WorkUnit` in MorpheModels):
+  inferred from the exercise name + the workout's catalog category +
+  whether the prescription is timed. The console pill, the summary line
+  ("5 rounds • 3 min"), the set rows ("Round 1"), the rest bar ("then
+  round 2"), the timer buttons ("Start round 1", "End round early · log"),
+  the store toasts ("Round 2 of 5 done — Round 3:00") and history
+  ("Round 3:00") all speak the unit. Rounds/runs/intervals/laps count
+  DOWN and log themselves at zero; holds still count up. Stored label
+  format: "Round 3:00" / "Run 45s" / "Hold 30s"; `WorkUnit.isTimedLabel`
+  drives `timedPerSet`.

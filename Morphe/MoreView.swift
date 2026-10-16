@@ -2406,13 +2406,13 @@ struct FoodCheckCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Check a Food")
+                    Text("Check a Food or Drink")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .featureGlimmer()
                     Text(!store.intelligenceEnabled
-                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal from a photo and searches the web for the supply chain."
-                         : "Scan a barcode or photograph a meal. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
+                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal or drink from a photo and searches the web for the supply chain."
+                         : "Scan a barcode or photograph a meal or a drink. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

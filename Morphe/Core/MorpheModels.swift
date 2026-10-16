@@ -3838,6 +3838,9 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
     var id = UUID()
     var date = Date()
     var method: FoodCheckMethod = .barcode
+    /// What the model saw: food, drink, package, notFood, unrecognized
+    /// (empty on label-only and older records).
+    var subject = ""
     var name = ""
     var brand = ""
     var barcode: String?
@@ -3879,6 +3882,7 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
         id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
         date = (try? c.decodeIfPresent(Date.self, forKey: .date)) ?? Date()
         method = (try? c.decodeIfPresent(FoodCheckMethod.self, forKey: .method)) ?? .barcode
+        subject = (try? c.decodeIfPresent(String.self, forKey: .subject)) ?? ""
         name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
         brand = (try? c.decodeIfPresent(String.self, forKey: .brand)) ?? ""
         barcode = try? c.decodeIfPresent(String.self, forKey: .barcode)
@@ -4060,5 +4064,85 @@ struct AIMemory: Codable, Equatable {
             hash = hash &* 0x100000001b3
         }
         return String(hash, radix: 16)
+    }
+}
+
+// MARK: - Work units (Lucas 2026-10-16)
+//
+// Cardio, combat and sport work is rounds, runs, intervals and laps with a
+// clock — not "sets × reps". The console, the toasts and history all speak
+// the exercise's own unit.
+enum WorkUnit: String {
+    case set, round, run, interval, lap, hold
+
+    var singular: String {
+        switch self {
+        case .set: return "Set"
+        case .round: return "Round"
+        case .run: return "Run"
+        case .interval: return "Interval"
+        case .lap: return "Lap"
+        case .hold: return "Hold"
+        }
+    }
+    var plural: String { singular + "s" }
+    /// Timed units run a countdown; a hold counts up (you hold as long as you can).
+    var countsDown: Bool { self != .set && self != .hold }
+    var isTimed: Bool { self != .set }
+
+    /// The unit for an exercise, from its name, its workout's catalog
+    /// category, and whether the prescription is in seconds/minutes.
+    static func infer(exerciseName: String, category: String, isTimed: Bool, seconds: Int) -> WorkUnit {
+        let name = exerciseName.lowercased()
+        let cat = category.lowercased()
+        guard isTimed else { return .set }
+        // Machines first: "Bike: Sprint" is an interval, not a run.
+        if ["bike", "spin", "cycl", "row", "erg", "ski", "elliptical", "cross-trainer", "stair"].contains(where: name.contains)
+            && !["dumbbell row", "barbell row", "cable row", "bent-over", "bent over", "inverted"].contains(where: name.contains) { return .interval }
+        if ["treadmill", "run", "jog", "sprint", "stride", "tempo", "walk"].contains(where: name.contains)
+            && !name.contains("plank") { return .run }
+        if ["swim", "pool", "lap"].contains(where: name.contains) { return .lap }
+        let holdWords = ["plank", "hold", "wall sit", "dead hang", "grip hang", "carry", "hollow", "l-sit", "l sit",
+                         "isometric", "handstand", "chair pose", "superman", "stretch", "bridge", "pose"]
+        if holdWords.contains(where: name.contains) { return .hold }
+        let roundCategories = ["boxing", "combat", "hiit", "conditioning", "functional", "crossfit", "dance", "aerobic",
+                               "sport performance", "kettlebell", "calisthenics"]
+        let roundWords = ["round", "bag", "shadow", "jump rope", "skip", "burpee", "battle", "sled", "mountain climber",
+                          "box jump", "swing", "circuit", "metcon", "amrap", "emom", "tabata", "sparring", "pad", "drill", "agility", "ladder"]
+        if roundCategories.contains(where: cat.contains) || roundWords.contains(where: name.contains) { return .round }
+        return seconds >= 60 ? .round : .hold
+    }
+
+    /// "Round 3:00" / "Run 1:00" / "Hold 45s" — the stored per-set label.
+    func label(seconds: Int) -> String {
+        switch self {
+        case .hold: return "Hold \(seconds)s"
+        case .set: return ""
+        default:
+            return seconds >= 60 ? "\(singular) \(seconds / 60):\(String(format: "%02d", seconds % 60))" : "\(singular) \(seconds)s"
+        }
+    }
+
+    /// True for any stored label that means "the reps slot holds seconds".
+    static func isTimedLabel(_ label: String) -> Bool {
+        ["Hold ", "Round ", "Run ", "Interval ", "Lap "].contains(where: label.hasPrefix)
+    }
+
+    /// "5 sets" → "5 rounds", "1 sets" → "1 round" for the summary lines.
+    func rewriteSetsText(_ text: String) -> String {
+        guard self != .set else { return text }
+        let count = Int(text.prefix(while: \.isNumber)) ?? 0
+        let noun = count == 1 ? singular.lowercased() : plural.lowercased()
+        return text.replacingOccurrences(of: "sets", with: noun)
+            .replacingOccurrences(of: "set", with: noun)
+    }
+
+    /// The unit for a planned exercise, from its own prescription text.
+    static func infer(for exercise: WorkoutExercise, category: String) -> WorkUnit {
+        let reps = exercise.reps.lowercased()
+        let timed = reps.contains("sec") || reps.contains("min") || reps.range(of: #"\d+\s*s\b"#, options: .regularExpression) != nil
+        let numbers = reps.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        let seconds = reps.contains("min") ? (numbers.first ?? 1) * 60 : (numbers.last ?? 0)
+        return infer(exerciseName: exercise.name, category: category, isTimed: timed, seconds: seconds)
     }
 }

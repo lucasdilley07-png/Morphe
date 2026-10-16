@@ -116,11 +116,11 @@ struct WorkoutView: View {
                     }
                 }
             },
-            onLogHold: { seconds in
+            onLogHold: { seconds, label in
                 // Seconds ride the reps slot with an honest
-                // label (2026-10-10) — history reads "Hold 45s",
-                // never "45 reps".
-                if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: "Hold \(seconds)s") {
+                // label (2026-10-10) — history reads "Hold 45s" or
+                // "Round 3:00", never "45 reps".
+                if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: label) {
                     pendingRPE = nil
                     if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
                         autoStartRest(after: activeExercise)
@@ -2942,7 +2942,7 @@ private struct ActiveWorkoutTrackerCard: View {
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
     /// A timed move logs seconds held, labelled as a hold (2026-10-10).
-    let onLogHold: (Int) -> Void
+    let onLogHold: (_ seconds: Int, _ label: String) -> Void
     let onOpenCustomRepLogger: () -> Void
     let onEditSet: (Int) -> Void
     let onDeleteSet: (Int) -> Void
@@ -2988,7 +2988,11 @@ private struct ActiveWorkoutTrackerCard: View {
 
     /// Load controls stay hidden for a bodyweight move with no load on
     /// it; one tap brings them back for weighted variations.
-    private var hidesLoad: Bool { isBodyweightMove && weight == 0 && !showsLoadForBodyweight }
+    /// Rounds, runs, intervals and laps carry no load either (a weighted
+    /// vest is one tap away) — jump rope showed a plate stepper.
+    private var hidesLoad: Bool {
+        (isBodyweightMove || [.round, .run, .interval, .lap].contains(unit)) && weight == 0 && !showsLoadForBodyweight
+    }
 
     /// Seconds-based moves get a timer, not a rep stepper.
     private var isTimedMove: Bool {
@@ -3000,6 +3004,13 @@ private struct ActiveWorkoutTrackerCard: View {
         if ["clean", "snatch", "hanging", "raise", "jerk"].contains(where: name.contains) { return false }
         return ["plank", "hold", "wall sit", "dead hang", "grip hang", "carry", "hollow", "l-sit", "l sit", "isometric",
                 "handstand", "chair pose", "superman"].contains(where: name.contains)
+    }
+
+    /// Rounds, runs, intervals, laps, holds or sets — the exercise's own
+    /// unit (Lucas 2026-10-16: cardio is not sets × reps).
+    private var unit: WorkUnit {
+        WorkUnit.infer(exerciseName: exercise.name, category: workout.categoryTag,
+                       isTimed: isTimedMove, seconds: prescribedHoldSeconds)
     }
 
     /// The prescribed hold, parsed from the reps text ("30-45s", "1 min");
@@ -3019,6 +3030,17 @@ private struct ActiveWorkoutTrackerCard: View {
         holdRunning = false
     }
 
+    /// Remaining time for a countdown unit, elapsed for a hold.
+    private var clockText: String {
+        let shown: Int
+        if unit.countsDown {
+            shown = holdRunning || holdElapsed > 0 ? max(holdTarget - holdElapsed, 0) : holdTarget
+        } else {
+            shown = holdRunning || holdElapsed > 0 ? holdElapsed : holdTarget
+        }
+        return shown >= 60 ? "\(shown / 60):\(String(format: "%02d", shown % 60))" : "\(shown)s"
+    }
+
     private func startHold() {
         holdElapsed = 0
         holdRunning = true
@@ -3027,7 +3049,16 @@ private struct ActiveWorkoutTrackerCard: View {
         holdTicker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             MainActor.assumeIsolated {
                 holdElapsed += 1
-                if holdElapsed == holdTarget { Haptics.success() }
+                if holdElapsed == holdTarget {
+                    Haptics.success()
+                    // A round/run ends itself at zero and logs the full
+                    // prescription; a hold keeps counting.
+                    if unit.countsDown {
+                        stopHold()
+                        onLogHold(holdTarget, unit.label(seconds: holdTarget))
+                        holdElapsed = 0
+                    }
+                }
             }
         }
     }
@@ -3104,7 +3135,7 @@ private struct ActiveWorkoutTrackerCard: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
                     Spacer()
-                    MetricPill(label: "Sets", value: "\(completedSets)/\(totalSets)")
+                    MetricPill(label: unit.plural, value: "\(completedSets)/\(totalSets)")
                 }
                 // Seed the first load for a movement with no history (U2).
                 // A beat after the owner resets the weight for the new
@@ -3127,7 +3158,7 @@ private struct ActiveWorkoutTrackerCard: View {
                             .font(.subheadline.weight(.bold).monospacedDigit())
                             .foregroundStyle(MorpheTheme.textPrimary)
                             .contentTransition(.numericText(countsDown: true))
-                        Text("· then set \(min(completedSets + 1, max(totalSets, 1)))")
+                        Text("· then \(unit.singular.lowercased()) \(min(completedSets + 1, max(totalSets, 1)))")
                             .font(.footnote)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .lineLimit(1)
@@ -3182,7 +3213,7 @@ private struct ActiveWorkoutTrackerCard: View {
                         .accessibilityLabel("Open Form Check for \(exercise.name)")
                         }
                     }
-                    Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
+                    Text("\(unit.rewriteSetsText(exercise.sets)) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     ProgressBarView(progress: setProgress, color: MorpheTheme.accent)
                     // What actually happened last session — the reference the
@@ -3243,7 +3274,7 @@ private struct ActiveWorkoutTrackerCard: View {
                             Text(nextExercise.name)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("\(nextExercise.sets) • \(nextExercise.reps)")
+                            Text("\(WorkUnit.infer(for: nextExercise, category: workout.categoryTag).rewriteSetsText(nextExercise.sets)) • \(nextExercise.reps)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                         }
@@ -3302,13 +3333,15 @@ private struct ActiveWorkoutTrackerCard: View {
                             // A hold is timed, not counted (2026-10-10): the
                             // clock runs, the end of it logs one set.
                             VStack(spacing: 10) {
-                                Text(holdRunning || holdElapsed > 0 ? "\(holdElapsed)s" : "\(holdTarget)s")
+                                // A round/run counts DOWN and logs itself at
+                                // zero; a hold counts up (Lucas 2026-10-16).
+                                Text(clockText)
                                     .font(.system(size: 44, weight: .bold, design: .monospaced))
                                     .monospacedDigit()
                                     .contentTransition(.numericText(value: Double(holdElapsed)))
                                     .foregroundStyle(holdRunning && holdElapsed >= holdTarget ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                                     .frame(maxWidth: .infinity)
-                                    .accessibilityLabel(holdRunning ? "Held \(holdElapsed) seconds" : "Target \(holdTarget) seconds")
+                                    .accessibilityLabel(holdRunning ? "\(unit.singular) running, \(clockText)" : "Target \(holdTarget) seconds")
                                 HStack(spacing: 8) {
                                     Text("TARGET")
                                         .font(MorpheTheme.microLabel(10)).tracking(1.2)
@@ -3321,21 +3354,21 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Spacer()
                                 }
                                 if holdRunning {
-                                    Button("Stop · log \(holdElapsed)s") {
+                                    Button(unit == .hold ? "Stop · log \(holdElapsed)s" : "End \(unit.singular.lowercased()) early · log \(holdElapsed)s") {
                                         stopHold()
-                                        if holdElapsed > 0 { onLogHold(holdElapsed); holdElapsed = 0 }
+                                        if holdElapsed > 0 { onLogHold(holdElapsed, unit.label(seconds: holdElapsed)); holdElapsed = 0 }
                                     }
                                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                                 } else if holdElapsed > 0 {
                                     HStack(spacing: 8) {
-                                        Button("Log \(holdElapsed)s") { onLogHold(holdElapsed); holdElapsed = 0 }
+                                        Button("Log \(unit.label(seconds: holdElapsed))") { onLogHold(holdElapsed, unit.label(seconds: holdElapsed)); holdElapsed = 0 }
                                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                                         Button("Redo") { holdElapsed = 0 }
                                             .buttonStyle(SecondaryCTAButtonStyle())
                                             .frame(width: 88)
                                     }
                                 } else {
-                                    Button("Start hold") { startHold() }
+                                    Button(unit == .hold ? "Start hold" : "Start \(unit.singular.lowercased()) \(completedSets + 1)") { startHold() }
                                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                                 }
                             }
@@ -3422,7 +3455,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     // No history for this movement: a starting guess from
                     // bodyweight when Morphe has it, honest advice when it
                     // doesn't (audit 2026-10-16, U2).
-                    if completedSets == 0, !isBodyweightMove,
+                    if completedSets == 0, !isBodyweightMove, !unit.isTimed,
                        store.lastSessionSet(forExerciseNamed: exercise.name, setIndex: 0) == nil {
                         if let start = store.suggestedStartingLoad(for: exercise) {
                             Text("First time with this one? \(weightUnit.format(start)) is a starting guess from your bodyweight and level — it's loaded above. Too easy or too hard, change it next set.")
@@ -3484,12 +3517,12 @@ private struct ActiveWorkoutTrackerCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(repsLogged.enumerated()), id: \.offset) { index, reps in
                             HStack(spacing: 10) {
-                                Text("Set \(index + 1)")
+                                Text("\(unit.singular) \(index + 1)")
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(MorpheTheme.accentAlt)
                                     .frame(width: 44, alignment: .leading)
 
-                                Text(labelsLogged.indices.contains(index) && labelsLogged[index].hasPrefix("Hold ")
+                                Text(labelsLogged.indices.contains(index) && WorkUnit.isTimedLabel(labelsLogged[index])
                                      ? "\(labelsLogged[index]) · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))"
                                      : "\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
                                     .font(.caption)

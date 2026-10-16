@@ -4947,6 +4947,31 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(ranked.count, 2, "sport mismatches are down-ranked, not excluded")
     }
 
+    // MARK: Work units (Lucas 2026-10-16)
+
+    func testWorkUnitInfersRoundsRunsLapsHoldsAndSets() {
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Shadow Boxing", category: "Boxing & Combat Conditioning", isTimed: true, seconds: 180), .round)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Treadmill Walk", category: "Running & Cardio", isTimed: true, seconds: 300), .run)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Bike: Sprint", category: "Cycling, Rowing & Swim", isTimed: true, seconds: 60), .interval)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Pool: Easy Swim", category: "Cycling, Rowing & Swim", isTimed: true, seconds: 120), .lap)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Plank", category: "Pilates & Core Control", isTimed: true, seconds: 45), .hold)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Barbell Back Squat", category: "Strength & Powerlifting", isTimed: false, seconds: 0), .set)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Barbell Row", category: "Strength & Powerlifting", isTimed: false, seconds: 0), .set,
+                       "a rowing lift is a set, not a rowing-machine interval")
+        XCTAssertEqual(WorkUnit.round.label(seconds: 180), "Round 3:00")
+        XCTAssertEqual(WorkUnit.run.label(seconds: 45), "Run 45s")
+        XCTAssertEqual(WorkUnit.hold.label(seconds: 30), "Hold 30s")
+        XCTAssertTrue(WorkUnit.isTimedLabel("Round 3:00")); XCTAssertFalse(WorkUnit.isTimedLabel("Superset"))
+        XCTAssertEqual(WorkUnit.round.rewriteSetsText("5 sets"), "5 rounds"); XCTAssertEqual(WorkUnit.round.rewriteSetsText("1 sets"), "1 round")
+    }
+
+    func testFoodCheckRecordDecodesSubject() throws {
+        let data = Data(#"{"subject":"notFood","name":"a shoe"}"#.utf8)
+        let record = try JSONDecoder().decode(FoodCheckRecord.self, from: data)
+        XCTAssertEqual(record.subject, "notFood")
+        XCTAssertEqual(record.name, "a shoe")
+    }
+
     // MARK: Load suggestion (audit 2026-10-16, U1)
 
     private func squatLog(reps: [Int], weight: Double) -> WorkoutLog {
