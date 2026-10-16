@@ -4400,6 +4400,9 @@ private struct WelcomeExperienceView: View {
     @State private var page: Int
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var bioDraft = ""
+    /// First run shows one Apple-style welcome page; "Take the full tour"
+    /// opens the stops. A replay from Profile opens the stops directly.
+    @State private var showFullTour = false
 
     /// `startPage` exists for previews and render tests only.
     init(startPage: Int = 0) {
@@ -4421,6 +4424,101 @@ private struct WelcomeExperienceView: View {
 
     var body: some View {
         NavigationStack {
+            if !store.welcomeIsReplay && !showFullTour {
+                firstRunWelcome
+            } else {
+                tour
+            }
+        }
+        .interactiveDismissDisabled(false)
+        .onChange(of: photoPickerItem) {
+            guard let item = photoPickerItem else { return }
+            Task {
+                if let raw = try? await item.loadTransferable(type: Data.self),
+                   let jpeg = ProfileView.processedProfilePhoto(raw) {
+                    store.updateProfilePhoto(jpeg)
+                }
+                photoPickerItem = nil
+            }
+        }
+    }
+
+    /// Apple's own welcome component (the Fitness / Journal / Photos
+    /// "Welcome to" page, reference audit 2026-10-16): the mark, one title,
+    /// four feature rows with symbols, one button. No tutorial wall —
+    /// everything else is a tip in place (GuideHint) when it's relevant.
+    private var firstRunWelcome: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 28) {
+                    MorpheHelmetMark(glowRadius: 14)
+                        .frame(width: 96, height: 96)
+                        .padding(.top, 36)
+                    VStack(spacing: 6) {
+                        Text("Welcome to Morphe")
+                            .font(.system(.largeTitle, weight: .bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                        Text("You log honestly. Morphe does the rest.")
+                            .font(.body)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    VStack(alignment: .leading, spacing: 22) {
+                        welcomeRow("figure.strengthtraining.traditional", "Your program is ready",
+                                   "\(store.currentWorkout.name) is on Today, built from your answers.")
+                        welcomeRow("checkmark.circle.fill", "Tap the check after each set",
+                                   "Morphe fills in reps and weight from last time and starts your rest.")
+                        welcomeRow("camera.viewfinder", "The camera counts your reps",
+                                   "Prop the phone up. Video never leaves it.")
+                        welcomeRow("sparkles", "Ask Morphe anything",
+                                   "What's next, log a set by voice, what to eat — from your own logs.")
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+            VStack(spacing: 10) {
+                Button("Continue") { finish() }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                Button("Take the two-minute tour") {
+                    withAnimation(.easeInOut(duration: 0.25)) { showFullTour = true }
+                }
+                .buttonStyle(.plain)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(minHeight: 44)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+        }
+        .background(PremiumBackground())
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func welcomeRow(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: symbol)
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 40, alignment: .center)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var tour: some View {
             VStack(spacing: 0) {
                 TabView(selection: $page) {
                     ForEach(pages, id: \.rawValue) { p in
@@ -4456,18 +4554,6 @@ private struct WelcomeExperienceView: View {
                     }
                 }
             }
-        }
-        .interactiveDismissDisabled(false)
-        .onChange(of: photoPickerItem) {
-            guard let item = photoPickerItem else { return }
-            Task {
-                if let raw = try? await item.loadTransferable(type: Data.self),
-                   let jpeg = ProfileView.processedProfilePhoto(raw) {
-                    store.updateProfilePhoto(jpeg)
-                }
-                photoPickerItem = nil
-            }
-        }
     }
 
     // MARK: Pages

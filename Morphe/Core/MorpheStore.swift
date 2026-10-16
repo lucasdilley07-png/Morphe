@@ -7232,7 +7232,23 @@ final class MorpheAppStore {
             // A General Fitness athlete has no sport to mismatch: every
             // template fits (the specialist rule below keeps niche
             // disciplines out of the default rotation).
-            let sportRank = (sport == .generalFitness || t.sport == sport || t.sport == .generalFitness) ? 0 : 1
+            // Catalog templates all decode as .generalFitness, so the real
+            // sport signal is the category and name (audit 2026-10-16: a
+            // General Fitness + Strength athlete opened on "Fighter Strength
+            // Base", a boxing plan, because every template "matched").
+            let affinity = Self.templateSportAffinity(t)
+            let sportRank: Int
+            if affinity.sports.contains(sport) || (t.sport == sport && t.sport != .generalFitness) {
+                sportRank = 0
+            } else if sport == .generalFitness || sport == .personalTraining || sport == .hybridAthlete {
+                // No sport to match: generic plans first, another
+                // sport's plans after them.
+                sportRank = affinity.isSportSpecific ? 1 : 0
+            } else {
+                // A sport athlete: own sport, then the generic backbone,
+                // then other sports' plans.
+                sportRank = affinity.isSportSpecific ? 2 : 1
+            }
             let haystack = "\(t.categoryTag) \(t.focusTag) \(t.trainingTypeTag) \(t.type)".lowercased()
             let styleRank = (styleKeywords.isEmpty
                 || styleKeywords.contains(where: { haystack.contains($0) })) ? 0 : 1
@@ -7247,6 +7263,65 @@ final class MorpheAppStore {
             return (injuryPenalty(for: t, areas: flaggedAreas), sportRank + specialistRank, goalRank, styleRank, equipmentRank, t.name)
         }
         return candidates.sorted { key($0) < key($1) }
+    }
+
+    /// Which sports a template is written for, read from its catalog
+    /// category and name. `isSportSpecific` is true for plans built around
+    /// one sport (a boxing round, a swimmer's dryland day, a golf power day
+    /// — even when the sport isn't one Morphe lets you pick); `sports` lists
+    /// the pickable sports it serves. Generic strength/conditioning plans
+    /// return (false, []); "Strength & Powerlifting" and "Bodybuilding"
+    /// plans name their discipline without being sport-specific.
+    static func templateSportAffinity(_ t: WorkoutTemplate) -> (isSportSpecific: Bool, sports: Set<SportFocus>) {
+        let category = t.categoryTag.lowercased()
+        let name = t.name.lowercased()
+        var sports: Set<SportFocus> = []
+        var specific = false
+
+        if category.contains("boxing") || category.contains("combat") {
+            specific = true
+            sports.formUnion([.boxing, .mma, .wrestling])
+            if name.contains("grappl") { sports = [.mma, .wrestling] }
+        } else if category.contains("strength & powerlifting") {
+            sports.insert(.strength)
+        } else if category.contains("bodybuilding") {
+            sports.insert(.bodybuilding)
+        } else if category.contains("running") {
+            // Treadmill, bike, and rowing intervals live here too; only the
+            // running sessions are the runner's own.
+            let isRun = ["run", "jog", "tempo", "stride", "hill", "sprint", "cadence"].contains(where: name.contains)
+                && !["bike", "spin", "row", "cross-trainer"].contains(where: name.contains)
+            if isRun { specific = true; sports.formUnion([.running, .track]) }
+        } else if category.contains("swim") {
+            if name.contains("pool") || name.contains("swim") { specific = true; sports.insert(.swimming) }
+        }
+
+        if category.contains("sport performance") {
+            specific = true
+            let keys: [(String, SportFocus)] = [
+                ("soccer", .soccer), ("pitch", .soccer),
+                ("basketball", .basketball), ("hoops", .basketball),
+                ("football", .football), ("gasser", .football), ("trench", .football), ("skill-position", .football),
+                ("sprint", .track), ("acceleration", .track), ("jumps-event", .track), ("top-end speed", .track),
+                ("runner", .running), ("cadence", .running),
+                ("baseball", .baseball), ("bat speed", .baseball), ("pitcher", .baseball), ("base-running", .baseball), ("thrower", .baseball),
+                ("tennis", .tennis), ("serve", .tennis),
+                ("volleyball", .volleyball), ("dig & dive", .volleyball),
+                ("wrestl", .wrestling), ("grappl", .wrestling), ("takedown", .wrestling), ("mat strength", .wrestling),
+                ("boxer", .boxing), ("fight", .boxing), ("knockout", .boxing),
+                ("swim", .swimming),
+                ("court", .basketball), ("court", .tennis), ("court", .volleyball)
+            ]
+            for (word, sport) in keys where name.contains(word) { sports.insert(sport) }
+            if sports.contains(.wrestling) && (name.contains("grappl") || name.contains("takedown")) { sports.insert(.mma) }
+            if sports.contains(.boxing) { sports.insert(.mma) }
+            // Sport-agnostic athletic days ("Agility Day", "Plyo Day",
+            // "Landing Mechanics") serve every field and court sport.
+            if sports.isEmpty && !["golf", "clubhead"].contains(where: name.contains) {
+                specific = false
+            }
+        }
+        return (specific, sports)
     }
 
     /// The athlete's goal choices → the catalog's goal values.
@@ -13912,8 +13987,14 @@ final class MorpheAppStore {
     /// once it is gone.
     func replayGuide() {
         pendingGuideReplay = true
+        welcomeIsReplay = true
         showClientProfile = false
     }
+
+    /// True while the guide was opened from Profile (reference audit
+    /// 2026-10-16): first run shows the one-page Apple-style welcome and
+    /// lands on Today; a replay shows the full stop-by-stop tour.
+    var welcomeIsReplay = false
 
     /// Set by replayGuide; the profile sheet's onDismiss raises the guide
     /// from here, once the profile is actually gone (a timer guessed at the
@@ -13948,6 +14029,7 @@ final class MorpheAppStore {
 
     func dismissWelcomeExperience() {
         showWelcomeExperience = false
+        welcomeIsReplay = false
         // The welcome landed — the once-ever debt is settled (audit 13, P2).
         UserDefaults.standard.removeObject(forKey: Self.welcomePendingKey)
         // A celebration that arrived during the hello/welcome window

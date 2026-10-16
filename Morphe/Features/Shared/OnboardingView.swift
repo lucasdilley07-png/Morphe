@@ -194,11 +194,19 @@ struct OnboardingFlowView: View {
         // Profile homes: gender, equipment, meal prep, injuries (chronic —
         // acute pain has the mid-session flag). Every deferred field
         // defaults safely. One account type — no role fork.
+        // One decision per screen (reference audit 2026-10-16: Duolingo /
+        // TikTok / Instagram ask one thing at a time behind a thin progress
+        // bar). The composite .identity/.training/.week pages stay defined
+        // but are no longer in the path.
         return [
             .welcome,
-            .identity,
-            .training,
-            .week
+            .name,
+            .username,
+            .goal,
+            .sport,
+            .experience,
+            .schedule,
+            .review
         ]
     }
 
@@ -253,7 +261,7 @@ struct OnboardingFlowView: View {
         case .review, .week:
             return isCoachFlow ? "Create Workspace" : "Create Plan"
         default:
-            return "Next"
+            return "Continue"
         }
     }
 
@@ -263,63 +271,41 @@ struct OnboardingFlowView: View {
             if isGeneratingPlan {
                 PersonalizedPlanLoadingView()
             } else {
-                ScrollViewReader { proxy in
+                // A fresh scroll view per step (reference audit 2026-10-16):
+                // the old scrollTo("top") on every step change left the
+                // scroll view tracking, and the first tap on the new step
+                // only stopped it — every first tap on a card was lost.
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         if currentStep != .welcome {
-                            GlassCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("PROFILE SETUP")
-                                        .font(MorpheTheme.microLabel())
-                                        .tracking(1.4)
-                                        .foregroundStyle(MorpheTheme.accentText)
-
-                                    Text(isCoachFlow ? "Create your coach profile" : "Create your profile")
-                                        .font(.title2.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-
-                                    Text(isCoachFlow
-                                        ? "A few quick answers set up your coaching workspace — athletes, programs, and outreach in one place."
-                                        : "Answer honestly — Morphe turns it into a ready-to-run program and handles the rest.")
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-
-                                    // Goal gradient, honestly earned: the
-                                    // account they just created counts as a
-                                    // completed step, so the bar never reads
-                                    // "you're at zero" — and the credit line
-                                    // states a real fact, not a pep line.
-                                    ProgressBarView(
-                                        progress: Double(stepIndex + 1) / Double(steps.count + 1),
-                                        color: MorpheTheme.accent
-                                    )
-
-                                    HStack(spacing: 8) {
-                                        // Numbered like the opener's list: name is 01,
-                                        // the plan Morphe builds is 04 (audit 2026-10-15:
-                                        // the first question read "STEP 2 / 4").
-                                        Text("STEP \(stepIndex) / \(steps.count)")
-                                            .font(MorpheTheme.microLabel(10))
-                                            .tracking(1.4)
-                                            .foregroundStyle(MorpheTheme.textMuted)
-                                        Label("Account created", systemImage: "checkmark")
-                                            .font(MorpheTheme.microLabel(10))
-                                            .tracking(1.0)
-                                            .foregroundStyle(MorpheTheme.accentText)
-                                    }
-                                }
+                            // Thin bar + count, nothing else (the old header
+                            // card repeated a title and a subtitle on every
+                            // step). The account already counts as done.
+                            let answered = max(stepIndex, 1)
+                            HStack(spacing: 12) {
+                                ProgressBarView(
+                                    progress: Double(answered) / Double(steps.count),
+                                    color: MorpheTheme.accent
+                                )
+                                Text("\(answered) OF \(steps.count - 1)")
+                                    .font(MorpheTheme.microLabel(10))
+                                    .tracking(1.2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize()
                             }
+                            .padding(.top, 4)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Step \(answered) of \(steps.count - 1)")
                         }
 
                         stepView(for: currentStep)
-                            .id(stepIndex)
-                            .transition(.blurIn)
 
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 24)
-                    .id("onboardingTop")
                 }
+                .id(stepIndex)
+                .transition(.blurIn)
                 .scrollDismissesKeyboard(.immediately)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     ctaBar(canAdvance: advanceAllowed)
@@ -358,20 +344,6 @@ struct OnboardingFlowView: View {
                     .frame(height: Self.windowTopInset + 22)
                     .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
-                }
-                // A long step scrolled to its Next button must not leave the
-                // NEXT step's title off-screen.
-                .onChange(of: stepIndex) { _, _ in
-                    // Jump, don't glide (audit 2026-10-15): the step change
-                    // runs inside withAnimation, so the scroll animated too —
-                    // and a scroll view in motion spends taps stopping
-                    // itself, which read as dead buttons on the next step.
-                    var jump = Transaction()
-                    jump.disablesAnimations = true
-                    withTransaction(jump) {
-                        proxy.scrollTo("onboardingTop", anchor: .top)
-                    }
-                }
                 }
             }
         }
@@ -696,16 +668,7 @@ private struct WelcomeLandingStep: View {
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
 
-                            // The promise matches the flow — it used to say "4 quick
-                            // things" while the flow ran 13 screens (audit finding).
-                            VStack(alignment: .leading, spacing: 10) {
-                                if beat[4] { LandingPoint(index: 1, text: "Your name and handle").transition(.blurIn) }
-                                if beat[5] { LandingPoint(index: 2, text: "Your goals, sport, and experience").transition(.blurIn) }
-                                if beat[6] { LandingPoint(index: 3, text: "Your training week").transition(.blurIn) }
-                                if beat[7] { LandingPoint(index: 4, text: "Morphe builds your ready-to-run program").transition(.blurIn) }
-                            }
-
-                            Text("Four steps, about a minute. The more accurate your answers, the sharper your program.")
+                            Text("Seven quick questions, about a minute. The more accurate your answers, the sharper your program.")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textMuted)
                         }
@@ -937,12 +900,16 @@ private struct GoalSelectionStep: View {
                         }
                     }
 
-                WrapStack(spacing: 10) {
+                // Icon cards, one per row (reference audit 2026-10-16:
+                // Duolingo's single-select list, TikTok's interest cards).
+                VStack(spacing: 8) {
                     ForEach(FitnessGoalOption.allCases) { goal in
-                        Button(goal.rawValue) {
-                            store.toggleOnboardingGoal(goal)
-                        }
-                        .buttonStyle(FilterChipStyle(isSelected: store.onboardingDraft.selectedGoals.contains(goal)))
+                        ChoiceCard(
+                            symbol: goal.symbol,
+                            title: goal.rawValue,
+                            isSelected: store.onboardingDraft.selectedGoals.contains(goal),
+                            multi: true
+                        ) { store.toggleOnboardingGoal(goal) }
                     }
                 }
 
@@ -1032,20 +999,17 @@ private struct SportSelectionStep: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textMuted)
 
-                WrapStack(spacing: 10) {
+                // The interest picker (reference audit 2026-10-16: TikTok's
+                // two-column icon grid).
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     ForEach(SportFocus.pickable) { sport in
-                        Button(sport.rawValue) {
-                            store.toggleOnboardingSport(sport)
-                        }
-                        .buttonStyle(
-                            FilterChipStyle(
-                                isSelected: store.onboardingDraft.selectedSports.contains(sport),
-                                // One selected colour across onboarding (audit
-                                // 2026-10-15: General Fitness filled black beside
-                                // blue goal chips).
-                                selectedColor: MorpheTheme.accent
-                            )
-                        )
+                        ChoiceCard(
+                            symbol: sport.symbol,
+                            title: sport.rawValue,
+                            isSelected: store.onboardingDraft.selectedSports.contains(sport),
+                            multi: true,
+                            compact: true
+                        ) { store.toggleOnboardingSport(sport) }
                     }
                 }
             }
@@ -1061,12 +1025,15 @@ private struct ExperienceLevelStep: View {
             title: "How experienced are you?",
             subtitle: "We keep the language and challenge level friendly to where you are now."
         ) {
-            WrapStack(spacing: 8) {
+            VStack(spacing: 8) {
                 ForEach(ExperienceLevelOption.allCases) { level in
-                    Button(level.rawValue) {
-                        selection = level
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == level))
+                    ChoiceCard(
+                        symbol: level.symbol,
+                        title: level.rawValue,
+                        detail: level.detail,
+                        isSelected: selection == level,
+                        multi: false
+                    ) { selection = level }
                 }
             }
         }
@@ -1293,6 +1260,8 @@ private struct PersonalizedPlanLoadingView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var message = "Reading your goals..."
     @State private var hasStarted = false
+    /// How many lines have landed (each ticks to a check as it completes).
+    @State private var done = -1
 
     // Only inputs the plan actually reads (equipment/coaching-style steps
     // no longer exist).
@@ -1325,14 +1294,26 @@ private struct PersonalizedPlanLoadingView: View {
                 .font(.headline)
                 .foregroundStyle(MorpheTheme.textPrimary)
 
-            Text(message.uppercased())
-                .font(MorpheTheme.microLabel(11))
-                .tracking(1.6)
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .transition(.opacity)
-
-            ProgressView()
-                .tint(MorpheTheme.accent)
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(messages.enumerated()), id: \.offset) { index, line in
+                    HStack(spacing: 10) {
+                        if index < done {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(MorpheTheme.accentText)
+                        } else if index == done {
+                            ProgressView().tint(MorpheTheme.accent).controlSize(.small)
+                        } else {
+                            Image(systemName: "circle")
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        Text(line.replacingOccurrences(of: "...", with: ""))
+                            .font(.subheadline.weight(index <= done ? .semibold : .regular))
+                            .foregroundStyle(index <= done ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                    }
+                    .animation(.easeInOut(duration: 0.25), value: done)
+                }
+            }
+            .padding(.top, 4)
 
             Text("Morphe is shaping your starting plan from your goal, sport, experience, and weekly schedule.")
                 .font(.caption)
@@ -1350,8 +1331,15 @@ private struct PersonalizedPlanLoadingView: View {
             // One short beat, not theater: the plan derivation is instant,
             // and 2.1s of scripted fake progress was a gate between the
             // user and their first real screen (UX audit P1-12).
-            message = messages.last ?? ""
-            try? await Task.sleep(for: .milliseconds(500))
+            // The work is real (goals → catalog → week); showing it land
+            // line by line is the "building your plan" beat every reference
+            // app earns reciprocity with (audit 2026-10-16). ~2.4 s total.
+            for (index, line) in messages.enumerated() {
+                withAnimation(.easeInOut(duration: 0.25)) { message = line; done = index }
+                try? await Task.sleep(for: .milliseconds(index == messages.count - 1 ? 900 : 750))
+            }
+            withAnimation(.easeInOut(duration: 0.25)) { done = messages.count }
+            try? await Task.sleep(for: .milliseconds(350))
 
             store.completeOnboarding()
         }
@@ -1399,6 +1387,128 @@ private struct ProfileLine: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textPrimary)
             }
+        }
+    }
+}
+
+
+// MARK: - Choice cards (reference audit 2026-10-16)
+
+/// The selectable card every question uses: symbol, title, optional
+/// detail, a check when chosen. Full-width rows for single lists,
+/// `compact` for the two-column interest grid.
+private struct ChoiceCard: View {
+    let symbol: String
+    let title: String
+    var detail: String? = nil
+    let isSelected: Bool
+    var multi: Bool = false
+    var compact: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.selection()
+            action()
+        } label: {
+            HStack(spacing: compact ? 10 : 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: compact ? 18 : 22, weight: .medium))
+                    .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.accentText)
+                    .frame(width: compact ? 24 : 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(compact ? .subheadline.weight(.semibold) : .body.weight(.semibold))
+                        .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
+                        .lineLimit(compact ? 2 : 1)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.leading)
+                    if let detail {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent).opacity(0.85) : MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 4)
+                if !compact {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textMuted)
+                }
+            }
+            .padding(.horizontal, compact ? 12 : 16)
+            .padding(.vertical, compact ? 12 : 14)
+            .frame(maxWidth: .infinity, minHeight: compact ? 56 : 60, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(isSelected ? MorpheTheme.accent : MorpheTheme.panel)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(detail.map { "\(title), \($0)" } ?? title)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+private extension FitnessGoalOption {
+    var symbol: String {
+        switch self {
+        case .loseWeight: return "flame.fill"
+        case .gainMuscle: return "figure.strengthtraining.traditional"
+        case .improveSportPerformance: return "sportscourt.fill"
+        case .buildConsistency: return "calendar.badge.checkmark"
+        case .improveConditioning: return "heart.fill"
+        case .getStronger: return "dumbbell.fill"
+        case .returnAfterInjury: return "bandage.fill"
+        case .prepareForEvent: return "flag.checkered"
+        }
+    }
+}
+
+private extension ExperienceLevelOption {
+    var symbol: String {
+        switch self {
+        case .beginner: return "leaf.fill"
+        case .intermediate: return "figure.walk.motion"
+        case .advanced: return "bolt.fill"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .beginner: return "New, or coming back. Light loads, clear cues."
+        case .intermediate: return "A year or more of steady training."
+        case .advanced: return "Years in — you know your numbers."
+        }
+    }
+}
+
+private extension SportFocus {
+    var symbol: String {
+        switch self {
+        case .generalFitness: return "figure.mixed.cardio"
+        case .weightLoss: return "flame.fill"
+        case .strength: return "dumbbell.fill"
+        case .bodybuilding: return "figure.strengthtraining.traditional"
+        case .personalTraining: return "figure.strengthtraining.functional"
+        case .boxing: return "figure.boxing"
+        case .mma: return "figure.martial.arts"
+        case .soccer: return "soccerball"
+        case .basketball: return "basketball.fill"
+        case .football: return "football.fill"
+        case .track: return "figure.track.and.field"
+        case .running: return "figure.run"
+        case .baseball: return "baseball.fill"
+        case .tennis: return "tennis.racket"
+        case .volleyball: return "volleyball.fill"
+        case .wrestling: return "figure.wrestling"
+        case .swimming: return "figure.pool.swim"
+        case .hybridAthlete: return "figure.cross.training"
         }
     }
 }

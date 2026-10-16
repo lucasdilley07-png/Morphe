@@ -4947,6 +4947,50 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(ranked.count, 2, "sport mismatches are down-ranked, not excluded")
     }
 
+    func testCatalogSportAffinityReadsCategoryAndName() {
+        // Every catalog template decodes as .generalFitness; the sport
+        // lives in the category + name.
+        var fighter = template(name: "Fighter Strength Base", sport: .generalFitness)
+        fighter.categoryTag = "Boxing & Combat Conditioning"
+        var swim = template(name: "Pull Power — Swimmer's Dryland Strength", sport: .generalFitness)
+        swim.categoryTag = "Sport Performance"
+        var plyo = template(name: "Plyo Day: Jump and Rebound", sport: .generalFitness)
+        plyo.categoryTag = "Sport Performance"
+        var golf = template(name: "Clubhead Speed — Golf Power Day", sport: .generalFitness)
+        golf.categoryTag = "Sport Performance"
+        var kb = template(name: "Full-Body Strength A — Squat & Press", sport: .generalFitness)
+        kb.categoryTag = "Kettlebell & Dumbbell"
+
+        let f = MorpheAppStore.templateSportAffinity(fighter)
+        XCTAssertTrue(f.isSportSpecific); XCTAssertTrue(f.sports.contains(.boxing)); XCTAssertTrue(f.sports.contains(.mma))
+        let s = MorpheAppStore.templateSportAffinity(swim)
+        XCTAssertTrue(s.isSportSpecific); XCTAssertEqual(s.sports, [.swimming])
+        XCTAssertFalse(MorpheAppStore.templateSportAffinity(plyo).isSportSpecific, "an agnostic athletic day serves everyone")
+        XCTAssertTrue(MorpheAppStore.templateSportAffinity(golf).isSportSpecific, "golf is specific even though it isn't pickable")
+        XCTAssertFalse(MorpheAppStore.templateSportAffinity(kb).isSportSpecific)
+    }
+
+    func testGeneralFitnessAthleteGetsGenericPlanBeforeAnotherSportsPlan() {
+        // Audit 2026-10-16: General Fitness + Strength, gain muscle,
+        // intermediate → day one was "Fighter Strength Base" (boxing),
+        // because the name tiebreak decided and "F" beats "K".
+        var fighter = template(name: "Fighter Strength Base", sport: .generalFitness, equipment: "Full Gym")
+        fighter.categoryTag = "Boxing & Combat Conditioning"
+        var kb = template(name: "Full-Body Strength A — Squat & Press", sport: .generalFitness, equipment: "Full Gym")
+        kb.categoryTag = "Kettlebell & Dumbbell"
+
+        let general = MorpheAppStore.rankedPlanCandidates(
+            [fighter, kb], sport: .generalFitness, equipmentOrder: ["Full Gym"], flaggedAreas: []
+        )
+        XCTAssertEqual(general.first?.name, kb.name, "a general athlete opens on a generic plan")
+
+        let boxer = MorpheAppStore.rankedPlanCandidates(
+            [kb, fighter], sport: .boxing, equipmentOrder: ["Full Gym"], flaggedAreas: []
+        )
+        XCTAssertEqual(boxer.first?.name, fighter.name, "a boxer opens on the boxing plan")
+        XCTAssertEqual(boxer.count, 2, "still a soft preference")
+    }
+
     // MARK: Injury-aware ordering
 
     func testFlaggedAreasParsesInjuryNote() {

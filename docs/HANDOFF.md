@@ -553,3 +553,36 @@ Still open, in priority order:
   lessons until a note exists; empty Progress has "Start today's workout".
 - **Open**: Discover category lists give every card a full-width Start
   (three per screen); Calendar's empty state has only the small "Add".
+
+## Onboarding to the reference pattern (2026-10-16, wave 9)
+
+Audit of Apple HIG / Apple's welcome component, TikTok, Instagram and
+Duolingo first-run flows against Morphe's; findings and sources in
+`docs/AUDIT-ONBOARDING-REFERENCES-2026-10-16.md`.
+
+- **One question per screen**: welcome → name → @handle → goals → sport →
+  experience → days → review (7 answered steps). A thin accent progress
+  bar + "3 OF 7" replaces the title card.
+- **Choice cards** (`ChoiceCard` at the end of OnboardingView.swift): goals
+  as icon rows with a check, sports as a two-column icon grid, experience
+  as three cards with a one-line description; same selection logic.
+- **Plan-building beat**: `PersonalizedPlanLoadingView` ticks three lines
+  to checkmarks (~2.4 s) before `completeOnboarding()`.
+- **First run = one Apple-style welcome page** (mark, "Welcome to Morphe",
+  four feature rows, Continue, "Take the two-minute tour"); Profile →
+  Replay the guide (`store.welcomeIsReplay`) still opens the full tour.
+- **Lost first tap fixed**: each step is its own ScrollView (`.id(stepIndex)`)
+  and nothing scrolls programmatically — the old `scrollTo` left the view
+  tracking, so the first tap on every new step only stopped it. Walked
+  live: goals, sport grid, level, days and the terms row all take the
+  first tap.
+- **Plan ranking**: every catalog template decodes as `.generalFitness`, so
+  the sport preference never did anything and a General Fitness + Strength
+  athlete opened on "Fighter Strength Base" (boxing). `templateSportAffinity`
+  reads category + name; general athletes get generic plans first, sport
+  athletes their own sport, then the backbone, then other sports.
+- **Open**: @handle before value (Instagram's reason doesn't apply to
+  Morphe; it stays because `completeOnboarding` reserves it); account
+  before value (sign-in wall precedes onboarding — Duolingo's strongest
+  pattern needs a design pass once TestFlight says where people drop);
+  Lucas rewrites the onboarding/tour wording himself.
