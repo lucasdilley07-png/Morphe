@@ -5234,48 +5234,26 @@ private struct DiscoverProgramCard: View {
     var onOpen: (() -> Void)? = nil
 
     var body: some View {
+        // Compact row (audit 2026-10-15): a full-width Start on every card
+        // fit three workouts per screen. Details left (tap → breakdown),
+        // save + a round play button right — the "New this week" grammar.
         GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
-                    StatusBadge(text: template.difficulty.rawValue, color: MorpheTheme.accentAlt)
-                    if !template.goal.isEmpty {
-                        StatusBadge(text: template.goal, color: MorpheTheme.accent)
-                    }
-                    Spacer()
-                    Button(action: onSave) {
-                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(isSaved ? MorpheTheme.accentText : MorpheTheme.textSecondary)
-                            // 44x44 to meet the app's own tap-target rule
-                            // (affordance audit 2026-09: was 32x24, a miss
-                            // in a scrolling list of cards).
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
-                }
-
-                // Tapping the body opens the exercise breakdown.
+            HStack(alignment: .center, spacing: 12) {
                 Button {
                     onOpen?()
                 } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top, spacing: 6) {
-                            Text(template.name)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                            if onOpen != nil {
-                                Spacer(minLength: 0)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                                    .padding(.top, 3)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            StatusBadge(text: template.difficulty.rawValue, color: MorpheTheme.accentAlt)
+                            if !template.goal.isEmpty {
+                                StatusBadge(text: template.goal, color: MorpheTheme.accent)
                             }
                         }
-
+                        Text(template.name)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                         Text("\(template.durationMinutes) MIN • \(template.equipment.uppercased()) • \(typeName.uppercased())")
                             .font(MorpheTheme.microLabel(9))
                             .tracking(0.8)
@@ -5289,9 +5267,26 @@ private struct DiscoverProgramCard: View {
                 .disabled(onOpen == nil)
                 .accessibilityLabel("See what \(template.name) consists of")
 
-                Button("Start", action: onStart)
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .accessibilityLabel("Start \(template.name)")
+                Button(action: onSave) {
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSaved ? MorpheTheme.accentText : MorpheTheme.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
+
+                Button(action: onStart) {
+                    Image(systemName: "play.fill")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(MorpheTheme.accent))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Start \(template.name)")
             }
         }
         .accessibilityElement(children: .contain)

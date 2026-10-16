@@ -259,15 +259,31 @@ struct CommunityView: View {
                 }
 
                 if store.upcomingAppointments.isEmpty {
+                    // The empty state IS the door (audit 2026-10-15: the only
+                    // way in was a small "Add" in the corner).
                     GlassCard {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "calendar.badge.plus")
+                                .font(.system(size: 34, weight: .semibold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .accessibilityHidden(true)
                             Text("Nothing scheduled")
-                                .font(.subheadline.weight(.semibold))
+                                .font(.headline)
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             Text("Add a session, a coach call, or anything worth showing up for — reminders ride along automatically.")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                            Button {
+                                showCalendarEditor = true
+                            } label: {
+                                Label("Add to your schedule", systemImage: "plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                     }
                 } else {
                     ForEach(store.upcomingAppointments) { appointment in
