@@ -280,7 +280,7 @@ struct OnboardingFlowView: View {
 
                                     Text(isCoachFlow
                                         ? "A few quick answers set up your coaching workspace — athletes, programs, and outreach in one place."
-                                        : "A few simple choices make the plan feel personal without turning setup into homework.")
+                                        : "Answer honestly — Morphe turns it into a ready-to-run program and handles the rest.")
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -692,7 +692,7 @@ private struct WelcomeLandingStep: View {
                                 .tracking(1.4)
                                 .foregroundStyle(MorpheTheme.accentText)
 
-                            Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
+                            Text("You bring accurate answers and honest sets. Morphe does the heavy lifting: it builds the program, picks the weights, runs the timers and tracks every rep.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -702,10 +702,10 @@ private struct WelcomeLandingStep: View {
                                 if beat[4] { LandingPoint(index: 1, text: "Your name and handle").transition(.blurIn) }
                                 if beat[5] { LandingPoint(index: 2, text: "Your goals, sport, and experience").transition(.blurIn) }
                                 if beat[6] { LandingPoint(index: 3, text: "Your training week").transition(.blurIn) }
-                                if beat[7] { LandingPoint(index: 4, text: "Morphe builds your starting plan").transition(.blurIn) }
+                                if beat[7] { LandingPoint(index: 4, text: "Morphe builds your ready-to-run program").transition(.blurIn) }
                             }
 
-                            Text("Four steps, about a minute — every answer shapes the plan.")
+                            Text("Four steps, about a minute. The more accurate your answers, the sharper your program.")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textMuted)
                         }
@@ -756,7 +756,7 @@ private struct NameStep: View {
     var body: some View {
         OnboardingCard(
             title: "What should Morphe call you?",
-            subtitle: "Your name is how Morphe greets you and signs your progress. It's saved to your account, so it follows you to a new phone."
+            subtitle: "Morphe greets you by name. Your birth year confirms you can train with Morphe — it isn't shown to anyone."
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 // The opener's mark lands here, small, beside the field.
@@ -1174,7 +1174,7 @@ private struct ProfileReviewStep: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                Text(isCoach ? "What your workspace includes" : "What Morphe will build for you")
+                Text(isCoach ? "What your workspace includes" : "What Morphe handles for you")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
@@ -1196,13 +1196,13 @@ private struct ProfileReviewStep: View {
                     }
                 }
 
+                // Only what the banner and bullets don't already say
+                // (simplification wave 2026-10-15).
                 if isCoach {
                     ProfileLine(title: "Practice size", value: store.onboardingDraft.coachRoster.rawValue)
-                } else {
-                    ProfileLine(title: "First phase", value: generatedPlan.phase)
+                    ProfileLine(title: "Sports selected", value: store.onboardingDraft.selectedSports.map(\.shortTitle).joined(separator: ", "))
                 }
-                ProfileLine(title: "Sports selected", value: store.onboardingDraft.selectedSports.map(\.shortTitle).joined(separator: ", "))
-                ProfileLine(title: "Goals selected", value: store.onboardingDraft.selectedGoals.map(\.rawValue).joined(separator: ", "))
+                ProfileLine(title: "Goals", value: store.onboardingDraft.selectedGoals.map(\.rawValue).joined(separator: ", "))
                 ProfileLine(title: "30-day goal", value: store.onboardingDraft.physicalGoalTarget)
                 ProfileLine(title: "60-day goal", value: store.onboardingDraft.weightGoalTarget)
                 ProfileLine(title: "90-day goal", value: store.onboardingDraft.goalDeadline)
@@ -1220,13 +1220,10 @@ private struct ProfileReviewStep: View {
                 if isCoach {
                     ProfileLine(title: "First action", value: "Add your first client and share their invite code")
                     ProfileLine(title: "Workspace summary", value: "A \(store.onboardingDraft.sport.rawValue) coaching workspace sized for \(store.onboardingDraft.coachRoster.rawValue.lowercased()) — roster, library, and outreach in one place. Everything grows from the athletes you connect.")
-                } else {
-                    ProfileLine(title: "Today's first task", value: generatedPlan.firstTask)
-                    ProfileLine(title: "Plan summary", value: generatedPlan.message)
                 }
                 Text(isCoach
                     ? "Tap Create Workspace and Morphe will set up your coaching home."
-                    : "Tap Create Plan and Morphe will turn this into your starting plan.")
+                    : "That's all Morphe needs. Tap Create Plan — you can change any answer later in Profile.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 

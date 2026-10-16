@@ -4408,11 +4408,15 @@ private struct WelcomeExperienceView: View {
 
     /// The showcase first (Lucas 2026-10-03: lead with the most important
     /// and coolest things Morphe does), then the first actions, then done.
+    /// Five stops (simplification wave 2026-10-15): the deal, the ready
+    /// program, the camera, the AI, done. Together / Progress / Partner /
+    /// Profile stay defined (their surfaces live in the app) but left the
+    /// first-run path — nine stops read as homework.
     private enum Page: Int, CaseIterable {
-        case welcome, formCheck, ai, together, progress, workout, partner, profile, done
+        case welcome, workout, formCheck, ai, done, together, progress, partner, profile
     }
 
-    private var pages: [Page] { Page.allCases }
+    private var pages: [Page] { [.welcome, .workout, .formCheck, .ai, .done] }
     private var current: Page { Page(rawValue: page) ?? .welcome }
 
     var body: some View {
@@ -4474,22 +4478,29 @@ private struct WelcomeExperienceView: View {
         case .welcome:
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Welcome")
-                title("Welcome to Morphe, \(store.clientProfile.name).")
+                title("Welcome, \(store.clientProfile.name.split(separator: " ").first.map(String.init) ?? store.clientProfile.name).")
+                body("Here's the deal: you log what you actually do. Morphe does everything else.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        dealColumn("YOU", items: [
+                            "Tap the check after each set",
+                            "A 10-second check-in each day"
+                        ])
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                        dealColumn("MORPHE", items: [
+                            "Builds and adjusts your program",
+                            "Picks your next weights and reps",
+                            "Runs the rest timer and counts reps on camera",
+                            "Tracks progress, streaks and records"
+                        ])
+                    }
+                }
                 // "Train with Voice · Form · Fuel · Morphe AI" (motion
-                // grammar 2026-10-15): four beats, each card earns its
-                // outline in turn; a tap jumps to that stop of the tour.
+                // grammar 2026-10-15): a tap jumps to that stop.
                 TourTrainWithGrid { destination in
                     withAnimation(.easeInOut(duration: 0.3)) { page = destination }
                 }
-                body("Two minutes, nine stops, every one of them optional. Skip anything; nothing here is required.")
-                GlassCard(.quiet) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        rule("Real scores only", "Every stat comes from sets you logged.")
-                        rule("No ads. No trackers.", "Your numbers are yours.")
-                        rule("Safety stays free", "Your data, your export, always.")
-                        rule("Humans only", "No bots, no spam, no AI-written posts. Morphe AI is the only AI here.")
-                    }
-                }
+                body("Four quick stops. Skip anything.")
             }
         case .profile:
             VStack(alignment: .leading, spacing: 16) {
@@ -4546,8 +4557,8 @@ private struct WelcomeExperienceView: View {
         case .workout:
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Train")
-                title("Your first workout is ready.")
-                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set — rest timer, hold timer and a beginner console that keeps the first sessions simple. Discover → Workouts has 300+ ready workouts and a 590-exercise technique library; Train → Build Workout is where you build your own, or with Morphe AI.")
+                title("Your program is ready.")
+                body("Morphe built today's session from your answers. Tap Start, then tap the check after each set — Morphe fills in reps and weight from last time and starts your rest.")
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(store.currentWorkout.name)
@@ -4588,8 +4599,8 @@ private struct WelcomeExperienceView: View {
                     .shadow(color: MorpheTheme.accent.opacity(0.25), radius: 12)
                     .accessibilityHidden(true)
                 kicker("Morphe AI")
-                title("Talk to it. Out loud.")
-                body("Tap the helmet at the bottom right, or turn on Hey Morphe in Profile → Make it yours and say it with the app open — the Spartan orb lights the screen in your rank's color and listens. Ask what's next, log a set by voice, ask about your readiness or what to eat. It answers from your own logs and your details, never invents a number, and it is the only AI in Morphe.")
+                title("Ask instead of searching.")
+                body("Tap the helmet at the bottom right — or turn on Hey Morphe in Profile and just say it. Ask what's next, log a set by voice, ask what to eat. It answers from your own logs and never invents a number.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 12) {
                         TourExchange(you: "Log 3 by 10 at 135.", morphe: "Logged 3×10 at 135 lb on Bench Press. It's in the console.")
@@ -4602,7 +4613,7 @@ private struct WelcomeExperienceView: View {
                 TourCameraMock()
                 kicker("Form Check")
                 title("The camera counts your reps.")
-                body("Prop the phone up, step into the green frame, and Morphe reads your build, counts reps across eleven movement patterns, times holds, and tells you what it measured: range, tempo, symmetry, knees. Video never leaves your phone.")
+                body("Prop the phone up and step into the green frame. Morphe counts the reps, times holds and checks range, tempo and symmetry — so you don't have to. Video never leaves your phone.")
                 GlassCard(.quiet) {
                     rule("Where", "Train → the camera button next to the exercise you're on.")
                 }
@@ -4638,7 +4649,14 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Set")
                 title("You're set.")
-                body("The rest of Morphe grows from the work you log: streaks with honest outs, PRs from real sets, ranks Rookie to General with a color for each. Replay this tour anytime from Profile, under your level.")
+                body("From here Morphe handles the planning, the progression and the tracking. Your one job: log honestly — the more accurate your input, the sharper your program.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        rule("Daily check-in", "Today → Check In. Ten seconds; Morphe adjusts the day.")
+                        rule("Fuel", "Learn → Nutrition. Search or snap a meal; Morphe does the math.")
+                        rule("Replay this tour", "Profile, under your level.")
+                    }
+                }
                 // The send-off (Lucas 2026-10-10): centered between the
                 // copy and Start training.
                 Text("Time to Morphe")
@@ -4651,6 +4669,23 @@ private struct WelcomeExperienceView: View {
                     .accessibilityAddTraits(.isHeader)
             }
         }
+    }
+
+    /// One side of the deal on the welcome stop.
+    private func dealColumn(_ label: String, items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(MorpheTheme.microLabel(10).weight(.bold))
+                .tracking(1.6)
+                .foregroundStyle(MorpheTheme.accentText)
+            ForEach(items, id: \.self) { item in
+                Label(item, systemImage: "checkmark")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Footer
@@ -4845,11 +4880,11 @@ private struct TourTrainWithGrid: View {
         let hint: String
     }
     private static let doors: [Door] = [
-        Door(id: 0, word: "Voice", symbol: "waveform", line: "Say it. Morphe logs it.", page: 2, hint: "Opens the voice stop of the tour"),
-        Door(id: 1, word: "Form", symbol: "camera.viewfinder", line: "The camera counts the reps.", page: 1, hint: "Opens the Form Check stop of the tour"),
+        Door(id: 0, word: "Voice", symbol: "waveform", line: "Say it. Morphe logs it.", page: 3, hint: "Opens the voice stop of the tour"),
+        Door(id: 1, word: "Form", symbol: "camera.viewfinder", line: "The camera counts the reps.", page: 2, hint: "Opens the Form Check stop of the tour"),
         // There is no separate Fuel stop: Fuel is explained on Progress.
-        Door(id: 2, word: "Fuel", symbol: "fork.knife", line: "Read a label. Check a plate.", page: 4, hint: "Opens the Progress stop, where Fuel is explained"),
-        Door(id: 3, word: "Morphe AI", symbol: "sparkles", line: "Answers from your own logs.", page: 2, hint: "Opens the Morphe AI stop of the tour")
+        Door(id: 2, word: "Fuel", symbol: "fork.knife", line: "Read a label. Check a plate.", page: 4, hint: "Opens the last stop, where Fuel is explained"),
+        Door(id: 3, word: "Morphe AI", symbol: "sparkles", line: "Answers from your own logs.", page: 3, hint: "Opens the Morphe AI stop of the tour")
     ]
     @Environment(\.dynamicTypeSize) private var typeSize
 
