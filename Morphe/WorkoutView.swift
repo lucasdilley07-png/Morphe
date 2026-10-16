@@ -869,7 +869,7 @@ struct WorkoutView: View {
 
                 GuideHint(
                     key: "train.landing",
-                    text: "Tap Start and log each set with the check — I'll remember your weights for next time. Want something new? Swipe left for Discover."
+                    text: "Tap Start and log each set with the check — I'll remember your weights for next time. Want something new? Tap Discover below."
                 )
 
                 // Form Check lives inside the live session now (under the rest

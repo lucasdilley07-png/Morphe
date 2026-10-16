@@ -482,7 +482,8 @@ struct RootView: View {
             // And it slides off to the right while "Hey Morphe" has the
             // stage (Lucas 2026-10-04): the voice is already the door, so
             // the button gets out of the way and returns when it's done.
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage {
+            // Never over the "hello, name" beat either (audit 2026-10-15).
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),

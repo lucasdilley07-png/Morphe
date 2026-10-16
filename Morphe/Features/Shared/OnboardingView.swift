@@ -204,6 +204,14 @@ struct OnboardingFlowView: View {
 
     private var isCoachFlow: Bool { false }
 
+    /// The device's status-bar/island height, read from the key window.
+    static var windowTopInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?.safeAreaInsets.top ?? 59
+    }
+
     private var currentStep: OnboardingStep {
         // Clamped: `steps` is computed and can shrink mid-flow (the coach
         // list is longer than the solo one), so a raw subscript can trap.
@@ -335,24 +343,34 @@ struct OnboardingFlowView: View {
                 // Content scrolling under the Dynamic Island fades out
                 // instead of colliding with the clock.
                 .overlay(alignment: .top) {
-                    // Solid behind the clock and island, then a short fade —
-                    // the old all-gradient band let text read through.
+                    // Solid under the clock and island, fading just below.
+                    // Sized from the window's own inset: this container already
+                    // reaches under the status bar, so a safe-area-relative band
+                    // came out zero-height (audit 2026-10-15).
                     LinearGradient(
-                        colors: [MorpheTheme.ink, MorpheTheme.ink.opacity(0)],
+                        stops: [
+                            .init(color: MorpheTheme.ink, location: 0),
+                            .init(color: MorpheTheme.ink, location: 0.7),
+                            .init(color: MorpheTheme.ink.opacity(0), location: 1)
+                        ],
                         startPoint: .top, endPoint: .bottom
                     )
-                    .frame(height: 18)
-                    .background(alignment: .top) {
-                        MorpheTheme.ink
-                            .frame(height: 0)
-                            .ignoresSafeArea(edges: .top)
-                    }
+                    .frame(height: Self.windowTopInset + 22)
+                    .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
                 }
                 // A long step scrolled to its Next button must not leave the
                 // NEXT step's title off-screen.
                 .onChange(of: stepIndex) { _, _ in
-                    proxy.scrollTo("onboardingTop", anchor: .top)
+                    // Jump, don't glide (audit 2026-10-15): the step change
+                    // runs inside withAnimation, so the scroll animated too —
+                    // and a scroll view in motion spends taps stopping
+                    // itself, which read as dead buttons on the next step.
+                    var jump = Transaction()
+                    jump.disablesAnimations = true
+                    withTransaction(jump) {
+                        proxy.scrollTo("onboardingTop", anchor: .top)
+                    }
                 }
                 }
             }
@@ -761,12 +779,16 @@ private struct NameStep: View {
                     }
                 }
 
-                HStack(spacing: 4) {
-                    Text("Example:")
-                    TypewriterText(text: "Alex", startDelay: 0.5)
+                // Only while the field is empty — an example under a filled
+                // name read as a correction (audit 2026-10-15).
+                if name.trimmingCharacters(in: .whitespaces).isEmpty {
+                    HStack(spacing: 4) {
+                        Text("Example:")
+                        TypewriterText(text: "Alex", startDelay: 0.5)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
                 }
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textMuted)
 
                 // Age gate (fix wave 2026-10-13): asked neutrally, no hint
                 // at the cutoff, and it becomes the profile age.
@@ -1018,7 +1040,10 @@ private struct SportSelectionStep: View {
                         .buttonStyle(
                             FilterChipStyle(
                                 isSelected: store.onboardingDraft.selectedSports.contains(sport),
-                                selectedColor: MorpheTheme.color(for: sport)
+                                // One selected colour across onboarding (audit
+                                // 2026-10-15: General Fitness filled black beside
+                                // blue goal chips).
+                                selectedColor: MorpheTheme.accent
                             )
                         )
                     }
@@ -1072,10 +1097,15 @@ private struct ScheduleStep: View {
             subtitle: "We care more about repeatable momentum than perfect ambition. This becomes your weekly target."
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                WrapStack(spacing: 8) {
+                // One even row of seven (audit 2026-10-15: the wrap put
+                // tiny chips in two columns with wide gaps).
+                HStack(spacing: 6) {
                     ForEach(1...7, id: \.self) { count in
-                        Button("\(count)") {
+                        Button {
                             days = count
+                        } label: {
+                            Text("\(count)")
+                                .frame(maxWidth: .infinity, minHeight: 32)
                         }
                         .buttonStyle(FilterChipStyle(isSelected: days == count, selectedColor: MorpheTheme.accent))
                         .accessibilityLabel("\(count) days per week")
@@ -1156,12 +1186,12 @@ private struct ProfileReviewStep: View {
                         "The full workout library, saves, and your own builds",
                         "An inbox for athlete outreach and follow-ups"
                     ], id: \.self) { item in
-                        Text("- \(item)")
+                        Text("•  \(item)")
                             .foregroundStyle(MorpheTheme.textPrimary)
                     }
                 } else {
                     ForEach(generatedPlan.goalTranslation.weeklyActions, id: \.self) { action in
-                        Text("- \(action)")
+                        Text("•  \(action)")
                             .foregroundStyle(MorpheTheme.textPrimary)
                     }
                 }
@@ -1202,12 +1232,31 @@ private struct ProfileReviewStep: View {
 
                 // Required consent — the finish button stays disabled until
                 // checked, and agreeing here satisfies the terms gate too.
-                Toggle(isOn: $store.onboardingDraft.agreedToTerms) {
-                    Text("I agree to Morphe's Terms of Use")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
+                // The whole row is the target (audit 2026-10-15: taps on the
+                // bare switch were missed, leaving Create Plan dead).
+                Button {
+                    store.onboardingDraft.agreedToTerms.toggle()
+                    Haptics.selection()
+                } label: {
+                    HStack(spacing: 12) {
+                        Text("I agree to Morphe's Terms of Use")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 8)
+                        Toggle("", isOn: .constant(store.onboardingDraft.agreedToTerms))
+                            .labelsHidden()
+                            .tint(MorpheTheme.accent)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .tint(MorpheTheme.accent)
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("I agree to Morphe's Terms of Use")
+                .accessibilityValue(store.onboardingDraft.agreedToTerms ? "On" : "Off")
+                .accessibilityAddTraits(.isToggle)
 
                 // The document the toggle refers to, one tap away — agreeing
                 // to invisible terms was an audit (and App Store) problem.

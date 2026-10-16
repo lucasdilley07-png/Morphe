@@ -5766,13 +5766,19 @@ enum MorpheDemoContent {
         // The week promised never outnumbers the week they chose (release
         // audit 2026-10-15): "4 strength sessions" under a 3-day target.
         goal.weeklyActions = capSessions(goal.weeklyActions, toDays: draft.trainingDaysPerWeek)
-        let focusSummary = [
-            draft.selectedSports.first.map { "\($0.rawValue) focus" },
-            draft.selectedTrainingStyles.first.map { "\($0.rawValue.lowercased()) work" },
-            draft.selectedGoals.first.map { "\($0.rawValue.lowercased()) priority" }
-        ]
-        .compactMap { $0 }
-        .joined(separator: " with ")
+        // One clean clause (audit 2026-10-15: "General Fitness focus with
+        // conditioning work with gain muscle priority" — and the training
+        // style was a default nobody picked, so it's left out).
+        let focusSummary: String = {
+            let sport = draft.selectedSports.first.map { "your \($0.rawValue) focus" }
+            let goal = draft.selectedGoals.first.map { "\($0.rawValue.lowercased()) as the priority" }
+            switch (sport, goal) {
+            case let (s?, g?): return "\(s), with \(g)"
+            case let (s?, nil): return s
+            case let (nil, g?): return g
+            default: return ""
+            }
+        }()
         let physicalGoal = draft.physicalGoalTarget.trimmingCharacters(in: .whitespacesAndNewlines)
         let weightGoal = draft.weightGoalTarget.trimmingCharacters(in: .whitespacesAndNewlines)
         let deadline = draft.goalDeadline.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5791,7 +5797,7 @@ enum MorpheDemoContent {
             phase: "Build Consistency",
             goalTranslation: goal,
             firstTask: "Log your first workout",
-            message: "Your first phase is Build Consistency: \(draft.trainingDaysPerWeek) training days a week\(focusSummary.isEmpty ? "" : " built around your \(focusSummary)"). Start with one workout — everything in Morphe grows from your logs.\(targetSummary.isEmpty ? "" : " \(targetSummary)")"
+            message: "Your first phase is Build Consistency: \(draft.trainingDaysPerWeek) training days a week\(focusSummary.isEmpty ? "" : " built around \(focusSummary)"). Start with one workout — everything in Morphe grows from your logs.\(targetSummary.isEmpty ? "" : " \(targetSummary)")"
         )
     }
 
