@@ -586,3 +586,44 @@ Duolingo first-run flows against Morphe's; findings and sources in
   before value (sign-in wall precedes onboarding — Duolingo's strongest
   pattern needs a design pass once TestFlight says where people drop);
   Lucas rewrites the onboarding/tour wording himself.
+
+## Wave A from the user + investor audit (2026-10-16, wave 10)
+
+Findings and the plan: `docs/AUDIT-USER-INVESTOR-2026-10-16.md`. Shipped:
+
+- **A1 load suggestion** — `MorpheAppStore.loadSuggestionReply` answers
+  "how much should I squat next time / should I go up / what weight" from
+  the log and the plan's reps: every work set hit the target → last load +
+  5 lb (2.5 kg); a missed set → repeat the load; bodyweight → add reps.
+  Dispatched before log recall and technique. Tests cover both branches.
+- **A2 starting load** — `suggestedStartingLoad(for:)`: bodyweight × level
+  ratios per movement (squat .5/.75/1.0, deadlift .6/.9/1.25, bench
+  .35/.6/.85, press .25/.4/.55, row/pull .35/.5/.7, DB/KB/curl .1/.15/.2),
+  rounded to 5 lb / 2.5 kg, only when the movement has no last-session set.
+  The console seeds it a beat after the exercise changes and the first-time
+  caption says it's a guess; without a bodyweight the caption points to
+  Profile → Your details.
+- **A3 rest at the top** — the running countdown mirrors into the console
+  header ("Rest 2:58 · then set 2 · Skip"); the full timer card stays below.
+- **A4 toasts** sit in the icon row (6pt from the top), never on a title;
+  the celebration keeps its 64pt clearance.
+- **A5** the "Not saved yet" banner hides while the debrief sheet is up; the
+  Train and Today hints retire once a session is logged.
+- **A6** Today's done card says what was logged ("Short day on X: 2 of 5
+  exercises, 3 sets, 1 min. It counts.") instead of "closed the loop".
+- **A7** the Morphe AI pill compacts after the first logged session.
+- **A8** `ShareCardPreviewSheet` shows the story card with one Share button
+  before the system share sheet.
+- **A9** Discover's shelf is "New in the Library" and ranked by sport/goals
+  (`rankedPlanCandidates`); the four categories are still the hardcoded
+  newest — the catalog needs a `publishedAt` before "this week" can be true.
+- **A10** voice hint says "10 reps" on bodyweight moves; Profile's guide
+  subtitle matches the five stops.
+- **A11** `NotificationPrePromptSheet` (what Morphe sends, Turn on / Not
+  now) after the first log; the system dialog only follows a yes
+  (`scheduleNotificationPrePrompt` / `acceptNotificationPrePrompt`).
+- **A12** Learn shows today's quiz and the next; "Show all 20" opens the wall.
+- **Share card honesty** (found while verifying A8): the kicker is
+  "SESSION LOGGED" (it said "complete" on a 2-of-5 day) and a first-ever
+  lift no longer rides as "NEW PR" — a record needs an earlier loaded set
+  of that movement (`latestSessionShareCardData`).

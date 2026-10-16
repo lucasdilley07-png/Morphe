@@ -13,6 +13,8 @@ struct MoreView: View {
     @State private var showBasics = false
     /// Which block of ten quizzes is open (nil = the one holding today's).
     @State private var quizPage: Int?
+    /// The full quiz wall, behind "Show all" (audit 2026-10-16, U12).
+    @State private var showAllQuizzes = false
     private static let quizPageSize = 10
 
     private var defaultQuizPage: Int {
@@ -413,7 +415,12 @@ struct MoreView: View {
                 // quiz opens first.
                 let pageCount = max(1, (store.quizzes.count + Self.quizPageSize - 1) / Self.quizPageSize)
                 let page = min(quizPage ?? defaultQuizPage, pageCount - 1)
-                let shown = Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
+                // Today's quiz and the next one lead; the locked wall of
+                // grey cards read as missing content (audit 2026-10-16, U12).
+                let todayIndex = store.quizzes.firstIndex { !store.completedQuizIDs.contains($0.id) } ?? max(0, store.quizzes.count - 1)
+                let shown = showAllQuizzes
+                    ? Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
+                    : Array(store.quizzes.enumerated()).dropFirst(max(todayIndex - (todayIndex == store.quizzes.count - 1 ? 1 : 0), 0)).prefix(2)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
                     ForEach(Array(shown), id: \.element.id) { index, quiz in
                         QuizCallingCard(
@@ -426,8 +433,18 @@ struct MoreView: View {
                     }
                 }
 
+                if !showAllQuizzes, store.quizzes.count > 2 {
+                    Button("Show all \(store.quizzes.count)") {
+                        withAnimation(.easeInOut(duration: 0.2)) { showAllQuizzes = true }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+
                 // The 1–10 / 11–20 pager sits under the quizzes (Lucas 2026-10-10).
-                if pageCount > 1 {
+                if showAllQuizzes, pageCount > 1 {
                     HStack(spacing: 8) {
                         ForEach(0..<pageCount, id: \.self) { index in
                             let first = index * Self.quizPageSize + 1

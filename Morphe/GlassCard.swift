@@ -2592,7 +2592,7 @@ struct ShareCardView: View {
     var body: some View {
         ShareCardFrame(dateLabel: data.dateLabel, username: data.username) {
             VStack(alignment: .leading, spacing: 0) {
-                ShareCardKicker(text: "SESSION COMPLETE")
+                ShareCardKicker(text: "SESSION LOGGED")
                     .padding(.bottom, 10)
 
                 Text(data.workoutName)

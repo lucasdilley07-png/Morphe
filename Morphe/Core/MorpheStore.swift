@@ -4736,8 +4736,13 @@ final class MorpheAppStore {
     var latestSessionShareCardData: ShareCardData? {
         guard let log = currentAthleteWorkoutLogs.first else { return nil }
         let calendar = Calendar.current
+        // A first-ever lift is a baseline, not a PR (audit 2026-10-16): the
+        // card only calls it a record when an earlier loaded set exists.
+        let earlierLoaded: Set<String> = Set(currentAthleteWorkoutLogs
+            .filter { $0.completedAt < log.completedAt }
+            .flatMap { $0.exercises.filter { ($0.weightsPerSet ?? []).contains { $0 > 0 } }.map(\.name) })
         let prNames = recentPersonalRecords(limit: 10)
-            .filter { calendar.isDate($0.date, inSameDayAs: log.completedAt) }
+            .filter { calendar.isDate($0.date, inSameDayAs: log.completedAt) && earlierLoaded.contains($0.exerciseName) }
             .map(\.exerciseName)
         return ShareCardData(
             workoutName: log.workoutTitle,
@@ -9817,7 +9822,9 @@ final class MorpheAppStore {
         if isActivation {
             track("activation_first_log")
             // First log = the moment reminders become worth having (E1).
-            requestNotificationPermissionIfNeeded(afterSeconds: 6)
+            // Morphe's own card asks first and says what it will send; the
+            // system dialog follows a yes (audit 2026-10-16, U13).
+            scheduleNotificationPrePrompt(afterSeconds: 6)
         }
         // Re-aim the daily nudge past the session that just landed (E2).
         refreshDailyTrainingReminder()
@@ -16853,6 +16860,32 @@ final class MorpheAppStore {
     /// comeback, recap, board) silently no-oped for exactly the users
     /// they exist to keep. Fired at the first workout log: the moment
     /// the user has something worth being reminded about.
+    /// Morphe's pre-permission card is up (first log + a beat). "Turn on"
+    /// runs the system ask; "Not now" leaves iOS's own prompt unspent.
+    var showNotificationPrePrompt = false
+
+    func scheduleNotificationPrePrompt(afterSeconds delay: Double) {
+        guard NSClassFromString("XCTestCase") == nil else { return }
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                self?.showNotificationPrePrompt = true
+            }
+        }
+    }
+
+    func acceptNotificationPrePrompt() {
+        showNotificationPrePrompt = false
+        requestNotificationPermissionIfNeeded()
+        track("notification_preprompt_accepted")
+    }
+
+    func declineNotificationPrePrompt() {
+        showNotificationPrePrompt = false
+        track("notification_preprompt_declined")
+    }
+
     func requestNotificationPermissionIfNeeded(afterSeconds delay: Double = 0) {
         // Unit tests run hosted inside Morphe.app and log workouts — without
         // this guard every suite run queues a REAL permission alert against
@@ -18317,6 +18350,108 @@ final class MorpheAppStore {
     /// athlete's logs. Nil when the prompt isn't a recall question, so the
     /// rest of the reply chain runs. Never estimates: counts only what was
     /// logged, holds in seconds, nothing for a window with no sessions.
+    /// "How much should I squat next time?" — the question every lifter
+    /// asks after a session, answered from their own log and the plan's
+    /// rule instead of a technique lecture (audit 2026-10-16, U1). The
+    /// rule is linear progression: every work set reached the planned reps
+    /// → add one increment (5 lb / 2.5 kg); otherwise repeat the load and
+    /// own the reps first. A bodyweight move progresses by reps.
+    static func loadSuggestionReply(to prompt: String, logs: [WorkoutLog], planned: [WorkoutExercise], unit: WeightUnit) -> String? {
+        let cues = ["next time", "should i", "go up", "add weight", "increase", "what weight", "how heavy",
+                    "how much weight", "how much should", "heavier", "progress on", "move up", "bump"]
+        guard cues.contains(where: prompt.contains) else { return nil }
+        let foodCues = ["calorie", "protein", "carb", "eat", "ate", "food", "meal", "water"]
+        guard !foodCues.contains(where: prompt.contains) else { return nil }
+
+        func key(_ text: String) -> String {
+            let letters = text.lowercased().filter { $0.isLetter }
+            return letters.hasSuffix("s") ? String(letters.dropLast()) : letters
+        }
+        let promptWords = prompt.lowercased()
+            .split(whereSeparator: { !$0.isLetter && $0 != "-" })
+            .map { key(String($0)) }
+            .filter { $0.count >= 4 }
+        func matches(_ name: String) -> Bool {
+            let words = name.split(whereSeparator: { !$0.isLetter && $0 != "-" }).map { key(String($0)) }
+            return promptWords.contains { w in words.contains(w) || (w.count >= 5 && words.contains { $0.hasSuffix(w) || w.hasSuffix($0) }) }
+        }
+
+        // The exercise asked about, from the newest log that has it; with
+        // no name in the question, the latest loaded exercise.
+        var found: (exercise: LoggedExercise, log: WorkoutLog)?
+        for log in logs {   // newest first
+            if let hit = log.exercises.first(where: { matches($0.name) }) { found = (hit, log); break }
+        }
+        if found == nil, !promptWords.isEmpty {
+            // A named exercise with no log yet.
+            if let name = planned.first(where: { matches($0.name) })?.name {
+                return "No logged sets of \(name) yet. First time, pick a weight you could lift 2–3 more times than the reps asked; after that session I'll have a number for you."
+            }
+        }
+        if found == nil {
+            for log in logs {
+                if let hit = log.exercises.first(where: { ($0.weightsPerSet ?? []).contains(where: { $0 > 0 }) }) { found = (hit, log); break }
+            }
+        }
+        guard let (exercise, _) = found else {
+            return "Nothing's logged yet — finish a session and I'll tell you what to load next time."
+        }
+
+        let reps = exercise.repsPerSet ?? []
+        let warmups = exercise.warmupPerSet ?? []
+        let weights = exercise.weightsPerSet ?? []
+        let workIndices = reps.indices.filter { !(warmups.indices.contains($0) && warmups[$0]) && !exercise.isTimedSet($0) }
+        guard !workIndices.isEmpty else { return nil }
+        let workReps = workIndices.map { reps[$0] }
+        let top = workIndices.compactMap { weights.indices.contains($0) ? weights[$0] : nil }.max() ?? 0
+        let target: Int = {
+            if let plan = planned.first(where: { $0.name == exercise.name }),
+               let n = Int(plan.reps.prefix(while: \.isNumber)), n > 0 { return n }
+            return Int(exercise.reps.prefix(while: \.isNumber)) ?? (workReps.min() ?? 0)
+        }()
+        let setsLine = "\(workReps.count) set\(workReps.count == 1 ? "" : "s") of \(workReps.map(String.init).joined(separator: ", "))"
+        let allHit = target > 0 && workReps.allSatisfy { $0 >= target }
+
+        if top <= 0 {
+            return "\(exercise.name) is bodyweight in your log: \(setsLine). "
+                + (allHit
+                    ? "Every set hit \(target) — next time go for \(target + 2) per set, and add load once that's clean."
+                    : "Aim for \(max(target, 1)) on every set before adding anything.")
+        }
+        let increment: Double = unit == .kilograms ? 2.5 : 5
+        if allHit {
+            return "Last time on \(exercise.name): \(setsLine) at \(unit.format(top)). Every set hit \(target), so next time try \(unit.format(top + increment)) — if it moves clean, that's your new number."
+        }
+        return "Last time on \(exercise.name): \(setsLine) at \(unit.format(top)). Not every set reached \(target) — stay at \(unit.format(top)) next time and own all the reps first. Then add \(unit.format(increment))."
+    }
+
+    /// A conservative first load for a loaded movement with no history,
+    /// from bodyweight × level (audit 2026-10-16, U2 — the welcome page
+    /// promised a weight on day one and the console opened at "BW").
+    /// Nil when there's a last-session set (that wins), no bodyweight, or
+    /// the movement is bodyweight. Rounded to the plate step.
+    func suggestedStartingLoad(for exercise: WorkoutExercise) -> Double? {
+        guard lastSessionSet(forExerciseNamed: exercise.name, setIndex: 0) == nil,
+              let bodyWeightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit)
+        else { return nil }
+        let name = exercise.name.lowercased()
+        let level = clientProfile.fitnessLevel.lowercased()
+        let tier = level.contains("advanced") ? 2 : (level.contains("intermediate") ? 1 : 0)
+        let ratios: [Double]
+        if name.contains("deadlift") { ratios = [0.6, 0.9, 1.25] }
+        else if name.contains("squat") { ratios = [0.5, 0.75, 1.0] }
+        else if name.contains("bench") { ratios = [0.35, 0.6, 0.85] }
+        else if name.contains("press") { ratios = [0.25, 0.4, 0.55] }
+        else if name.contains("row") || name.contains("pull") { ratios = [0.35, 0.5, 0.7] }
+        else if name.contains("dumbbell") || name.contains("kettlebell") || name.contains("curl") { ratios = [0.1, 0.15, 0.2] }
+        else { ratios = [0.2, 0.3, 0.4] }
+        var load = bodyWeightLb * ratios[tier]
+        let step: Double
+        if weightUnit == .kilograms { load *= 0.4536; step = 2.5 } else { step = 5 }
+        load = (load / step).rounded() * step
+        return load >= step ? load : nil
+    }
+
     static func logRecallReply(to prompt: String, logs: [WorkoutLog], unit: WeightUnit, now: Date = .now) -> String? {
         let recallCues = ["did i", "have i", "how many", "how much", "what did", "last workout", "last session", "my workout today", "i logged", "did today"]
         guard recallCues.contains(where: prompt.contains) else { return nil }
@@ -18397,6 +18532,11 @@ final class MorpheAppStore {
 
     private func athleteAgentReply(to prompt: String) -> String {
         let lowercasedPrompt = Self.normalizedPrompt(prompt)
+        // "How much should I squat next time?" — a number from the log and
+        // the plan's rule, ahead of the plain recall (audit 2026-10-16).
+        if let suggestion = Self.loadSuggestionReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, planned: currentWorkout.exercises, unit: weightUnit) {
+            return suggestion
+        }
         // "How many push-ups did I do today?" — answered from the log,
         // no model needed (audit 2026-10-15: the offline brain declined).
         if let recall = Self.logRecallReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, unit: weightUnit) {

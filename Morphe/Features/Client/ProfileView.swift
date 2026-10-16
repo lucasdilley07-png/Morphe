@@ -165,7 +165,7 @@ struct ProfileView: View {
                     Text("Replay the guide")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Two minutes: Form Check, Morphe AI, Train Together, fuel, the ladder.")
+                    Text("Two minutes: the deal, your program, Form Check, Morphe AI, check-in and Fuel.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)

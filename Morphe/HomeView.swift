@@ -103,10 +103,14 @@ struct HomeView: View {
                 }
                 .animation(.easeInOut(duration: 0.3), value: store.homePrompt)
 
-                GuideHint(
-                    key: "home.welcome",
-                    text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
-                )
+                // Retires on the first logged session — it describes a page
+                // the user has now used (audit 2026-10-16, U11).
+                if store.loggedWorkoutCount == 0 {
+                    GuideHint(
+                        key: "home.welcome",
+                        text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
+                    )
+                }
 
                 // Showing up, counted (Lucas 2026-10-04): days in a row the
                 // app was opened — its own number, not the training streak.
@@ -1616,6 +1620,20 @@ private struct TodayDoneCard: View {
     }
     @State private var sharePayload: SharePayload?
 
+    private var doneLine: String {
+        guard let data = store.latestSessionShareCardData else {
+            return "\(workoutName) is logged. The rest of today is yours."
+        }
+        let planned = store.currentWorkout.exercises.count
+        let exercises = "\(data.exerciseCount) of \(max(planned, data.exerciseCount)) exercise\(max(planned, data.exerciseCount) == 1 ? "" : "s")"
+        let sets = "\(data.setCount) set\(data.setCount == 1 ? "" : "s")"
+        let minutes = data.minutes > 0 ? ", \(data.minutes) min" : ""
+        if planned > data.exerciseCount {
+            return "Short day on \(workoutName): \(exercises), \(sets)\(minutes). It counts — the rest of today is yours."
+        }
+        return "\(workoutName), done: \(exercises), \(sets)\(minutes). The rest of today is yours."
+    }
+
     var body: some View {
         GlassCard(.hero) {
             VStack(alignment: .center, spacing: 14) {
@@ -1628,7 +1646,10 @@ private struct TodayDoneCard: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
-                Text("You closed the loop on \(workoutName). Nice work — the rest of today is yours.")
+                // Says what was logged, not "closed the loop" — a 2-of-5
+                // day is a short day, and the honest line is the brand
+                // (audit 2026-10-16, U6).
+                Text(doneLine)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .multilineTextAlignment(.center)
 
@@ -1662,13 +1683,16 @@ private struct TodayDoneCard: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }
                 .sheet(item: $sharePayload) { payload in
-                    ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                    // See the card before the share sheet — nobody shares
+                    // a thing they haven't seen (audit 2026-10-16, U8).
+                    ShareCardPreviewSheet(image: payload.image, caption: payload.caption) { completed in
                         if completed {
                             store.noteShareCardShared()
                         }
                         sharePayload = nil
                     }
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
                 }
 
                 Button("Go Again", action: onTrainAgain)
@@ -2708,5 +2732,61 @@ private struct TodayGoalsSheet: View {
         store.addTodayTask(newTitle)
         newTitle = ""
         addFocused = true
+    }
+}
+
+/// The story card, shown before the system share sheet (audit 2026-10-16,
+/// U8). One Share button; a render failure shares the caption text alone.
+struct ShareCardPreviewSheet: View {
+    let image: UIImage?
+    let caption: String
+    let onFinish: (_ completed: Bool) -> Void
+    @State private var showShareSheet = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Text("Your card")
+                .font(.headline)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .padding(.top, 18)
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: .black.opacity(0.25), radius: 14, y: 8)
+                    .padding(.horizontal, 28)
+                    .accessibilityLabel("Session story card")
+            } else {
+                Text(caption)
+                    .font(.body)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+            }
+            Spacer(minLength: 0)
+            VStack(spacing: 10) {
+                Button("Share") { showShareSheet = true }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .frame(maxWidth: .infinity)
+                Button("Not now") { onFinish(false); dismiss() }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .frame(minHeight: 44)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PremiumBackground())
+        .sheet(isPresented: $showShareSheet) {
+            ImageShareSheet(image: image, caption: caption) { completed in
+                showShareSheet = false
+                if completed { onFinish(true); dismiss() }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 }

@@ -18,6 +18,8 @@ struct WorkoutView: View {
     @State private var workoutPendingDelete: WorkoutTemplate?
     @State private var restSeconds = 180
     @State private var restRunning = false
+
+    private func skipRest() { restRunning = false }
     @State private var swapTarget: WorkoutExercise?
     @State private var isShowingPainFlow = false
     /// Payload for the set logger sheet: nil editIndex = log a new/extra set.
@@ -76,6 +78,99 @@ struct WorkoutView: View {
     /// The Train shell tabs (same grammar as Network's CHATS/FOR YOU):
     /// SESSION is the plan/console, DISCOVER is the catalog that used to
     /// be its own bottom-bar tab.
+
+    /// The live console, pulled out of `body` so the type-checker
+    /// finishes (the inline call tipped it over, 2026-10-16).
+    @ViewBuilder
+    private func trackerCard(for activeExercise: WorkoutExercise) -> some View {
+        ActiveWorkoutTrackerCard(
+            workout: store.currentWorkout,
+            exercise: activeExercise,
+            exerciseIndex: store.activeWorkoutExerciseIndex,
+            totalExercises: store.currentWorkout.exercises.count,
+            completedSets: store.completedWorkoutSets[activeExercise.id, default: 0],
+            totalSets: targetSetCount(for: activeExercise),
+            nextExercise: nextTrackedExercise,
+            suggestedReps: suggestedRepCount(for: activeExercise),
+            repsLogged: store.trackedSetReps[activeExercise.id, default: []],
+            weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
+            warmupsLogged: store.trackedSetWarmups[activeExercise.id, default: []],
+            cameraLogged: store.trackedSetCamera[activeExercise.id, default: []],
+            labelsLogged: store.trackedSetLabels[activeExercise.id, default: []],
+            weight: $pendingWeight,
+            rpe: $pendingRPE,
+            restSecondsLeft: restSeconds,
+            restIsRunning: restRunning,
+            onSkipRest: skipRest,
+            weightUnit: store.weightUnit,
+            onPrevious: { store.goToPreviousTrackedExercise() },
+            onQuickLogSet: { reps in
+                if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE) {
+                    // RPE is a per-set read — a stale rating must
+                    // never silently ride into the next set.
+                    pendingRPE = nil
+                    // Superset halves hop with no rest — the
+                    // timer belongs after the pair.
+                    if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
+                        autoStartRest(after: activeExercise)
+                    }
+                }
+            },
+            onLogHold: { seconds in
+                // Seconds ride the reps slot with an honest
+                // label (2026-10-10) — history reads "Hold 45s",
+                // never "45 reps".
+                if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: "Hold \(seconds)s") {
+                    pendingRPE = nil
+                    if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
+                        autoStartRest(after: activeExercise)
+                    }
+                }
+            },
+            onOpenCustomRepLogger: {
+                // A saved draft wins — whatever was typed last time
+                // comes back exactly. Otherwise suggest, clamped
+                // into the stepper's range (duration-based moves
+                // can parse to values like 60 "reps").
+                if let draft = store.pendingSetDrafts[activeExercise.id] {
+                    pendingRepCount = min(max(draft.reps, 1), 50)
+                    pendingWeight = draft.weight
+                    pendingRPE = draft.rpe
+                } else {
+                    pendingRepCount = min(max(suggestedRepCount(for: activeExercise), 1), 50)
+                    pendingRPE = nil
+                }
+                repLoggerContext = RepLoggerContext(editIndex: nil)
+            },
+            onEditSet: { index in
+                let repsLogged = store.trackedSetReps[activeExercise.id, default: []]
+                let weightsLogged = store.trackedSetWeights[activeExercise.id, default: []]
+                let rpesLogged = store.trackedSetRPE[activeExercise.id, default: []]
+                let reps = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
+                pendingRepCount = min(max(reps, 1), 50)
+                pendingWeight = weightsLogged.indices.contains(index) ? weightsLogged[index] : 0
+                let storedRPE = rpesLogged.indices.contains(index) ? rpesLogged[index] : 0
+                pendingRPE = storedRPE > 0 ? storedRPE : nil
+                repLoggerContext = RepLoggerContext(editIndex: index)
+            },
+            onDeleteSet: { index in
+                store.removeTrackedSet(exerciseID: activeExercise.id, setIndex: index)
+            },
+            onNext: { store.goToNextTrackedExercise() },
+            onStartRest: {
+                // Manual start honors the exercise's own rest
+                // length too — 180 is only the catalog fallback.
+                restSeconds = activeExercise.restSeconds ?? 180
+                restRunning = true
+            },
+            onOpenFormCheck: { showFormCheck = true },
+            onPain: {
+                store.painTriggerExercise = activeExercise.name
+                isShowingPainFlow = true
+            },
+            canGoPrevious: store.activeWorkoutExerciseIndex > 0
+        )
+    }
     var body: some View {
         @Bindable var store = store
         return Group {
@@ -427,90 +522,7 @@ struct WorkoutView: View {
                 }
 
                 if let activeExercise = store.activeWorkoutExercise {
-                    ActiveWorkoutTrackerCard(
-                        workout: store.currentWorkout,
-                        exercise: activeExercise,
-                        exerciseIndex: store.activeWorkoutExerciseIndex,
-                        totalExercises: store.currentWorkout.exercises.count,
-                        completedSets: store.completedWorkoutSets[activeExercise.id, default: 0],
-                        totalSets: targetSetCount(for: activeExercise),
-                        nextExercise: nextTrackedExercise,
-                        suggestedReps: suggestedRepCount(for: activeExercise),
-                        repsLogged: store.trackedSetReps[activeExercise.id, default: []],
-                        weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
-                        warmupsLogged: store.trackedSetWarmups[activeExercise.id, default: []],
-                        cameraLogged: store.trackedSetCamera[activeExercise.id, default: []],
-                        labelsLogged: store.trackedSetLabels[activeExercise.id, default: []],
-                        weight: $pendingWeight,
-                        rpe: $pendingRPE,
-                        weightUnit: store.weightUnit,
-                        onPrevious: { store.goToPreviousTrackedExercise() },
-                        onQuickLogSet: { reps in
-                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE) {
-                                // RPE is a per-set read — a stale rating must
-                                // never silently ride into the next set.
-                                pendingRPE = nil
-                                // Superset halves hop with no rest — the
-                                // timer belongs after the pair.
-                                if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
-                                    autoStartRest(after: activeExercise)
-                                }
-                            }
-                        },
-                        onLogHold: { seconds in
-                            // Seconds ride the reps slot with an honest
-                            // label (2026-10-10) — history reads "Hold 45s",
-                            // never "45 reps".
-                            if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: "Hold \(seconds)s") {
-                                pendingRPE = nil
-                                if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
-                                    autoStartRest(after: activeExercise)
-                                }
-                            }
-                        },
-                        onOpenCustomRepLogger: {
-                            // A saved draft wins — whatever was typed last time
-                            // comes back exactly. Otherwise suggest, clamped
-                            // into the stepper's range (duration-based moves
-                            // can parse to values like 60 "reps").
-                            if let draft = store.pendingSetDrafts[activeExercise.id] {
-                                pendingRepCount = min(max(draft.reps, 1), 50)
-                                pendingWeight = draft.weight
-                                pendingRPE = draft.rpe
-                            } else {
-                                pendingRepCount = min(max(suggestedRepCount(for: activeExercise), 1), 50)
-                                pendingRPE = nil
-                            }
-                            repLoggerContext = RepLoggerContext(editIndex: nil)
-                        },
-                        onEditSet: { index in
-                            let repsLogged = store.trackedSetReps[activeExercise.id, default: []]
-                            let weightsLogged = store.trackedSetWeights[activeExercise.id, default: []]
-                            let rpesLogged = store.trackedSetRPE[activeExercise.id, default: []]
-                            let reps = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
-                            pendingRepCount = min(max(reps, 1), 50)
-                            pendingWeight = weightsLogged.indices.contains(index) ? weightsLogged[index] : 0
-                            let storedRPE = rpesLogged.indices.contains(index) ? rpesLogged[index] : 0
-                            pendingRPE = storedRPE > 0 ? storedRPE : nil
-                            repLoggerContext = RepLoggerContext(editIndex: index)
-                        },
-                        onDeleteSet: { index in
-                            store.removeTrackedSet(exerciseID: activeExercise.id, setIndex: index)
-                        },
-                        onNext: { store.goToNextTrackedExercise() },
-                        onStartRest: {
-                            // Manual start honors the exercise's own rest
-                            // length too — 180 is only the catalog fallback.
-                            restSeconds = activeExercise.restSeconds ?? 180
-                            restRunning = true
-                        },
-                        onOpenFormCheck: { showFormCheck = true },
-                        onPain: {
-                            store.painTriggerExercise = activeExercise.name
-                            isShowingPainFlow = true
-                        },
-                        canGoPrevious: store.activeWorkoutExerciseIndex > 0
-                    )
+                    trackerCard(for: activeExercise)
 
                     // Push-to-talk set logging (frictionless-train wave):
                     // tap, say "10 at 135", done — the wake word is for
@@ -862,15 +874,19 @@ struct WorkoutView: View {
                 SectionTitleView(
                     title: "Train",
                     subtitle: store.hasCompletedWorkoutFlow
-                        ? "Great session. Look it over, rate it, and I'll lock it in."
+                        ? "Session logged. Look it over, rate it, and I'll lock it in."
                         : "Ready when you are — start the session and I'll track every set with you.",
                     titleSize: 16
                 )
 
-                GuideHint(
-                    key: "train.landing",
-                    text: "Tap Start and log each set with the check — I'll remember your weights for next time. Want something new? Tap Discover below."
-                )
+                // The hint describes the first session; it retires the
+                // moment one is logged (audit 2026-10-16, U11).
+                if store.loggedWorkoutCount == 0, !store.hasCompletedWorkoutFlow {
+                    GuideHint(
+                        key: "train.landing",
+                        text: "Tap Start and log each set with the check — I'll remember your weights for next time. Want something new? Tap Discover below."
+                    )
+                }
 
                 // Form Check lives inside the live session now (under the rest
                 // timer), matched to the exercise you're on — not here.
@@ -878,7 +894,10 @@ struct WorkoutView: View {
 
                 // Right after a finish, reviewing and logging IS the task —
                 // it leads the screen instead of hiding below planning cards.
-                if store.hasCompletedWorkoutFlow {
+                // Hidden while the debrief sheet is up — the sheet IS the
+                // save, and "not saved yet" behind "Save" read as two
+                // contradictory instructions (audit 2026-10-16, U5).
+                if store.hasCompletedWorkoutFlow, !store.showWorkoutDebrief {
                     // The unmissable truth: finished ≠ saved. The celebration
                     // used to FEEL terminal while nothing was in history yet.
                     HStack(spacing: 10) {
@@ -2913,6 +2932,12 @@ private struct ActiveWorkoutTrackerCard: View {
     /// Optional effort rating for the NEXT logged set — cleared by the owner
     /// after each log so a stale rating can't stick.
     @Binding var rpe: Int?
+    /// The running rest countdown, mirrored at the top of the console so a
+    /// logged set visibly starts the clock — the full timer card sits below
+    /// the fold (audit 2026-10-16, U3).
+    var restSecondsLeft: Int = 0
+    var restIsRunning: Bool = false
+    var onSkipRest: () -> Void = {}
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
@@ -3080,6 +3105,46 @@ private struct ActiveWorkoutTrackerCard: View {
                     }
                     Spacer()
                     MetricPill(label: "Sets", value: "\(completedSets)/\(totalSets)")
+                }
+                // Seed the first load for a movement with no history (U2).
+                // A beat after the owner resets the weight for the new
+                // exercise, so the seed lands on top of the reset.
+                .onChange(of: exercise.id, initial: true) {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(80))
+                        guard completedSets == 0, weight <= 0,
+                              let start = store.suggestedStartingLoad(for: exercise) else { return }
+                        weight = start
+                    }
+                }
+
+                if restIsRunning {
+                    HStack(spacing: 10) {
+                        Image(systemName: "timer")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        Text("Rest \(restSecondsLeft / 60):\(String(format: "%02d", max(restSecondsLeft, 0) % 60))")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .contentTransition(.numericText(countsDown: true))
+                        Text("· then set \(min(completedSets + 1, max(totalSets, 1)))")
+                            .font(.footnote)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Button("Skip", action: onSkipRest)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(minHeight: 32)
+                            .accessibilityLabel("Skip rest")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.accent.opacity(0.12))
+                    )
+                    .transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -3354,11 +3419,22 @@ private struct ActiveWorkoutTrackerCard: View {
                     }
                     // First-weight guidance (fix wave 2026-10-13): a beginner
                     // had no idea what to load.
-                    if store.loggedWorkoutCount == 0, !isBodyweightMove {
-                        Text("First time with this one? Pick a weight you could lift 2–3 more times than the reps asked. Too easy or too hard, change it next set.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    // No history for this movement: a starting guess from
+                    // bodyweight when Morphe has it, honest advice when it
+                    // doesn't (audit 2026-10-16, U2).
+                    if completedSets == 0, !isBodyweightMove,
+                       store.lastSessionSet(forExerciseNamed: exercise.name, setIndex: 0) == nil {
+                        if let start = store.suggestedStartingLoad(for: exercise) {
+                            Text("First time with this one? \(weightUnit.format(start)) is a starting guess from your bodyweight and level — it's loaded above. Too easy or too hard, change it next set.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text("First time with this one? Pick a weight you could lift 2–3 more times than the reps asked. Add your bodyweight in Profile → Your details and Morphe suggests a start next time.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     HStack(spacing: 8) {
                         Button {
@@ -3633,6 +3709,15 @@ private struct VoiceSetLogBar: View {
     let controller: VoiceSetLogController
     let onSet: (MorpheAppStore.LiveSetUtterance) -> Void
 
+    /// "10 at 135" only when the move takes load; a bodyweight squat
+    /// says "10 reps" (audit 2026-10-16, U10).
+    private var setExample: String {
+        let name = (store.activeWorkoutExercise?.name ?? "").lowercased()
+        let loaded = ["barbell", "dumbbell", "kettlebell", "cable", "machine", "press", "deadlift", "row", "curl", "weighted", "goblet"]
+            .contains(where: name.contains)
+        return loaded ? "10 at 135" : "10 reps"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Button {
@@ -3644,10 +3729,10 @@ private struct VoiceSetLogBar: View {
                         .foregroundStyle(controller.isListening ? MorpheTheme.accentText : MorpheTheme.accentText)
                         .symbolEffect(.variableColor.iterative, isActive: controller.isListening)
                     Text(controller.isListening
-                         ? (controller.transcript.isEmpty ? "Listening — say \"10 at 135\"…" : controller.transcript)
+                         ? (controller.transcript.isEmpty ? "Listening — say \"\(setExample)\"…" : controller.transcript)
                          : (store.heyMorphe.state == .passive
-                            ? "Hands free: \"Hey Morphe, 10 at 135\" — or tap"
-                            : "Say your set — \"10 at 135\""))
+                            ? "Hands free: \"Hey Morphe, \(setExample)\" — or tap"
+                            : "Say your set — \"\(setExample)\""))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)
@@ -4451,7 +4536,15 @@ struct DiscoverCatalogSection: View {
     ]
 
     private var newThisWeekPicks: [WorkoutTemplate] {
-        filteredWorkouts.filter { Self.newestCategories.contains($0.categoryTag) }
+        // Ranked for the athlete's sport and goals, so a strength athlete
+        // doesn't open on Barre (audit 2026-10-16, U9).
+        MorpheAppStore.rankedPlanCandidates(
+            filteredWorkouts.filter { Self.newestCategories.contains($0.categoryTag) },
+            sport: store.clientProfile.sportMode,
+            equipmentOrder: [],
+            flaggedAreas: [],
+            goals: store.clientProfile.selectedGoals
+        )
     }
 
     /// Ranked by the USER'S OWN completion counts from their logs — an honest
@@ -4877,7 +4970,10 @@ struct DiscoverCatalogSection: View {
         let picks = newThisWeekPicks
         if !picks.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader(title: "New This Week", count: picks.count)
+                // "New in the library", not "this week": the catalog has no
+                // publish dates yet, and invented freshness is the one thing
+                // this brand can't do (audit 2026-10-16, U9).
+                sectionHeader(title: "New in the Library", count: picks.count)
                 miniCardShelf(picks.prefix(10).map { ($0, nil) })
             }
         }

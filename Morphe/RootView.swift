@@ -458,6 +458,9 @@ struct RootView: View {
             // The 64pt clears the floating icon row (52pt) for BOTH
             // surfaces — the celebration banner drew over the avatar and
             // quick-add buttons (audit 25, P2).
+            // The quiet toast sits in the icon row (it covers the avatar
+            // and search for two seconds, never a page title — audit
+            // 2026-10-16, U4); the celebration keeps clearing the row.
             VStack(spacing: 10) {
                 if let toast = store.toastMessage {
                     ToastBanner(text: toast)
@@ -468,10 +471,11 @@ struct RootView: View {
 
                 if let celebration = store.celebration {
                     CelebrationOverlay(moment: celebration)
+                        .padding(.top, store.toastMessage == nil ? 58 : 0)
                         .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                 }
             }
-            .padding(.top, 64)
+            .padding(.top, 6)
             .padding(.horizontal, 20)
         }
         .overlay(alignment: .bottomTrailing) {
@@ -491,6 +495,18 @@ struct RootView: View {
                     .padding(.bottom, aiButtonDockClearance)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+        }
+        // Morphe's own ask before the system one (audit 2026-10-16, U13):
+        // what it will send, in one card, after the first logged session.
+        .sheet(isPresented: Binding(
+            get: { store.showNotificationPrePrompt },
+            set: { if !$0 { store.declineNotificationPrePrompt() } }
+        )) {
+            NotificationPrePromptSheet()
+                .environment(store)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
         }
         // The escalated moment (PRs, finished programs) — full-screen and
         // attached LAST so it covers everything, including the floating AI
@@ -888,9 +904,11 @@ private struct FloatingAIAgentButton: View {
         // the user has opened it once, it earns its keep as a small circle
         // that stops floating over bottom-right content on every tab.
         // A live Train session always compacts (screen space is training's).
+        // After the first logged session the pill has done its introducing
+        // too — it was sitting over the Progress tile (audit 2026-10-16, U7).
         store.hasUsedAIAgent
+            || store.loggedWorkoutCount > 0
             || (store.selectedClientTab == .train && store.isWorkoutSessionActive)
-
     }
 
     var body: some View {
@@ -5349,5 +5367,59 @@ final class CallWatcher: NSObject, CXCallObserverDelegate {
 
     func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
         onChange(isOnCall)
+    }
+}
+
+/// The pre-permission card (audit 2026-10-16, U13). Apple's guidance:
+/// say what the notifications are for before the system dialog, so the
+/// one-shot iOS prompt isn't spent on a surprised "Don't Allow".
+struct NotificationPrePromptSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "bell.badge.fill")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .padding(.top, 26)
+            Text("Reminders, only the useful kind")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: 10) {
+                row("calendar", "One reminder on a training day, if nothing's logged by late afternoon.")
+                row("flame", "A heads-up when a streak is about to break.")
+                row("chart.bar", "Your weekly recap. Nothing else — no marketing.")
+            }
+            .padding(.horizontal, 24)
+            Spacer(minLength: 0)
+            VStack(spacing: 10) {
+                Button("Turn on reminders") { store.acceptNotificationPrePrompt() }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .frame(maxWidth: .infinity)
+                Button("Not now") { store.declineNotificationPrePrompt() }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .frame(minHeight: 44)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PremiumBackground())
+    }
+
+    private func row(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 22)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }

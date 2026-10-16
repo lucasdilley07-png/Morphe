@@ -4947,6 +4947,58 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(ranked.count, 2, "sport mismatches are down-ranked, not excluded")
     }
 
+    // MARK: Load suggestion (audit 2026-10-16, U1)
+
+    private func squatLog(reps: [Int], weight: Double) -> WorkoutLog {
+        var exercise = LoggedExercise(name: "Barbell Back Squat", sets: "\(reps.count) sets", reps: "\(reps.first ?? 0)", weight: "\(Int(weight)) lb", note: "")
+        exercise.repsPerSet = reps
+        exercise.weightsPerSet = Array(repeating: weight, count: reps.count)
+        exercise.weightUnit = "lb"
+        return WorkoutLog(
+            athleteID: UUID(), athleteName: "Tester", workoutTemplateID: nil, workoutTitle: "Day A",
+            sport: .generalFitness, completedAt: .now, durationMinutes: 20, exercises: [exercise],
+            notes: "", source: .athleteManual, enteredByUserID: UUID(), enteredByRole: .client,
+            enteredByName: "Tester", verificationStatus: .athleteSubmitted)
+    }
+
+    func testLoadSuggestionAddsIncrementWhenEverySetHitTarget() {
+        let planned = [WorkoutExercise(id: "sq", exerciseLibraryID: "", name: "Barbell Back Squat", muscleGroup: .legs,
+                                       sets: "3", reps: "5", difficulty: .moderate, formCue: "")]
+        let reply = MorpheAppStore.loadSuggestionReply(
+            to: "how much should i squat next time", logs: [squatLog(reps: [5, 5, 5], weight: 50)],
+            planned: planned, unit: .pounds)
+        XCTAssertNotNil(reply)
+        XCTAssertTrue(reply?.contains("55") == true, "every set hit 5 → +5 lb — got \(reply ?? "nil")")
+        XCTAssertFalse(reply?.lowercased().contains("brace") == true, "a load question is not a technique question")
+    }
+
+    func testLoadSuggestionRepeatsLoadWhenASetMissed() {
+        let planned = [WorkoutExercise(id: "sq", exerciseLibraryID: "", name: "Barbell Back Squat", muscleGroup: .legs,
+                                       sets: "3", reps: "5", difficulty: .moderate, formCue: "")]
+        let reply = MorpheAppStore.loadSuggestionReply(
+            to: "should i go up on squat", logs: [squatLog(reps: [5, 5, 3], weight: 50)],
+            planned: planned, unit: .pounds)
+        XCTAssertTrue(reply?.contains("stay at 50") == true, "a missed set repeats the load — got \(reply ?? "nil")")
+    }
+
+    func testLoadSuggestionIgnoresUnrelatedPrompts() {
+        XCTAssertNil(MorpheAppStore.loadSuggestionReply(to: "how do i deadlift", logs: [], planned: [], unit: .pounds))
+        XCTAssertNil(MorpheAppStore.loadSuggestionReply(to: "how much protein should i eat", logs: [], planned: [], unit: .pounds))
+    }
+
+    func testStartingLoadComesFromBodyweightAndLevelOnlyWithoutHistory() {
+        let store = freshStore()
+        let squat = WorkoutExercise(id: "sq", exerciseLibraryID: "", name: "Barbell Back Squat", muscleGroup: .legs,
+                                    sets: "3", reps: "5", difficulty: .moderate, formCue: "")
+        store.clientProfile.bodyWeight = ""
+        XCTAssertNil(store.suggestedStartingLoad(for: squat), "no bodyweight, no guess")
+        store.clientProfile.fitnessLevel = "Beginner"
+        store.updateBodyMetrics(height: "", weight: "160 lb")
+        XCTAssertEqual(store.suggestedStartingLoad(for: squat), 80, "160 × 0.5, rounded to 5")
+        store.clientProfile.fitnessLevel = "Advanced"
+        XCTAssertEqual(store.suggestedStartingLoad(for: squat), 160, "160 × 1.0 for an advanced lifter")
+    }
+
     func testCatalogSportAffinityReadsCategoryAndName() {
         // Every catalog template decodes as .generalFitness; the sport
         // lives in the category + name.
@@ -6369,7 +6421,12 @@ final class StrengthAnalyticsTests: XCTestCase {
         XCTAssertEqual(card?.setCount, 2)
         XCTAssertEqual(card?.exerciseCount, 1)
         XCTAssertEqual(card?.minutes, 30)
-        XCTAssertEqual(card?.prNames, ["Bench"], "a record set on the log's day rides as a PR line")
+        XCTAssertEqual(card?.prNames, [], "a first-ever lift is a baseline, not a PR (audit 2026-10-16)")
+
+        store.workoutLogs.insert(log(for: store, exercise: "Bench", daysAgo: 0,
+                                     reps: [5, 5], weights: [145, 145]), at: 0)
+        XCTAssertEqual(store.latestSessionShareCardData?.prNames, ["Bench"],
+                       "a heavier top set after an earlier loaded set rides as the PR line")
     }
 
     func testPRAndStreakShareCardsStateOnlyLoggedFacts() {
