@@ -4752,7 +4752,8 @@ final class MorpheAppStore {
             minutes: log.durationMinutes,
             streak: currentWorkoutStreak(from: currentAthleteWorkoutLogs),
             prNames: Array(prNames.prefix(3)),
-            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
+            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)",
+            unitLabel: WorkUnit.word(forLogged: log.exercises).uppercased()
         )
     }
 
@@ -7134,6 +7135,10 @@ final class MorpheAppStore {
 
     // MARK: - Personalized daily plan (catalog-backed)
 
+    /// The catalog difficulty the athlete's level maps to — Discover
+    /// shelves lead with it (a beginner opened on ADVANCED bike work).
+    var planDifficulty: DemoDifficulty { planTargetDifficulty(for: clientProfile.fitnessLevel) }
+
     private func planTargetDifficulty(for level: String) -> DemoDifficulty {
         let l = level.lowercased()
         if l.contains("begin") { return .beginner }
@@ -9111,11 +9116,13 @@ final class MorpheAppStore {
             rpesLogged[setIndex] = rpe ?? 0
             trackedSetRPE[exerciseID] = rpesLogged
         }
-        showToast("Set \(setIndex + 1) updated.")
+        let editedUnit = WorkUnit.unit(ofLabel: trackedSetLabels[exerciseID]?[safe: setIndex] ?? "") ?? .set
+        showToast("\(editedUnit.singular) \(setIndex + 1) updated.")
     }
 
     /// Removes one logged set and re-syncs the completed count.
     func removeTrackedSet(exerciseID: String, setIndex: Int) {
+        let removedUnit = WorkUnit.unit(ofLabel: trackedSetLabels[exerciseID]?[safe: setIndex] ?? "") ?? .set
         // The wrist mirrors every session mutation (market audit 2026-08).
         defer { WatchBridge.shared.publish() }
         guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex) else { return }
@@ -9142,7 +9149,7 @@ final class MorpheAppStore {
             trackedSetCamera[exerciseID] = cameraLogged
         }
         completedWorkoutSets[exerciseID] = repsLogged.count
-        showToast("Set removed.")
+        showToast("\(removedUnit.singular) removed.")
     }
 
     /// Abandons the live session without logging anything.
@@ -11337,6 +11344,9 @@ final class MorpheAppStore {
         var weight: Double?
         var weightDelta: Double?
         var isWarmup = false
+        /// "done" / "round done" / "time" — a timed round, run or hold
+        /// finished as prescribed (Lucas 2026-10-16).
+        var isDone = false
     }
 
     /// "3 by 10" is how people SAY a set; the parsers read "3x10". Spoken or
@@ -11348,6 +11358,10 @@ final class MorpheAppStore {
     nonisolated static func parseLiveSetUtterance(_ raw: String) -> LiveSetUtterance? {
         var text = normalizedSetPhrase(Self.normalizedPrompt(raw))
         guard !text.isEmpty else { return nil }
+        // A timed unit ends with a word, not a number.
+        if text.range(of: "^(round |run |interval |lap |hold |that'?s )?(done|finished|complete|time|it)\\.?$", options: .regularExpression) != nil {
+            return LiveSetUtterance(isDone: true)
+        }
         // The recognizer writes "warm up"/"warm-up" as often as "warmup" —
         // normalize BEFORE the delta scan or its "up" gets consumed as a
         // +N weight move and the set logs wrong (audit 14, P0).
@@ -12014,7 +12028,7 @@ final class MorpheAppStore {
             var session = "They are mid-workout right now: \(currentWorkout.name)."
             if let exercise = activeWorkoutExercise {
                 let done = completedWorkoutSets[exercise.id, default: 0]
-                session += " Current exercise: \(exercise.name), \(done) of \(Self.watchSetCount(exercise.sets)) sets done."
+                session += " Current exercise: \(exercise.name), \(done) of \(Self.watchSetCount(exercise.sets)) \(workUnit(for: exercise).plural.lowercased()) done."
             }
             live.append(session)
         } else {
@@ -13440,7 +13454,7 @@ final class MorpheAppStore {
 
         // Question-shaped session asks get honest session ANSWERS.
         if Self.isQuestionShaped(text) {
-            if mentions("sets? left|more sets?\\b|how many sets|sets? remain") {
+            if mentions("sets? left|more sets?\\b|how many sets|sets? remain|rounds? left|more rounds?\\b|how many rounds|rounds? remain") {
                 let done = completedWorkoutSets[exercise.id, default: 0]
                 let target = Self.watchSetCount(exercise.sets)
                 let remainingHere = max(0, target - done)
@@ -13535,7 +13549,8 @@ final class MorpheAppStore {
             let remaining = currentWorkout.exercises.reduce(0) { sum, item in
                 sum + max(0, Self.watchSetCount(item.sets) - completedWorkoutSets[item.id, default: 0])
             }
-            return "You've got \(remaining) set\(remaining == 1 ? "" : "s") left — finish them, or wrap early from Train where the recap can show what's missing."
+            let word = workUnit(for: exercise)
+            return "You've got \(remaining) \(remaining == 1 ? word.singular.lowercased() : word.plural.lowercased()) left — finish them, or wrap early from Train where the recap can show what's missing."
         }
         if let range = text.range(of: "\\bextra set\\b", options: .regularExpression) {
             let remainder = String(text[range.upperBound...])
@@ -14869,19 +14884,34 @@ final class MorpheAppStore {
 
     /// The rest-timer's next-up line: what's actually coming when the
     /// countdown ends.
+    /// The exercise's own unit in this workout (round, run, set…).
+    func workUnit(for exercise: WorkoutExercise) -> WorkUnit {
+        WorkUnit.infer(for: exercise, category: currentWorkout.categoryTag)
+    }
+
+    /// "sets" / "rounds" / "sets and rounds" for the live session so far.
+    var trackedWorkWord: String {
+        WorkUnit.word(forLabels: currentWorkout.exercises.flatMap { trackedSetLabels[$0.id, default: []] })
+    }
+
+    /// The same word for the latest logged session.
+    var latestSessionWorkWord: String {
+        currentAthleteWorkoutLogs.first.map { WorkUnit.word(forLogged: $0.exercises) } ?? "sets"
+    }
+
     var restNextUpLine: String {
         guard let exercise = activeWorkoutExercise else { return "" }
         let done = completedWorkoutSets[exercise.id, default: 0]
         let target = targetSetCount(for: exercise)
         if done < target {
-            return "Breathe. Next: \(exercise.name), set \(min(done + 1, target)) of \(target)."
+            return "Breathe. Next: \(exercise.name), \(workUnit(for: exercise).singular.lowercased()) \(min(done + 1, target)) of \(target)."
         }
         if let next = currentWorkout.exercises.first(where: {
             completedWorkoutSets[$0.id, default: 0] < targetSetCount(for: $0)
         }) {
             return "Breathe. Next: \(next.name)."
         }
-        return "Breathe. That was the last planned set."
+        return "Breathe. That was the last planned \(activeWorkoutExercise.map { workUnit(for: $0).singular.lowercased() } ?? "set")."
     }
 
     // MARK: - Morphe asks (Jarvis wave)
@@ -16346,7 +16376,10 @@ final class MorpheAppStore {
         let setCount = exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) }
         let minutes = completedSessionMinutes ?? currentWorkout.durationMinutes
         var facts: [String] = []
-        if setCount > 0 { facts.append("\(setCount) set\(setCount == 1 ? "" : "s")") }
+        if setCount > 0 {
+            let word = WorkUnit.word(forLogged: exercises)
+            facts.append("\(setCount) \(setCount == 1 ? String(word.dropLast()) : word)")
+        }
         if !exercises.isEmpty { facts.append("\(exercises.count) exercise\(exercises.count == 1 ? "" : "s")") }
         if minutes > 0 { facts.append("\(minutes) min") }
         var text = "Completed \(currentWorkout.name)"
@@ -18543,7 +18576,8 @@ final class MorpheAppStore {
                         top = max(top, exercise.weightsPerSet?.max() ?? 0)
                     }
                 }
-                var parts: [String] = ["\(sets) set\(sets == 1 ? "" : "s")"]
+                let word = WorkUnit.word(forLogged: window.logs.flatMap { $0.exercises.filter { $0.name == name } })
+                var parts: [String] = ["\(sets) \(sets == 1 ? String(word.dropLast()) : word)"]
                 if reps > 0 { parts.append("\(reps) rep\(reps == 1 ? "" : "s")") }
                 if holdSeconds > 0 { parts.append("\(holdSeconds)s held") }
                 parts.append(top > 0 ? "top \(unit.format(top))" : "bodyweight")
@@ -18560,7 +18594,8 @@ final class MorpheAppStore {
         }
         let minutes = window.logs.reduce(0) { $0 + $1.durationMinutes }
         let what = sessions == 1 ? titles[0] : "\(sessions) sessions (\(titles.prefix(3).joined(separator: ", "))\(sessions > 3 ? "…" : ""))"
-        return "From your log \(window.label): \(what) — \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s"), \(setCount) set\(setCount == 1 ? "" : "s"), \(minutes) min."
+        let word = WorkUnit.word(forLogged: window.logs.flatMap(\.exercises))
+        return "From your log \(window.label): \(what) — \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s"), \(setCount) \(setCount == 1 ? String(word.dropLast()) : word), \(minutes) min."
     }
 
     private func athleteAgentReply(to prompt: String) -> String {
@@ -19312,7 +19347,7 @@ final class MorpheAppStore {
                 : repsLogged.map(String.init).joined(separator: ", ")
             let setSummary = repsLogged.isEmpty
                 ? exercise.sets
-                : "\(repsLogged.count) sets"
+                : workUnit(for: exercise).rewriteSetsText("\(repsLogged.count) sets")
             // Real load: the top working weight the user entered, or Bodyweight.
             let topWeight = weightsLogged.max() ?? 0
             let weightSummary = topWeight > 0 ? weightUnit.format(topWeight) : "Bodyweight"
@@ -20817,4 +20852,10 @@ extension CoachAnalytics {
         groupAttendance: 0,
         insight: ""
     )
+}
+
+
+extension Array {
+    /// nil instead of a crash for an index that isn't there.
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

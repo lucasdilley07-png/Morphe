@@ -112,16 +112,6 @@ struct HomeView: View {
                     )
                 }
 
-                // Showing up, counted (Lucas 2026-10-04): days in a row the
-                // app was opened — its own number, not the training streak.
-                if store.dailyStreakDays >= 1 {
-                    DailyStreakRow(
-                        days: store.dailyStreakDays,
-                        best: store.dailyStreakBest,
-                        freezeAvailable: store.dailyStreakFreezeAvailable,
-                        freezeJustUsed: store.dailyStreakFreezeJustUsed)
-                }
-
                 // "Here's what I've got for you" sits right under the streak
                 // (Lucas 2026-10-05) — above the profile strip and the plan.
                 // Week one keeps its own copy further down, by the checklist.
@@ -252,6 +242,18 @@ struct HomeView: View {
                 // plan card showed (Lucas 2026-10-15).
                 if !(store.firstWeekSteps == nil && !store.isPlannedRestDay && !store.isWorkoutLoggedToday) {
                     planFollowUps
+                }
+
+                // Showing up, counted (Lucas 2026-10-04): days in a row the
+                // app was opened — its own number, not the training streak.
+                // Below the plan card so Start is the first thing on the
+                // page (Apple-UI audit 2026-10-16, #5).
+                if store.dailyStreakDays >= 1 {
+                    DailyStreakRow(
+                        days: store.dailyStreakDays,
+                        best: store.dailyStreakBest,
+                        freezeAvailable: store.dailyStreakFreezeAvailable,
+                        freezeJustUsed: store.dailyStreakFreezeJustUsed)
                 }
 
                 // The day-7 bridge: five derived checkmarks that walk a new
@@ -1626,7 +1628,8 @@ private struct TodayDoneCard: View {
         }
         let planned = store.currentWorkout.exercises.count
         let exercises = "\(data.exerciseCount) of \(max(planned, data.exerciseCount)) exercise\(max(planned, data.exerciseCount) == 1 ? "" : "s")"
-        let sets = "\(data.setCount) set\(data.setCount == 1 ? "" : "s")"
+        let word = store.latestSessionWorkWord
+        let sets = "\(data.setCount) \(data.setCount == 1 ? String(word.dropLast()) : word)"
         let minutes = data.minutes > 0 ? ", \(data.minutes) min" : ""
         if planned > data.exerciseCount {
             return "Short day on \(workoutName): \(exercises), \(sets)\(minutes). It counts — the rest of today is yours."
@@ -2527,8 +2530,10 @@ private struct TodayGlanceRow: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
             } else {
+                // Two goals in full — never a truncated title (Apple-UI
+                // audit 2026-10-16, #8); the rest is a count.
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(tasks.prefix(3)) { task in
+                    ForEach(tasks.prefix(2)) { task in
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                                 .font(.caption2)
@@ -2537,11 +2542,12 @@ private struct TodayGlanceRow: View {
                                 .font(.caption2)
                                 .strikethrough(task.isCompleted)
                                 .foregroundStyle(task.isCompleted ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
-                                .lineLimit(1)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    if tasks.count > 3 {
-                        Text("+\(tasks.count - 3) more")
+                    if tasks.count > 2 {
+                        Text("+\(tasks.count - 2) more")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textMuted)
                     }

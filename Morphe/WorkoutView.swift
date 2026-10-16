@@ -620,7 +620,7 @@ struct WorkoutView: View {
                     }
                     .confirmationDialog(
                         store.trackedSetTotalCount > 0
-                            ? "Discard this workout? \(store.trackedSetTotalCount) logged set\(store.trackedSetTotalCount == 1 ? "" : "s") will be lost."
+                            ? "Discard this workout? \(store.trackedSetTotalCount) logged \(store.trackedSetTotalCount == 1 ? String(store.trackedWorkWord.dropLast()) : store.trackedWorkWord) will be lost."
                             : "Discard this workout?",
                         isPresented: $showDiscardConfirm,
                         titleVisibility: .visible
@@ -810,6 +810,20 @@ struct WorkoutView: View {
         // is the one completeTrackedSet targets — reps suggestion, rest
         // length, and weight baseline must come from the same one.
         guard let exercise = store.activeWorkoutExercise else { return }
+        let unit = store.workUnit(for: exercise)
+        if utterance.isDone || (unit.isTimed && utterance.reps == nil && utterance.weight == nil && utterance.weightDelta == nil) {
+            // "Done" on a round/run/hold logs the prescription as written.
+            guard unit.isTimed else {
+                store.showToast("Say the reps — \"10\" or \"10 at 135\".")
+                return
+            }
+            let seconds = WorkUnit.prescribedSeconds(for: exercise)
+            if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: unit.label(seconds: seconds)) {
+                pendingRPE = nil
+                if !store.hopToSupersetPartnerIfNeeded(after: exercise) { autoStartRest(after: exercise) }
+            }
+            return
+        }
         let reps = utterance.reps ?? suggestedRepCount(for: exercise)
         var weight = pendingWeight
         if let explicit = utterance.weight {
@@ -2206,6 +2220,7 @@ private enum PostWorkoutPromptAction: String, CaseIterable, Identifiable {
 /// Shown in the live session once every planned set is logged — the loop's
 /// "you're done" signal, with the finish action right there.
 private struct WorkoutCompleteCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let workoutName: String
     let totalSets: Int
     let onFinish: () -> Void
@@ -2218,10 +2233,10 @@ private struct WorkoutCompleteCard: View {
                         .font(.title2)
                         .foregroundStyle(MorpheTheme.accentText)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("All sets logged")
+                        Text("All \(store.trackedWorkWord) logged")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
-                        Text("\(workoutName) • \(totalSets) sets in the books.")
+                        Text("\(workoutName) • \(totalSets) \(store.trackedWorkWord) in the books.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -2383,6 +2398,7 @@ private struct WorkoutDebriefSheet: View {
 /// Post-finish recap of what was actually logged, exercise by exercise, so the
 /// user reviews real numbers before the session becomes a WorkoutLog.
 private struct SessionRecapCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let items: [WorkoutSetRecap]
     let weightUnit: WeightUnit
 
@@ -2410,7 +2426,7 @@ private struct SessionRecapCard: View {
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
-                    Text("\(totalSets) sets")
+                    Text("\(totalSets) \(store.trackedWorkWord)")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(MorpheTheme.accentText)
                 }
@@ -3304,13 +3320,19 @@ private struct ActiveWorkoutTrackerCard: View {
                             setIndex: store.workSetsDone(for: exercise.id)) {
                             Button {
                                 weight = last.weight
-                                repsToLog = min(max(last.reps, 1), 50)
-                                onQuickLogSet(last.reps)
+                                if unit.isTimed {
+                                    onLogHold(last.reps, unit.label(seconds: last.reps))
+                                } else {
+                                    repsToLog = min(max(last.reps, 1), 50)
+                                    onQuickLogSet(last.reps)
+                                }
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "arrow.counterclockwise")
                                         .font(.caption.weight(.bold))
-                                    Text("Same as last time — \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "BW")")
+                                    Text(unit.isTimed
+                                         ? "Same as last time — \(unit.label(seconds: last.reps))\(last.weight > 0 ? " at \(weightUnit.format(last.weight))" : "")"
+                                         : "Same as last time — \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "BW")")
                                         .font(.footnote.weight(.semibold))
                                     Spacer(minLength: 0)
                                     Image(systemName: "checkmark.circle.fill")
@@ -3326,7 +3348,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Log set \(completedSets + 1) same as last session: \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "bodyweight")")
+                            .accessibilityLabel("Log \(unit.singular.lowercased()) \(completedSets + 1) same as last session: \(unit.isTimed ? unit.label(seconds: last.reps) : "\(last.reps) reps") at \(last.weight > 0 ? weightUnit.format(last.weight) : "bodyweight")")
                         }
 
                         if isTimedMove {
@@ -3566,7 +3588,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.textPrimary)
-                                .accessibilityLabel("Edit set \(index + 1)")
+                                .accessibilityLabel("Edit \(unit.singular.lowercased()) \(index + 1)")
 
                                 Button {
                                     onDeleteSet(index)
@@ -3580,7 +3602,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.danger)
-                                .accessibilityLabel("Delete set \(index + 1)")
+                                .accessibilityLabel("Delete \(unit.singular.lowercased()) \(index + 1)")
                             }
                         }
                     }
@@ -3742,14 +3764,22 @@ private struct VoiceSetLogBar: View {
     let controller: VoiceSetLogController
     let onSet: (MorpheAppStore.LiveSetUtterance) -> Void
 
+    /// The active exercise's unit — a round says "done", a set says reps.
+    private var activeUnit: WorkUnit {
+        store.activeWorkoutExercise.map { store.workUnit(for: $0) } ?? .set
+    }
+
     /// "10 at 135" only when the move takes load; a bodyweight squat
-    /// says "10 reps" (audit 2026-10-16, U10).
+    /// says "10 reps" (audit 2026-10-16, U10); a round or run says "done".
     private var setExample: String {
+        if activeUnit.isTimed { return "done" }
         let name = (store.activeWorkoutExercise?.name ?? "").lowercased()
         let loaded = ["barbell", "dumbbell", "kettlebell", "cable", "machine", "press", "deadlift", "row", "curl", "weighted", "goblet"]
             .contains(where: name.contains)
         return loaded ? "10 at 135" : "10 reps"
     }
+
+    private var unitWord: String { activeUnit.singular.lowercased() }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -3765,7 +3795,7 @@ private struct VoiceSetLogBar: View {
                          ? (controller.transcript.isEmpty ? "Listening — say \"\(setExample)\"…" : controller.transcript)
                          : (store.heyMorphe.state == .passive
                             ? "Hands free: \"Hey Morphe, \(setExample)\" — or tap"
-                            : "Say your set — \"\(setExample)\""))
+                            : "Say your \(unitWord) — \"\(setExample)\""))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)
@@ -3792,8 +3822,8 @@ private struct VoiceSetLogBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(controller.isListening
-                                ? "Listening for your set. Tap to cancel."
-                                : "Log a set by voice")
+                                ? "Listening for your \(unitWord). Tap to cancel."
+                                : "Log a \(unitWord) by voice")
 
             // Permission help from the dictation engine, verbatim.
             if let notice = controller.notice, !controller.isListening {
@@ -4019,6 +4049,7 @@ private struct ConsoleStepButton: View {
 }
 
 private struct FocusedWorkoutQueueCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let exercises: [WorkoutExercise]
     let activeExerciseID: String?
     let completedWorkoutSets: [String: Int]
@@ -4068,7 +4099,7 @@ private struct FocusedWorkoutQueueCard: View {
                                         .accessibilityLabel("In a superset")
                                 }
                             }
-                            Text("\(exercise.sets) • \(exercise.reps)")
+                            Text("\(store.workUnit(for: exercise).rewriteSetsText(exercise.sets)) • \(exercise.reps)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                         }
@@ -4571,13 +4602,16 @@ struct DiscoverCatalogSection: View {
     private var newThisWeekPicks: [WorkoutTemplate] {
         // Ranked for the athlete's sport and goals, so a strength athlete
         // doesn't open on Barre (audit 2026-10-16, U9).
-        MorpheAppStore.rankedPlanCandidates(
+        let ranked = MorpheAppStore.rankedPlanCandidates(
             filteredWorkouts.filter { Self.newestCategories.contains($0.categoryTag) },
             sport: store.clientProfile.sportMode,
             equipmentOrder: [],
             flaggedAreas: [],
             goals: store.clientProfile.selectedGoals
         )
+        // The athlete's own level first (Apple-UI audit 2026-10-16).
+        let level = store.planDifficulty
+        return ranked.filter { $0.difficulty == level } + ranked.filter { $0.difficulty != level }
     }
 
     /// Ranked by the USER'S OWN completion counts from their logs — an honest
@@ -5469,7 +5503,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                                                 .font(.subheadline.weight(.semibold))
                                                 .foregroundStyle(MorpheTheme.textPrimary)
                                             Spacer()
-                                            Text("\(exercise.sets) × \(exercise.reps)")
+                                            Text("\(WorkUnit.infer(for: exercise, category: template.categoryTag).rewriteSetsText(exercise.sets)) × \(exercise.reps)")
                                                 .font(.system(.subheadline, design: .monospaced).weight(.semibold))
                                                 .foregroundStyle(MorpheTheme.accentText)
                                         }

@@ -65,8 +65,11 @@ enum MorpheTheme {
     private static let glassBlue = Color(red: 0.161, green: 0.341, blue: 0.851)
     private static let glassBlueDark = Color(red: 0.75, green: 0.84, blue: 1.0)
 
+    // Dark tiers lifted (Apple-UI audit 2026-10-16): at 0.045 over the
+    // #121214 canvas the cards were invisible — Apple's own dark
+    // secondary surface sits ~11% above its background.
     static var panel: Color {
-        isLight ? glassBlue.opacity(0.055) : glassBlueDark.opacity(0.045)
+        isLight ? glassBlue.opacity(0.055) : glassBlueDark.opacity(0.10)
     }
     /// Below `panel`: hints, links-out, footers, meta cards — present
     /// enough to group, quiet enough to recede (contrast tiers 2026-09).
@@ -74,10 +77,10 @@ enum MorpheTheme {
         isLight ? glassBlue.opacity(0.04) : glassBlueDark.opacity(0.035)
     }
     static var panelStrong: Color {
-        isLight ? glassBlue.opacity(0.09) : glassBlueDark.opacity(0.07)
+        isLight ? glassBlue.opacity(0.09) : glassBlueDark.opacity(0.15)
     }
     static var panelRaised: Color {
-        isLight ? glassBlue.opacity(0.12) : glassBlueDark.opacity(0.10)
+        isLight ? glassBlue.opacity(0.12) : glassBlueDark.opacity(0.20)
     }
     static var panelInteractive: Color {
         isLight ? glassBlue.opacity(0.16) : glassBlueDark.opacity(0.15)
@@ -94,10 +97,10 @@ enum MorpheTheme {
         isLight ? Color.black.opacity(0.55) : Color.white.opacity(0.56)
     }
     static var stroke: Color {
-        isLight ? glassBlue.opacity(0.22) : glassBlueDark.opacity(0.16)
+        isLight ? glassBlue.opacity(0.22) : glassBlueDark.opacity(0.26)
     }
     static var strokeSubtle: Color {
-        isLight ? glassBlue.opacity(0.11) : glassBlueDark.opacity(0.08)
+        isLight ? glassBlue.opacity(0.11) : glassBlueDark.opacity(0.14)
     }
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
     static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
@@ -165,9 +168,11 @@ enum MorpheTheme {
     /// default setting it IS the requested size, so the HUD look is
     /// untouched; at accessibility sizes the labels finally grow with the
     /// body text instead of staying microscopic).
+    /// Text-style based so it follows Dynamic Type (Apple-UI audit
+    /// 2026-10-16: the UIFontMetrics value was read once at launch and the
+    /// labels never grew). caption2 is Apple's 11pt floor; 12+ maps to caption.
     static func microLabel(_ size: CGFloat = 11) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: .caption2).scaledValue(for: size)
-        return .system(size: scaled, design: .monospaced).weight(.semibold)
+        .system(size <= 11 ? .caption2 : .caption, design: .monospaced).weight(.semibold)
     }
 
     // Glows retired with the glass design; kept near-zero for API compat.

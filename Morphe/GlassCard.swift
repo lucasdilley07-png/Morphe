@@ -2583,7 +2583,7 @@ struct ShareCardView: View {
 
     private var factLine: String {
         var facts: [String] = []
-        if data.setCount > 0 { facts.append("\(data.setCount) SETS") }
+        if data.setCount > 0 { facts.append("\(data.setCount) \(data.unitLabel)") }
         if data.exerciseCount > 0 { facts.append("\(data.exerciseCount) MOVES") }
         if data.minutes > 0 { facts.append("\(data.minutes) MIN") }
         return facts.joined(separator: "   ·   ")

@@ -4965,6 +4965,20 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(WorkUnit.round.rewriteSetsText("5 sets"), "5 rounds"); XCTAssertEqual(WorkUnit.round.rewriteSetsText("1 sets"), "1 round")
     }
 
+    func testWorkWordsAndDoneUtterance() {
+        XCTAssertEqual(WorkUnit.word(forLabels: ["", "", ""]), "sets")
+        XCTAssertEqual(WorkUnit.word(forLabels: ["Round 3:00", "Round 3:00"]), "rounds")
+        XCTAssertEqual(WorkUnit.word(forLabels: ["Round 3:00", ""]), "rounds and sets")
+        XCTAssertEqual(WorkUnit.word(forLabels: ["Hold 30s"]), "sets", "a hold is still a set in the count")
+        XCTAssertEqual(WorkUnit.unit(ofLabel: "Run 1:00"), .run)
+        let timed = WorkoutExercise(id: "jr", exerciseLibraryID: "", name: "Jump Rope", muscleGroup: .legs,
+                                    sets: "1 sets", reps: "3 min", difficulty: .beginner, formCue: "")
+        XCTAssertEqual(WorkUnit.prescribedSeconds(for: timed), 180)
+        XCTAssertEqual(MorpheAppStore.parseLiveSetUtterance("done")?.isDone, true)
+        XCTAssertEqual(MorpheAppStore.parseLiveSetUtterance("round done")?.isDone, true)
+        XCTAssertEqual(MorpheAppStore.parseLiveSetUtterance("10 at 135")?.isDone, false)
+    }
+
     func testFoodCheckRecordDecodesSubject() throws {
         let data = Data(#"{"subject":"notFood","name":"a shoe"}"#.utf8)
         let record = try JSONDecoder().decode(FoodCheckRecord.self, from: data)

@@ -3164,6 +3164,8 @@ struct ShareCardData: Hashable {
     var prNames: [String]
     /// "@username", or "" before a handle is claimed.
     var username: String
+    /// "SETS" / "ROUNDS" / "SETS AND ROUNDS" — the card's count word.
+    var unitLabel: String = "SETS"
 }
 
 /// A single PR as its own story card — the log's highest-emotion fact,
@@ -4121,6 +4123,51 @@ enum WorkUnit: String {
         default:
             return seconds >= 60 ? "\(singular) \(seconds / 60):\(String(format: "%02d", seconds % 60))" : "\(singular) \(seconds)s"
         }
+    }
+
+    /// Seconds the plan prescribes for a timed exercise ("3 min" → 180,
+    /// "45 sec" → 45); 30 when it doesn't say.
+    static func prescribedSeconds(for exercise: WorkoutExercise) -> Int {
+        let text = exercise.reps.lowercased()
+        if let range = text.range(of: #"(\d+)\s*min"#, options: .regularExpression),
+           let minutes = Int(text[range].filter(\.isNumber)) { return min(max(minutes * 60, 5), 600) }
+        let numbers = text.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        if let last = numbers.last, last >= 5 { return min(last, 600) }
+        return 30
+    }
+
+    /// The unit a stored label names ("Round 3:00" → .round); nil for a
+    /// plain set.
+    static func unit(ofLabel label: String) -> WorkUnit? {
+        guard let first = label.split(separator: " ").first else { return nil }
+        return WorkUnit(rawValue: String(first).lowercased())
+    }
+
+    /// "sets", "rounds", "runs", or "sets and rounds" for a mix — the word
+    /// for a session's logged work, from its per-set labels.
+    static func word(forLabels labels: [String]) -> String {
+        let units = Set(labels.map { unit(ofLabel: $0) ?? .set }).map { $0 == .hold ? .set : $0 }
+        let distinct = Array(Set(units))
+        if distinct.isEmpty { return "sets" }
+        if distinct.count == 1 { return distinct[0].plural.lowercased() }
+        let names = distinct.sorted { $0.rawValue < $1.rawValue }.map { $0.plural.lowercased() }
+        return names.dropLast().joined(separator: ", ") + " and " + names.last!
+    }
+
+    /// The same word for logged exercises, read from their "Set N: Round
+    /// 3:00" notes.
+    static func word(forLogged exercises: [LoggedExercise]) -> String {
+        var labels: [String] = []
+        for exercise in exercises {
+            let count = exercise.repsPerSet?.count ?? 0
+            for index in 0..<count {
+                let marker = "Set \(index + 1): "
+                let stored = exercise.note.components(separatedBy: " · ").first { $0.hasPrefix(marker) }
+                    .map { String($0.dropFirst(marker.count)) } ?? ""
+                labels.append(isTimedLabel(stored) ? stored : "")
+            }
+        }
+        return word(forLabels: labels)
     }
 
     /// True for any stored label that means "the reps slot holds seconds".

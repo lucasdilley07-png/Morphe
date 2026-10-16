@@ -369,7 +369,10 @@ struct RootView: View {
             .background(PremiumBackground())
             .preferredColorScheme(store.selectedAppearance)
         }
-        .sheet(isPresented: Binding(
+        // A full screen, not a sheet (Apple-UI audit 2026-10-16, #4): the
+        // welcome is an arrival, and the grey strip above a sheet read as a
+        // half-dismissed modal.
+        .fullScreenCover(isPresented: Binding(
             // Never over the launch beat (audit 30): a welcome debt carried
             // across a relaunch waits for the field to clear.
             get: { store.showWelcomeExperience && store.launchSettled },
@@ -682,11 +685,17 @@ private struct ClientExperienceShell: View {
             HomeView()
                 .id(store.tabResetKey("today"))
                 .pageTopInset(topInset)
+                // The last row of every tab clears the floating Morphe AI
+                // button (Apple-UI audit 2026-10-16, #6).
+                .safeAreaPadding(.bottom, 60)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.today)
 
             WorkoutView()
                 .pageTopInset(topInset)
+                // The last row of every tab clears the floating Morphe AI
+                // button (Apple-UI audit 2026-10-16, #6).
+                .safeAreaPadding(.bottom, 60)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.train)
 
@@ -696,6 +705,9 @@ private struct ClientExperienceShell: View {
             DiscoverScreenView()
                 .id(store.tabResetKey("discover"))
                 .pageTopInset(topInset)
+                // The last row of every tab clears the floating Morphe AI
+                // button (Apple-UI audit 2026-10-16, #6).
+                .safeAreaPadding(.bottom, 60)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.discover)
 
@@ -706,12 +718,18 @@ private struct ClientExperienceShell: View {
                 // at the top of a fresh feed instead of doing nothing.
                 .id(store.tabResetKey("community"))
                 .pageTopInset(topInset)
+                // The last row of every tab clears the floating Morphe AI
+                // button (Apple-UI audit 2026-10-16, #6).
+                .safeAreaPadding(.bottom, 60)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.community)
 
             MoreView()
                 .id(store.tabResetKey("more"))
                 .pageTopInset(topInset)
+                // The last row of every tab clears the floating Morphe AI
+                // button (Apple-UI audit 2026-10-16, #6).
+                .safeAreaPadding(.bottom, 60)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.more)
         }

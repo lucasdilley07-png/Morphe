@@ -648,3 +648,22 @@ Findings and the plan: `docs/AUDIT-USER-INVESTOR-2026-10-16.md`. Shipped:
   DOWN and log themselves at zero; holds still count up. Stored label
   format: "Round 3:00" / "Run 45s" / "Hold 30s"; `WorkUnit.isTimedLabel`
   drives `timedPerSet`.
+
+## Round-aware everywhere + Apple-UI fixes (2026-10-16, wave 12)
+
+- **Every surface speaks the unit**: voice bar ("Say your round — done";
+  "done" / "round done" / "time" logs the prescription), the same-as-last-
+  time row, edit/delete labels, the complete card and recap ("All rounds
+  logged"), the discard dialog, queue and detail lines, Today's done card,
+  the share card ("5 ROUNDS"), the rest line ("then round 2"), Hey
+  Morphe's "rounds left", Morphe AI's log recall, and history.
+  `WorkUnit.word(forLabels:)` / `word(forLogged:)` give "sets", "rounds",
+  or "rounds and sets" for a mix.
+- **Apple-UI audit** (`docs/AUDIT-APPLE-UI-INVESTOR-2026-10-16.md`): dark
+  panels lifted to 10/15/20% (they were invisible at 4.5%), micro labels
+  now text-style fonts so Dynamic Type scales them, Discover's lead shelf
+  puts the athlete's own level first. Then (Lucas): the welcome is a
+  `fullScreenCover`, the streak row sits below the plan/done card so Start
+  leads the page, every tab has 60pt bottom safe-area padding under the
+  floating AI button, and the Goals tile shows two goals in full. Open: the
+  custom tab bar vs `TabView` decision, Learn's quote card (C3).
