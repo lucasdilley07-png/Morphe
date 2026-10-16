@@ -522,3 +522,18 @@ Still open, in priority order:
   so scrolled content no longer collides with the clock.
 - **Open**: "Weight Loss" is both a sport and a goal in onboarding; the
   floating Morphe AI pill can sit over the Progress tile at one scroll spot.
+
+## Hey Morphe: volume + calls (2026-10-15, wave 7)
+
+- **Volume**: speaking no longer switches the session to `.voiceChat`
+  (its call-style voice processing cut speaker volume to near-silent);
+  it stays `.playAndRecord` / `.default` with the speaker route, utterance
+  and player volume at 1.0, and the system echo-cancelled input on
+  iOS 18.2+ where available. Barge-in still works (the mic stays hot);
+  echo protection is the spoken-echo stripping + the 4-word barge rule.
+  Watch on device for Morphe interrupting itself on loud speaker.
+- **Calls**: iOS gives the microphone to phone/FaceTime calls — no app can
+  listen during one. `CallWatcher` (CallKit) sees the call: Hey Morphe
+  pauses, an in-app banner + a passive notification say it listens again
+  after the call, and on hang-up it re-arms and clears the notification.
+- The Morphe AI button no longer slides off on Today (reverted at Lucas's call).

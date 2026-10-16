@@ -10961,9 +10961,6 @@ final class MorpheAppStore {
     /// pill to its compact circle for good (the wide label is an intro,
     /// not furniture).
     var hasUsedAIAgent: Bool = UserDefaults.standard.bool(forKey: "morphe.ai.used")
-    /// Today's three-tile row is on screen: the wide pill would sit on the
-    /// Progress tile, so it shows as the orb meanwhile (audit 2026-10-15).
-    var glanceRowVisible = false
 
     func openAIAgent() {
         // The pill keeps its "Morphe AI" label for the first few opens —
@@ -12880,6 +12877,9 @@ final class MorpheAppStore {
             // that can never work (audit 12, P1-3).
             self?.setHeyMorphe(enabled: false)
             self?.showToast(message)
+        }
+        heyMorphe.onCallPause = { [weak self] paused in
+            self?.handleHeyMorpheCallPause(paused)
         }
         heyMorphe.onTransientPause = { [weak self] message in
             // Recoverable stall (audit 14): the toggle STAYS on — the old
@@ -18140,6 +18140,33 @@ final class MorpheAppStore {
             return "\(failure?.errorDescription ?? "")\n\n\(builtIn)"
         default:
             return builtIn
+        }
+    }
+
+    static let callPauseNotificationID = "morphe.heyMorphe.callPause"
+
+    /// iOS gives the mic to the call: say so (banner in the app, a
+    /// notification when the phone app is in front) and clear it after.
+    func handleHeyMorpheCallPause(_ paused: Bool) {
+        let center = UNUserNotificationCenter.current()
+        guard paused else {
+            center.removeDeliveredNotifications(withIdentifiers: [Self.callPauseNotificationID])
+            center.removePendingNotificationRequests(withIdentifiers: [Self.callPauseNotificationID])
+            if UIApplication.shared.applicationState == .active {
+                showToast("Hey Morphe is listening again.")
+            }
+            return
+        }
+        let line = "Hey Morphe is paused during your call — iPhone gives the microphone to the call. It listens again when you hang up."
+        if UIApplication.shared.applicationState == .active { showToast(line) }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Hey Morphe paused for your call"
+            content.body = "iPhone gives the microphone to calls. Morphe will listen again when you hang up."
+            content.interruptionLevel = .passive
+            center.add(UNNotificationRequest(identifier: Self.callPauseNotificationID, content: content, trigger: nil))
         }
     }
 

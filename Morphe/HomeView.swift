@@ -476,9 +476,6 @@ struct HomeView: View {
             onOpenNutrition: { store.openHub(.nutrition) },
             onOpenProgress: { store.openProgress() }
         )
-        // While these tiles are on screen the AI door shrinks to its orb
-        // and sits in the margin, never on the Progress tile.
-        .modifier(GlanceVisibilityReporter { store.glanceRowVisible = $0 })
     }
 
     private var nextMoveCard: some View {
@@ -2711,22 +2708,5 @@ private struct TodayGoalsSheet: View {
         store.addTodayTask(newTitle)
         newTitle = ""
         addFocused = true
-    }
-}
-
-/// Reports whether the glance row is on screen (iOS 18+; on 17 the row
-/// counts as visible whenever Today shows it, which only compacts the pill).
-private struct GlanceVisibilityReporter: ViewModifier {
-    let onChange: (Bool) -> Void
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content
-                .onScrollVisibilityChange(threshold: 0.05) { onChange($0) }
-                .onDisappear { onChange(false) }
-        } else {
-            content
-                .onAppear { onChange(true) }
-                .onDisappear { onChange(false) }
-        }
     }
 }

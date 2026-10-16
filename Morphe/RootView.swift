@@ -3,6 +3,7 @@ import PhotosUI
 import Speech
 import AVFoundation
 import UIKit
+import CallKit
 
 /// Keyboard visibility for the floating dock (audit 13, P1): the capsule
 /// participates in keyboard avoidance, so without this it floated BETWEEN
@@ -481,10 +482,7 @@ struct RootView: View {
             // And it slides off to the right while "Hey Morphe" has the
             // stage (Lucas 2026-10-04): the voice is already the door, so
             // the button gets out of the way and returns when it's done.
-            // It also steps aside while Today's three tiles are on screen —
-            // no size of button fits the margin beside them (2026-10-15).
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage
-                && !(store.selectedClientTab == .today && store.glanceRowVisible) {
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
@@ -515,9 +513,6 @@ struct RootView: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.2)
                    : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
                    value: voiceHasTheStage)
-        .animation(reduceMotion ? .easeInOut(duration: 0.2)
-                   : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
-                   value: store.glanceRowVisible)
         // The celebrations are the app's ONE emotional beat — the banner and
         // the full-screen stamp get a spring pop where everything else stays
         // mechanical.
@@ -1659,6 +1654,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// was healthy, so its eventual end is a routine recycle, not a failure.
     private var listenStartedAt: Date?
     private var interruptionObserver: NSObjectProtocol?
+    /// Phone and FaceTime calls own the microphone on iOS — no app may
+    /// listen during one. The watcher tells the user instead of failing
+    /// silently, and re-arms the ear when the call ends (2026-10-15).
+    private var callWatcher: CallWatcher?
+    /// (true) a call paused Hey Morphe; (false) the call ended, listening again.
+    var onCallPause: ((Bool) -> Void)?
+    private(set) var pausedForCall = false
     /// Audio courtesy (Lucas 2026-08-27): opening the app must NEVER pause
     /// another app's music — bringing a record session up from cold forces
     /// a route renegotiation that stops other audio, mixWithOthers or not.
@@ -1793,6 +1795,26 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         ) { [weak self] note in
             guard let self, (note.object as? AVAudioEngine) === self.audioEngine else { return }
             self.scheduleRouteRecovery(deviceChanged: false)
+        }
+        if callWatcher == nil {
+            callWatcher = CallWatcher { [weak self] onCall in
+                guard let self else { return }
+                if onCall {
+                    guard self.state != .off, !self.pausedForCall else { return }
+                    self.pausedForCall = true
+                    self.onCallPause?(true)
+                } else if self.pausedForCall {
+                    self.pausedForCall = false
+                    self.onCallPause?(false)
+                    // Interruption-ended doesn't always arrive (the app
+                    // was in the background); re-arm the ear ourselves.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                        guard let self, self.state == .passive, self.task == nil else { return }
+                        self.interrupted = false
+                        self.beginListening()
+                    }
+                }
+            }
         }
         // Phone calls / Siri / other apps taking the session (audit 12,
         // P1-4): tear down on interruption, resume when it ends.
@@ -2198,11 +2220,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         lastBargeCandidate = ""
         spokeFirstChunk = false
         tearDownRecognition()
-        // .voiceChat = system echo cancellation: the mic stays hot while
-        // Morphe talks WITHOUT hearing itself.
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playAndRecord, mode: .voiceChat,
-            options: routeOptions(.duckOthers))
+        // Full-volume speaker (2026-10-15: .voiceChat's call-style voice
+        // processing made Morphe "almost not even hearable"). The mic stays
+        // hot for barge-in; echo is handled by strippingSpokenEcho and the
+        // 4-word barge rule, plus the system's echo-cancelled input where
+        // the phone offers it without the volume cut.
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playAndRecord, mode: .default, options: routeOptions(.duckOthers))
+        if #available(iOS 18.2, *), session.isEchoCancelledInputAvailable {
+            try? session.setPrefersEchoCancelledInput(true)
+        }
         Self.allowHapticsWhileRecording()
         armBargeInRecognition()
     }
@@ -2269,6 +2296,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func speakChunkOnDevice(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.48
+        utterance.volume = 1.0
         // The user's chosen voice (personalization) — default remains the
         // measured British male, the Jarvis original. Pitch rides the
         // option so male voices stay in the chest.
@@ -2320,7 +2348,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             let fetched = data
             DispatchQueue.main.async {
                 guard let self, self.state == .speaking, self.chunkInFlight else { return }
-                if let fetched, let player = try? AVAudioPlayer(data: fetched), player.play() {
+                if let fetched, let player = try? AVAudioPlayer(data: fetched), { player.volume = 1.0; return player.play() }() {
                     player.delegate = self
                     player.isMeteringEnabled = true
                     self.neuralPlayer = player
@@ -5180,5 +5208,24 @@ private struct VoiceEdgeGlow: View {
         .opacity(reduceMotion ? 0.55 : 0.4 + level * 0.5)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: level)
         .accessibilityHidden(true)
+    }
+}
+
+
+/// Watches for an active phone/FaceTime/VoIP call (CallKit).
+final class CallWatcher: NSObject, CXCallObserverDelegate {
+    private let observer = CXCallObserver()
+    private let onChange: (Bool) -> Void
+
+    init(onChange: @escaping (Bool) -> Void) {
+        self.onChange = onChange
+        super.init()
+        observer.setDelegate(self, queue: .main)
+    }
+
+    var isOnCall: Bool { observer.calls.contains { !$0.hasEnded } }
+
+    func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
+        onChange(isOnCall)
     }
 }
