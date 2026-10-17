@@ -130,7 +130,8 @@ struct RootView: View {
     /// Clearance for the floating AI button over the dock. Scales with the
     /// dock's own micro-labels (audit 13, P2): a fixed 74 overlapped the
     /// capsule at accessibility text sizes.
-    @ScaledMetric(relativeTo: .caption2) private var aiButtonDockClearance: CGFloat = 90   // 74 → 90 (Lucas 2026-10-05: slightly higher)
+    // Clears the system tab bar (49pt + the home indicator) with a margin.
+    @ScaledMetric(relativeTo: .caption2) private var aiButtonDockClearance: CGFloat = 98
 
     /// Reduce Motion swaps travel for a quick crossfade — never zero
     /// feedback, never a slide/spring.
@@ -688,7 +689,7 @@ private struct ClientExperienceShell: View {
                 // The last row of every tab clears the floating Morphe AI
                 // button (Apple-UI audit 2026-10-16, #6).
                 .safeAreaPadding(.bottom, 60)
-                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label(ClientTab.today.title, systemImage: ClientTab.today.systemImage) }
                 .tag(ClientTab.today)
 
             WorkoutView()
@@ -696,7 +697,7 @@ private struct ClientExperienceShell: View {
                 // The last row of every tab clears the floating Morphe AI
                 // button (Apple-UI audit 2026-10-16, #6).
                 .safeAreaPadding(.bottom, 60)
-                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label(ClientTab.train.title, systemImage: ClientTab.train.systemImage) }
                 .tag(ClientTab.train)
 
             // Discover is a first-class tab again; Progress presents as a
@@ -708,7 +709,7 @@ private struct ClientExperienceShell: View {
                 // The last row of every tab clears the floating Morphe AI
                 // button (Apple-UI audit 2026-10-16, #6).
                 .safeAreaPadding(.bottom, 60)
-                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label(ClientTab.discover.title, systemImage: ClientTab.discover.systemImage) }
                 .tag(ClientTab.discover)
 
             // Un-gated: the For You feed is REAL now (Firestore posts).
@@ -721,7 +722,8 @@ private struct ClientExperienceShell: View {
                 // The last row of every tab clears the floating Morphe AI
                 // button (Apple-UI audit 2026-10-16, #6).
                 .safeAreaPadding(.bottom, 60)
-                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label(ClientTab.community.title, systemImage: ClientTab.community.systemImage) }
+                .badge(store.networkBadgeCount)
                 .tag(ClientTab.community)
 
             MoreView()
@@ -730,7 +732,7 @@ private struct ClientExperienceShell: View {
                 // The last row of every tab clears the floating Morphe AI
                 // button (Apple-UI audit 2026-10-16, #6).
                 .safeAreaPadding(.bottom, 60)
-                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label(ClientTab.more.title, systemImage: ClientTab.more.systemImage) }
                 .tag(ClientTab.more)
         }
         // The main tabs no longer page (Lucas 2026-10-13): the swipe belongs to
@@ -762,22 +764,15 @@ private struct ClientExperienceShell: View {
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
         }
-        .safeAreaInset(edge: .bottom) {
-            // Floating glass capsule (b866e53) — inset from the bottom and
-            // sides; the root ink shows around it. Yields to the keyboard
-            // (audit 13, P1) instead of floating on top of it.
-            if !KeyboardWatcher.shared.isVisible {
-                BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab,
-                                    badges: [.community: store.networkBadgeCount]) { tab in
-                    store.selectedClientTab = tab
-                    // Tapping the icon always lands at the top of that tab's
-                    // first page.
-                    store.popTabToRoot(tab.rawValue)
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+        // The system tab bar (Apple-UI audit 2026-10-16, #7): Liquid Glass
+        // on iOS 26, the tab-bar trait for VoiceOver, Dynamic Type for the
+        // labels, keyboard avoidance — all for free. The custom capsule
+        // (b866e53) is retired.
+        .tint(MorpheTheme.accent)
+        .onChange(of: store.selectedClientTab) { _, tab in
+            // A tab switch lands at the top of that tab's first page.
+            store.popTabToRoot(tab.rawValue)
         }
-        .animation(.easeInOut(duration: 0.2), value: KeyboardWatcher.shared.isVisible)
         }
     }
 }

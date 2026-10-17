@@ -39,15 +39,14 @@ in the same wave (marked ✔).
 | 4 | **Welcome page is a sheet, not a screen.** Apple's welcome component is full-screen; here the grey status strip above the rounded top reads as a half-dismissed modal. | Modality → use sheets for tasks, not arrivals | ✔ `fullScreenCover` |
 | 5 | **Today stacks four cards before the primary action.** Greeting, hint, streak, then the plan card with Start; on a 6.1" phone Start is at the fold. | "One screen, one verb"; Layout → primary content first | ✔ streak row moved below the plan / done card |
 | 6 | **The floating Morphe AI button covers content** — the Progress tile on Today, the EXERCISE 1/5 badge on Train, the last Discover row. Apple's own floating controls reserve a bottom inset. | Layout → safe areas | ✔ 60pt bottom safe-area padding on every tab |
-| 7 | **Tab bar is a custom capsule with mono uppercase labels.** It works and it's on-brand, but it isn't `TabView`, so it loses iOS 26's Liquid Glass behaviour, VoiceOver's tab-bar trait, and the system's own Dynamic Type handling. | Components → Tab bars | open — decision: keep the brand chrome or adopt the system bar |
+| 7 | **Tab bar is a custom capsule with mono uppercase labels.** It works and it's on-brand, but it isn't `TabView`, so it loses iOS 26's Liquid Glass behaviour, VoiceOver's tab-bar trait, and the system's own Dynamic Type handling. | Components → Tab bars | ✔ system `TabView` bar (Liquid Glass on iOS 26, VoiceOver tab trait, Dynamic Type labels, keyboard avoidance) |
 | 8 | **Goals tile truncates every item** ("Walk 10 minu…"). | Writing → never truncate what the user wrote | ✔ two goals in full (up to 3 lines each), then "+N more" |
-| 9 | **Learn has four hierarchy levels** on one screen (segmented tabs, a quote card, a card grid, two disclosures). | Layout → hierarchy | open — the quote card is the one to cut (C3 in the morning plan) |
+| 9 | **Learn has four hierarchy levels** on one screen (segmented tabs, a quote card, a card grid, two disclosures). | Layout → hierarchy | ✔ quote card removed from Learn; The Code stays behind the rank row on Profile |
 | 10 | **Toast covers the search button for 2 s.** Chosen over covering titles; still not Apple's pattern (Apple uses a status-bar pill or inline confirmation). | Feedback | accept for now |
 
 ### Verdict
-Ship-quality on structure, components and accessibility. Items 1–6 and 8
-are fixed in this wave (verified in the simulator). Item 7 is a brand
-decision, not a bug; 9 is the morning plan's C3; 10 is accepted.
+Ship-quality on structure, components and accessibility. Items 1–9 are
+fixed and verified in the simulator; 10 is accepted.
 
 ---
 

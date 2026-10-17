@@ -665,5 +665,7 @@ Findings and the plan: `docs/AUDIT-USER-INVESTOR-2026-10-16.md`. Shipped:
   puts the athlete's own level first. Then (Lucas): the welcome is a
   `fullScreenCover`, the streak row sits below the plan/done card so Start
   leads the page, every tab has 60pt bottom safe-area padding under the
-  floating AI button, and the Goals tile shows two goals in full. Open: the
-  custom tab bar vs `TabView` decision, Learn's quote card (C3).
+  floating AI button, and the Goals tile shows two goals in full. Then: the custom
+  capsule dock is retired for the system `TabView` bar (`.tabItem` +
+  `.badge`, `.tint(accent)`, `popTabToRoot` on selection change; the AI
+  button clears 98pt) and Learn's quote card is gone from the first screen.

@@ -373,21 +373,16 @@ struct MoreView: View {
 
     private var learningPanel: some View {
         Group {
-            // The record's line for today (docs/SPARTAN-LORE.md) — the
-            // door to The Code. One saying a day, never reshuffled.
-            let todaysLine = SpartanLore.saying()
-            RecordLineCard(saying: todaysLine) {
-                openedSaying = todaysLine
-            }
-            // Only the saying (Lucas 2026-10-10): a quote pop-up that
-            // changes every day — the ladder and the rest of The Code
-            // stay behind the rank row on Profile.
-            .sheet(item: $openedSaying) { saying in
-                DailySayingSheet(saying: saying)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(28)
-            }
+            // The record's line left the first screen (Apple-UI audit
+            // 2026-10-16, #9): The Code stays behind the rank row on Profile.
+            // The saying sheet keeps its host for the deep link.
+            Color.clear.frame(width: 0, height: 0)
+                .sheet(item: $openedSaying) { saying in
+                    DailySayingSheet(saying: saying)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                        .presentationCornerRadius(28)
+                }
 
             // Discover-style quiz wall (Lucas 2026-08-16): every quiz is a
             // tall calling card in a two-column grid — today's card is live,
