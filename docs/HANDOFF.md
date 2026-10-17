@@ -1120,3 +1120,23 @@ Network is deliberately left alone.
   stays in the file, unmounted. Library order is Saved → Exercise Library.
 - Library (Lucas 2026-10-17): the Skill Drill Spotlight and Stretching +
   Mobility cards are gone; the page is Saved, then the Exercise Library.
+- Per-page Morphe lines (Lucas 2026-10-17): `pageDirective(_:now:)` for
+  train · fitness · explore · lessons · nutrition · library, rendered by
+  `MorpheDirectiveLine` under each page's tabs (replacing the static
+  subtitles). Three buckets per page — a navigation tip, a task from the
+  user's data (open session, week count, starter targets, water, today's
+  quiz, nothing saved…), an encouragement that is a logged number — and a
+  day-stable pick (`ordinality(.day, .era)` + page index) so the line
+  changes daily; beginners lead with tips, others with tasks/numbers.
+  No quotes or invented lines (sourcing law): every "motivation" is a
+  real count.
+- Search (top-right icon, Lucas 2026-10-17): the sheet is just the bar
+  (focused on open) with results below once a search runs — no title,
+  no Done; pull down to leave.
+- Quick Add (Lucas 2026-10-17): title on top, Morphe's line under it
+  (`pageDirective(.connect)` — scan/search tips, "connect with one person"
+  task, a connections count), the invite link under My Code · Scan and
+  above People, no Done (pull down to leave), and the search field pins on
+  a scroll up (`pinnedBar` modifier + `PinnedBarOffsetKey`). The universal
+  Search sheet's bar sits above its result pager, so it never scrolls off;
+  nothing to pin there.

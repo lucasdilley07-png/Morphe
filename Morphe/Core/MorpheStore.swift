@@ -798,6 +798,94 @@ final class MorpheAppStore {
         return pool[hour % pool.count]
     }
 
+    // MARK: Per-page directives (Lucas 2026-10-17)
+
+    enum MorphePage: String, CaseIterable { case train, fitness, explore, lessons, nutrition, library, connect }
+
+    /// Morphe's line at the top of each page: a navigation tip, a task from
+    /// the user's own data, or an encouragement built from a real number —
+    /// one of the three a day, rotating by the day so it changes daily and
+    /// stays put within the day. Beginners get the tips first; the more
+    /// experienced get tasks and numbers. Nothing invented, no quotes
+    /// (sourcing law): every encouragement is a logged fact.
+    func pageDirective(_ page: MorphePage, now: Date = .now) -> String {
+        guard hasCompletedOnboarding else { return pageFallback(page) }
+        let beginner = planDifficulty == .beginner
+        let logs = loggedWorkoutCount
+        let week = currentAthleteWorkoutSummary.workoutsThisWeek
+        let target = max(clientProfile.trainingDaysPerWeek, 1)
+        var tips: [String] = [], tasks: [String] = [], cheers: [String] = []
+
+        switch page {
+        case .train:
+            tips.append(isWorkoutSessionActive ? "Say \"done\" and I log the set for you." : "Tap Start and log each set with the check — I remember your weights.")
+            tips.append("Build Workout makes one from a few questions, or your own list.")
+            if isWorkoutSessionActive { tasks.append("Finish your session — it's still open.") }
+            else if !isWorkoutLoggedToday, !isPlannedRestDay { tasks.append(week < target ? "Train today — \(week) of \(target) this week." : "Target met. Today's a bonus session.") }
+            if isPlannedRestDay, !isWorkoutLoggedToday { tasks.append("Rest day. Recovery is training too.") }
+            if logs > 0 { cheers.append("\(logs) session\(logs == 1 ? "" : "s") logged. The plan knows your weights now.") }
+            if dailyStreakDays >= 2 { cheers.append("\(dailyStreakDays) days in a row. Keep the chain.") }
+        case .fitness:
+            tips.append(beginner ? "Pick a style, then a workout at your level — Beginner is marked." : "Filter by time or equipment to match today's window.")
+            tips.append("Save a workout and it waits in Train → My Library.")
+            if savedWorkouts.isEmpty { tasks.append("Save one workout for a day the plan doesn't fit.") }
+            if !discoverWorkouts.isEmpty { cheers.append("\(discoverWorkouts.count) workouts, \(exerciseDatabase.count) exercises — all checked against a source.") }
+        case .explore:
+            tips.append("Tap a tile to open it; swipe up for the next, right to come back.")
+            tips.append("Blogs open as threads — reply under them.")
+            if feedPosts.isEmpty { tasks.append("Post your next logged session and it lands here.") }
+            if !savedPostIds.isEmpty { cheers.append("\(savedPostIds.count) saved post\(savedPostIds.count == 1 ? "" : "s") in your Library.") }
+        case .lessons:
+            tips.append("One quiz a day. A first-try answer earns XP.")
+            tips.append("Bookmark a lesson and it waits in Library → Saved.")
+            if !quizAnsweredToday { tasks.append("Today's quiz is open — one question.") }
+            if !completedQuizIDs.isEmpty { cheers.append("\(completedQuizIDs.count) quiz\(completedQuizIDs.count == 1 ? "" : "zes") aced.") }
+        case .nutrition:
+            tips.append("Log by search, photo or by hand — the numbers show their source.")
+            tips.append("Scan a barcode and I read the label and the supply chain.")
+            if nutritionTargets.isStarter { tasks.append("Log your weight in Profile and I set real targets.") }
+            // Data-gated, never clock-gated: the line holds through the day.
+            if nutrition.meals.filter(\.logged).isEmpty { tasks.append("Nothing logged yet today — log your first meal.") }
+            if nutrition.waterConsumed < nutritionTargets.waterCups { tasks.append("Water: \(nutrition.waterConsumed) of \(nutritionTargets.waterCups) cups.") }
+            if !foodChecks.isEmpty { cheers.append("\(foodChecks.count) food\(foodChecks.count == 1 ? "" : "s") checked. You read labels now.") }
+        case .connect:
+            tips.append("Scan a friend's code or show yours — one tap connects you.")
+            tips.append("Search a @username to find someone already on Morphe.")
+            if followedUids.isEmpty { tasks.append("Connect with one person. Training with someone sticks.") }
+            else if followedUids.count < 3 { tasks.append("Invite a training partner — your link is below.") }
+            if !followedUids.isEmpty { cheers.append("\(followedUids.count) connection\(followedUids.count == 1 ? "" : "s"). Your board fills from here.") }
+        case .library:
+            tips.append("Every saved post, workout, exercise, plan and lesson lives here.")
+            tips.append(beginner ? "The Exercise Library shows every movement's setup and cue." : "The Exercise Library has the easier version of every lift.")
+            if savedExerciseIDs.isEmpty { tasks.append("Bookmark the exercises in your plan — form help on tap.") }
+            let saved = savedExerciseIDs.count + savedLessonIDs.count + savedWorkouts.count + savedPostIds.count
+            if saved > 0 { cheers.append("\(saved) thing\(saved == 1 ? "" : "s") saved.") }
+        }
+
+        // Day-stable pick: tasks lead when there is one, then the day
+        // rotates tip / cheer / task; beginners see tips on even days.
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: now) ?? 0
+        let seed = day + MorphePage.allCases.firstIndex(of: page)!
+        var order: [[String]] = beginner ? [tips, tasks, cheers] : [tasks, cheers, tips]
+        if !tasks.isEmpty, seed % 2 == 0 { order = [tasks] + order.filter { $0 != tasks } }
+        let pools = order.filter { !$0.isEmpty }
+        guard !pools.isEmpty else { return pageFallback(page) }
+        let pool = pools[seed % pools.count]
+        return pool[(seed / 3) % pool.count]
+    }
+
+    private func pageFallback(_ page: MorphePage) -> String {
+        switch page {
+        case .train: return "Start the session and I'll track every set with you."
+        case .fitness: return "Pick a style."
+        case .explore: return "Reels, photos and threads from the community — tap one to open it."
+        case .lessons: return "Two-minute reads and one quiz a day."
+        case .nutrition: return "Log a meal, check a food, hit the three numbers."
+        case .library: return "Everything you saved, in one place."
+        case .connect: return "Find your people — scan, search or share your link."
+        }
+    }
+
     /// One line of what Morphe actually knows, spoken on Today under the
     /// greeting. Deterministic day-rotation across the facts that exist —
     /// never random, never invented, absent entirely until the honesty

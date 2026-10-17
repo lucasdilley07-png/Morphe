@@ -89,11 +89,8 @@ struct MoreView: View {
                 selection: Binding(get: { activeFeature }, set: { store.selectedHubFeature = $0 })
             )
             .padding(.top, -8)
-            Text("Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
+            MorpheDirectiveLine(text: store.pageDirective(
+                activeFeature == .nutrition ? .nutrition : (activeFeature == .library ? .library : .lessons)))
         }
     }
 

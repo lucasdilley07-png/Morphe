@@ -9917,5 +9917,21 @@ final class MorpheRemembersTests: XCTestCase {
         store.unparkAIButton()
         XCTAssertFalse(store.aiButtonParked)
     }
+
+    /// Per-page directives (Lucas 2026-10-17): one line per page from the
+    /// user's own data, stable within a day, different across pages.
+    func testPageDirectivesAreDailyStableAndPerPage() {
+        let store = freshStore()
+        let day = Date(timeIntervalSince1970: 1_792_300_000)
+        let morning = day, evening = day.addingTimeInterval(8 * 3600)
+        for page in MorpheAppStore.MorphePage.allCases {
+            let a = store.pageDirective(page, now: morning)
+            XCTAssertFalse(a.isEmpty)
+            XCTAssertEqual(a, store.pageDirective(page, now: evening), "\(page) holds its line through the day")
+        }
+        XCTAssertTrue(store.pageDirective(.train, now: day).contains("session") || store.pageDirective(.train, now: day).contains("Train") || store.pageDirective(.train, now: day).contains("Start") || store.pageDirective(.train, now: day).contains("Rest") || store.pageDirective(.train, now: day).contains("Build"))
+        let lines = Set(MorpheAppStore.MorphePage.allCases.map { store.pageDirective($0, now: day) })
+        XCTAssertEqual(lines.count, MorpheAppStore.MorphePage.allCases.count, "every page speaks its own line")
+    }
 }
 

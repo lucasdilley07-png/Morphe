@@ -153,6 +153,26 @@ struct MonoSectionTabs<ID: Hashable>: View {
     }
 }
 
+/// Morphe's line under a page's tabs (Lucas 2026-10-17): the sparkle and
+/// one sentence, the same grammar as Today's directive.
+struct MorpheDirectiveLine: View {
+    let text: String
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "sparkle")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(MorpheTheme.accentText)
+            Text(text)
+                .multilineTextAlignment(.center)
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(MorpheTheme.textPrimary)
+        .frame(maxWidth: .infinity)
+        .contentTransition(.opacity)
+        .accessibilityLabel("Morphe: \(text)")
+    }
+}
+
 struct SectionTitleView: View {
     let title: String
     let subtitle: String

@@ -3785,13 +3785,9 @@ private struct UniversalSearchSheet: View {
         // pager inside an outer ScrollView) gave two competing vertical
         // scroll regions and buried results under the keyboard on an SE.
         // Same grammar as the Learn pager.
+        // Just the bar at the top (Lucas 2026-10-17): no title, no Done —
+        // pull the sheet down to leave.
         VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Search",
-                    subtitle: "Accounts, workouts, and exercises without leaving the flow.",
-                    titleSize: 16
-                )
-
                 TextField("Search accounts, workouts, exercises...", text: $query)
                     .textFieldStyle(MorpheFieldStyle())
                     .focused($searchFocused)
@@ -3863,15 +3859,8 @@ private struct UniversalSearchSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    store.closeUniversalSearch()
-                    dismiss()
-                }
-                .foregroundStyle(MorpheTheme.textPrimary)
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear { searchFocused = true }
     }
 
     @ViewBuilder
@@ -4055,30 +4044,20 @@ private struct QuickAddSheet: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(spacing: 4) {
+                // Title at the top, Morphe's line under it (Lucas
+                // 2026-10-17); no Done — pull down to leave.
+                VStack(spacing: 6) {
                     Text("Quick Add")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("People on Morphe. Tap a card to see the account; connect, or hide.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.center)
+                    MorpheDirectiveLine(text: store.pageDirective(.connect))
                 }
                 .frame(maxWidth: .infinity)
 
-                TextField("Search people by name or @username", text: $query)
-                    .textFieldStyle(MorpheFieldStyle())
-                    .submitLabel(.search)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onChange(of: query) { _, newValue in
-                        searchDebounce?.cancel()
-                        searchDebounce = Task {
-                            try? await Task.sleep(nanoseconds: 350_000_000)
-                            guard !Task.isCancelled else { return }
-                            await store.searchAthletes(query: newValue)
-                        }
-                    }
+                quickAddSearchField
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(key: PinnedBarOffsetKey.self, value: geo.frame(in: .named("quickAddScroll")).minY)
+                    })
 
                 HStack(spacing: 10) {
                     Button {
@@ -4096,6 +4075,18 @@ private struct QuickAddSheet: View {
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .accessibilityHint("Scans a coach's or training partner's Morphe code")
                 }
+
+                // The invite link rides under the code buttons (Lucas 2026-10-17).
+                ShareLink(item: store.networkInviteMessage) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Share your invite link")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
 
                 if !normalizedQuery.isEmpty {
                     peopleSection("Results", count: searchResults.count) {
@@ -4178,29 +4169,15 @@ private struct QuickAddSheet: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                         .frame(minHeight: 44)
                 }
-
-                ShareLink(item: store.networkInviteMessage) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.up")
-                        Text("Share your invite link")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 48)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 40)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") { dismissQuickAdd() }
-                    .foregroundStyle(MorpheTheme.textPrimary)
-            }
-        }
+        .coordinateSpace(name: "quickAddScroll")
+        .pinnedBar(offsetKey: PinnedBarOffsetKey.self, threshold: -60) { quickAddSearchField }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $codeMode) { mode in
             QRConnectSheet(mode: mode)
                 .environment(store)
@@ -4257,6 +4234,22 @@ private struct QuickAddSheet: View {
             }
             rows()
         }
+    }
+
+    private var quickAddSearchField: some View {
+        TextField("Search people by name or @username", text: $query)
+            .textFieldStyle(MorpheFieldStyle())
+            .submitLabel(.search)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .onChange(of: query) { _, newValue in
+                searchDebounce?.cancel()
+                searchDebounce = Task {
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    guard !Task.isCancelled else { return }
+                    await store.searchAthletes(query: newValue)
+                }
+            }
     }
 
     private func dismissQuickAdd() {
@@ -5823,5 +5816,58 @@ struct NotificationPrePromptSheet: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+
+// MARK: - Pinned bar on scroll up (Lucas 2026-10-17)
+
+/// One offset key for any sheet that pins its search bar.
+struct PinnedBarOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// The bar scrolls away with the page; a scroll up slides a pinned copy in
+/// at the top, a scroll down takes it away, and at the top the real one
+/// takes over — the Discover / Chats behaviour, as a modifier.
+struct PinnedBarModifier<Key: PreferenceKey, Bar: View>: ViewModifier where Key.Value == CGFloat {
+    let offsetKey: Key.Type
+    var threshold: CGFloat
+    @ViewBuilder let bar: () -> Bar
+    @State private var last: CGFloat = 0
+    @State private var pinned = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(offsetKey) { y in
+                let past = y < threshold
+                let up = y > last + 1.5, down = y < last - 1.5
+                last = y
+                let next = past && (up || (pinned && !down))
+                if next != pinned {
+                    withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.32, dampingFraction: 0.86)) { pinned = next }
+                }
+            }
+            .overlay(alignment: .top) {
+                if pinned {
+                    bar()
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(
+                            Rectangle().fill(.ultraThinMaterial)
+                                .overlay(Rectangle().fill(MorpheTheme.ink.opacity(0.6)))
+                                .ignoresSafeArea(edges: .top)
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+    }
+}
+
+extension View {
+    func pinnedBar<Key: PreferenceKey, Bar: View>(offsetKey: Key.Type, threshold: CGFloat = -60, @ViewBuilder bar: @escaping () -> Bar) -> some View where Key.Value == CGFloat {
+        modifier(PinnedBarModifier(offsetKey: offsetKey, threshold: threshold, bar: bar))
     }
 }

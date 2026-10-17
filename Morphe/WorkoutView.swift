@@ -902,13 +902,11 @@ struct WorkoutView: View {
                 // TRAIN underlined like FITNESS / EXPLORE, one line under it.
                 MonoSectionTabs(items: [(id: 0, title: "Train")], selection: .constant(0))
                     .padding(.top, -8)
-                Text(store.hasCompletedWorkoutFlow
-                     ? "Session logged. Look it over, rate it, and I'll lock it in."
-                     : "Ready when you are — start the session and I'll track every set with you.")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                // Morphe's line for Train (Lucas 2026-10-17): a tip, a task
+                // or a logged number, changing daily.
+                MorpheDirectiveLine(text: store.hasCompletedWorkoutFlow
+                                    ? "Session logged. Look it over, rate it, and I'll lock it in."
+                                    : store.pageDirective(.train))
 
 
                 // The hint describes the first session; it retires the
@@ -2143,15 +2141,7 @@ struct DiscoverScreenView: View {
                             Color.clear.preference(key: DiscoverScrollOffsetKey.self, value: geo.frame(in: .named("discoverScroll")).minY)
                         })
 
-                    Text(store.selectedDiscoverSection == .feed
-                         ? "Reels, photos and threads from the community — tap one to open it."
-                         : (store.discoverWorkouts.isEmpty
-                             ? "A new workout library is on the way."
-                             : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."))
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
+                    MorpheDirectiveLine(text: store.pageDirective(store.selectedDiscoverSection == .feed ? .explore : .fitness))
 
                     if store.selectedDiscoverSection == .feed {
                         ExploreGrid()
