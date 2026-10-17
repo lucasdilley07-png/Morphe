@@ -1062,15 +1062,13 @@ private struct AIButtonParkedTab: View {
         Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.unparkAIButton() }
         } label: {
+            // Just the arrow (Lucas 2026-10-17): no bubble, the user's
+            // accent, the same footprint.
             Image(systemName: "chevron.left")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(MorpheTheme.accent)
+                .shadow(color: MorpheTheme.accent.opacity(0.35), radius: 6)
                 .frame(width: 30, height: 44)
-                .background(
-                    UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
-                        .fill(MorpheTheme.accent)
-                        .shadow(color: MorpheTheme.accent.opacity(0.35), radius: 8, x: -2, y: 2)
-                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

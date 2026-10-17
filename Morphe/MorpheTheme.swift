@@ -949,8 +949,11 @@ struct PremiumBackground: View {
 struct MorpheGlass<S: InsettableShape>: ViewModifier {
     let shape: S
     var tint: Color? = nil
-    /// Interactive glass lifts and brightens on touch (iOS 26).
-    var interactive: Bool = true
+    /// Interactive glass lifts and brightens on touch (iOS 26). Off by
+    /// default: inside a Button it took the first tap for itself (header
+    /// search / quick add stopped opening, 2026-10-17); the button styles
+    /// already carry their own press feedback.
+    var interactive: Bool = false
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
@@ -969,7 +972,7 @@ struct MorpheGlass<S: InsettableShape>: ViewModifier {
 }
 
 extension View {
-    func morpheGlass<S: InsettableShape>(_ shape: S, tint: Color? = nil, interactive: Bool = true) -> some View {
+    func morpheGlass<S: InsettableShape>(_ shape: S, tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(MorpheGlass(shape: shape, tint: tint, interactive: interactive))
     }
 }

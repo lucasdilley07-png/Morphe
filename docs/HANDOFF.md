@@ -1199,3 +1199,10 @@ Network is deliberately left alone.
   an exchange completes, the user speaking = sleeping and Morphe speaking
   / thinking = still (`spartanFrame`, `exchangesCompleted` per stage
   session). `MorpheOrbView` / `MorpheVoiceRingHost` take `frame:`.
+- Header buttons fix (2026-10-17): `MorpheGlass` is non-interactive by
+  default — iOS 26's interactive glass inside a Button swallowed the first
+  tap (search / quick add opened only on the second). The parked Morphe AI
+  chevron is a bare accent arrow, no bubble.
+- The floating Morphe AI button's mark is the side-view Spartan orb
+  (Lucas 2026-10-17, `MorpheAIButtonMark`); everything else about the
+  button is unchanged.
