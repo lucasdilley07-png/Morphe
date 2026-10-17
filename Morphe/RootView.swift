@@ -5429,6 +5429,8 @@ private struct HeyMorpheStage: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
     @State private var arrived = false
+    /// False until the wake frames have played on this stage.
+    @State private var stageAwake = false
     @State private var draft = ""
     @FocusState private var composing: Bool
     @Namespace private var orbSpace
@@ -5518,7 +5520,7 @@ private struct HeyMorpheStage: View {
             if reduceMotion { arrived = true; return }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
         }
-        .onDisappear { arrived = false; composing = false; voiceActiveLine = nil }
+        .onDisappear { arrived = false; stageAwake = false; composing = false; voiceActiveLine = nil }
         .recordingEdgeGlow(recorder)
         .onChange(of: composing) { _, focused in
             // Tapping the bar opens chat mode: the orb slides up, the
@@ -5743,10 +5745,18 @@ private struct HeyMorpheStage: View {
             }
 
             // The Spartan: the waveform behind, the orb in front, breathing
-            // with the real mic level while listening.
-            MorpheVoiceRingHost(size: 170)
-                .frame(width: 170, height: 170)
-                .matchedGeometryEffect(id: "orb", in: orbSpace)
+            // with the real mic level while listening. It wakes on arrival
+            // (Lucas 2026-10-17): the three frames, then the live orb.
+            ZStack {
+                MorpheVoiceRingHost(size: 170)
+                    .opacity(stageAwake ? 1 : 0)
+                if !stageAwake {
+                    SpartanWakeView(duration: 1.0) { withAnimation(.easeInOut(duration: 0.25)) { stageAwake = true } }
+                        .frame(width: 150, height: 150)
+                }
+            }
+            .frame(width: 170, height: 170)
+            .matchedGeometryEffect(id: "orb", in: orbSpace)
 
             // The user, below.
             if let line = userLine {

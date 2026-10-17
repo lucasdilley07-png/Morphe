@@ -7,6 +7,13 @@ struct LaunchSequenceView: View {
     @State private var revealed = false
     @State private var entering = false
     @State private var progress: CGFloat = 0
+    /// The orb's box in art rows: the old helmet box (235,87)–(617,539)
+    /// inside the mark, as a circle 1.22× its width.
+    private static let orbBox: CGRect = {
+        let helmet = CGRect(x: 40 + 235, y: 260 + 87, width: 617 - 235, height: 539 - 87)
+        let side = helmet.width * 1.22
+        return CGRect(x: helmet.midX - side / 2, y: helmet.midY - side / 2, width: side, height: side)
+    }()
 
     /// The cold-open beat: long enough for the bar to fill, cold starts only.
     static let beat: Duration = .milliseconds(1400)
@@ -56,6 +63,17 @@ struct LaunchSequenceView: View {
                     .frame(width: Self.markBox.width * scale * Self.markScale,
                            height: Self.markBox.height * scale * Self.markScale)
                     .position(markCenter)
+
+                // The Spartan wakes inside the orb (Lucas 2026-10-17): the
+                // dark visor, then the half-lit one, then the eyes — three
+                // crossfades over the load beat, a small pop on the last.
+                let orbSide = Self.orbBox.width * scale * Self.markScale
+                let orbCenter = CGPoint(
+                    x: originX + Self.orbBox.midX * scale,
+                    y: markCenter.y + (Self.orbBox.midY - Self.markBox.midY) * scale * Self.markScale)
+                SpartanWakeView(duration: 1.25)
+                    .frame(width: orbSide, height: orbSide)
+                    .position(orbCenter)
 
                 VStack(spacing: 10) {
                     LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: false)
@@ -1571,6 +1589,7 @@ struct IntroView: View {
     @State private var flash = false
     @State private var lightScale: CGFloat = 0.01
     @State private var orbIn = false
+    @State private var awake = false
     @State private var bubbleIn = false
     @State private var formIn = false
     @State private var username = ""
@@ -1641,7 +1660,7 @@ struct IntroView: View {
             withAnimation(.easeOut(duration: 0.3)) { phase = .morphe }
             try? await Task.sleep(for: .milliseconds(150))
             withAnimation(.easeOut(duration: 0.5)) { orbIn = true }
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 550))
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 1500))
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { bubbleIn = true }
             try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 450))
             withAnimation(.easeOut(duration: 0.35)) { formIn = true }
@@ -1663,11 +1682,20 @@ struct IntroView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 24)
 
-                MorpheOrbView(level: 0.18, speaking: bubbleIn && !formIn)
-                    .frame(width: 170, height: 170)
-                    .opacity(orbIn ? 1 : 0)
-                    .scaleEffect(orbIn || reduceMotion ? 1 : 0.9)
-                    .accessibilityHidden(true)
+                // The Spartan wakes after the tap (Lucas 2026-10-17), then
+                // the live orb takes over.
+                ZStack {
+                    if awake {
+                        MorpheOrbView(level: 0.18, speaking: bubbleIn && !formIn)
+                            .transition(.opacity)
+                    } else {
+                        SpartanWakeView(duration: 1.3) { withAnimation(.easeInOut(duration: 0.3)) { awake = true } }
+                    }
+                }
+                .frame(width: 170, height: 170)
+                .opacity(orbIn ? 1 : 0)
+                .scaleEffect(orbIn || reduceMotion ? 1 : 0.9)
+                .accessibilityHidden(true)
 
                 MorpheSpeechBubble {
                     VStack(spacing: 8) {

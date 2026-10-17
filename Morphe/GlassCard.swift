@@ -155,6 +155,42 @@ struct MonoSectionTabs<ID: Hashable>: View {
 
 /// Morphe's line under a page's tabs (Lucas 2026-10-17): the sparkle and
 /// one sentence, the same grammar as Today's directive.
+/// The Spartan waking inside the orb (Lucas 2026-10-17): the dark visor,
+/// the half-lit one, then the eyes — three crossfades with a small pop on
+/// the last. Runs once on appear over `duration`; Reduce Motion shows the
+/// awake frame.
+struct SpartanWakeView: View {
+    var duration: Double = 1.1
+    var onAwake: (() -> Void)? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var wake = 0
+
+    var body: some View {
+        ZStack {
+            Image("MorpheAIOrbIdle").resizable().interpolation(.high).scaledToFit()
+                .opacity(wake == 0 ? 1 : 0)
+            Image("MorpheAIOrbWaking").resizable().interpolation(.high).scaledToFit()
+                .opacity(wake == 1 ? 1 : 0)
+            Image("MorpheAIOrbBase").resizable().interpolation(.high).scaledToFit()
+                .opacity(wake >= 2 ? 1 : 0)
+                .shadow(color: MorpheTheme.brandBlue.opacity(wake >= 2 ? 0.7 : 0), radius: wake >= 2 ? 28 : 0)
+        }
+        .scaleEffect(wake >= 2 && !reduceMotion ? 1.04 : 1)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: wake)
+        .task {
+            if reduceMotion { wake = 2; onAwake?(); return }
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.45)))
+            wake = 1
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.35)))
+            wake = 2
+            Haptics.impact(.light)
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.2)))
+            onAwake?()
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct MorpheDirectiveLine: View {
     let text: String
     var body: some View {
@@ -308,29 +344,15 @@ struct MorpheOrbView: View {
                 // The orb without its helmet, then the ribbons, then a glow
                 // traced from the helmet's own shape, then the helmet —
                 // orb, glow, mask (Lucas 2026-10-10).
+                // The finished Spartan orb (Lucas 2026-10-17: one image,
+                // helmet baked in). It breathes with the voice as a whole.
                 Image("MorpheAIOrbBase")
                     .resizable()
                     .scaledToFit()
+                    .scaleEffect(reduceMotion ? 1 : 1 + level * 0.06)
+                    .animation(.easeOut(duration: 0.1), value: level)
                 innerGlow(size)
-                if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)) }
-                // The helmet and its glow are what move with the voice
-                // (Lucas 2026-10-10): the orb holds still, the Spartan
-                // jumps inside it.
-                ZStack {
-                    Image("MorpheAIHelmet")
-                        .resizable()
-                        .scaledToFit()
-                        .colorMultiply(Color(red: 0.75, green: 0.9, blue: 1.0))
-                        .blur(radius: size * 0.05)
-                        .opacity(0.95)
-                        .scaleEffect(1.06)
-                    Image("MorpheAIHelmet")
-                        .resizable()
-                        .scaledToFit()
-                }
-                .scaleEffect(reduceMotion ? 1 : 1 + level * 0.12)
-                .offset(y: reduceMotion ? 0 : -level * size * 0.02)
-                .animation(.easeOut(duration: 0.1), value: level)
+                if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)).opacity(0.5) }
                 if live { rimLight(size) }
             }
             // One compositing group: the ribbons' screen blend stays

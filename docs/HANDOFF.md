@@ -1146,3 +1146,23 @@ Network is deliberately left alone.
   `incomingConnectRequests` with Accept / × per person (`PersonRow`), and
   a "Show more (N)" that adds 12 at a time. Data is the existing
   connectRequests collection — nothing new on the wire.
+- Morphe AI design (Lucas 2026-10-17): the new Spartan orb image (helmet
+  baked in, glass sphere with wave ribbons) is the single source for
+  `MorpheAIOrbBase` (the orb on the pop-up and the Hey Morphe stage),
+  `MorpheAIButtonMark` (the floating button) and `MorpheAppIconArt` (the
+  Morphe chat avatar). `MorpheOrbView` no longer layers `MorpheAIHelmet`;
+  the whole orb scales with the voice level and the drawn ribbons sit at
+  half opacity over the art. The helmet imageset stays for `MorpheHelmetMark`.
+- Loading screen (Lucas 2026-10-17): the inactive Spartan orb (dark
+  visor) is the mark's helmet now — `MorpheAIOrbIdle` imageset, composited
+  into `LoadingFinalMark.png` over the old helmet box with the wordmark
+  and TRAIN SMARTER untouched (`Tools/make_loading_final_layers.py` would
+  regenerate the old one; the composite was done in place).
+- The Spartan wakes (Lucas 2026-10-17): `SpartanWakeView` crossfades
+  `MorpheAIOrbIdle` (dark visor) → `MorpheAIOrbWaking` (half-lit) →
+  `MorpheAIOrbBase` (eyes lit) with a light buzz and a 4% pop on the last,
+  over ~1–1.3 s; Reduce Motion shows the awake frame. Used on the loading
+  screen (over the helmet box; `LoadingFinalMark.png` is now wordmark +
+  tagline only), on the intro right after [ TAP TO BEGIN ] (then the live
+  `MorpheOrbView` takes over), and on the Hey Morphe stage when it
+  arrives in voice mode (then `MorpheVoiceRingHost`).
