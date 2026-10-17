@@ -1140,3 +1140,9 @@ Network is deliberately left alone.
   a scroll up (`pinnedBar` modifier + `PinnedBarOffsetKey`). The universal
   Search sheet's bar sits above its result pager, so it never scrolls off;
   nothing to pin there.
+- Quick Add → Requests (Lucas 2026-10-17): a drop-down row under My Code ·
+  Scan · invite with the pending count on the right (accent pill when
+  > 0); opens itself when requests exist; lists up to 12
+  `incomingConnectRequests` with Accept / × per person (`PersonRow`), and
+  a "Show more (N)" that adds 12 at a time. Data is the existing
+  connectRequests collection — nothing new on the wire.

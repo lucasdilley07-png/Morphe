@@ -4115,27 +4115,11 @@ private struct QuickAddSheet: View {
                     }
                 } else {
 
-                if !store.incomingConnectRequests.isEmpty {
-                    peopleSection("Requests", count: store.incomingConnectRequests.count) {
-                        ForEach(store.incomingConnectRequests) { request in
-                            let card = store.person(for: request.fromUid)
-                                ?? PersonCard(uid: request.fromUid, name: request.fromName, username: "", headline: "", accentId: "", verified: false, isCoach: false)
-                            PersonRow(card: card, trailing: {
-                                HStack(spacing: 6) {
-                                    Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
-                                        .buttonStyle(QuickAddPillStyle(filled: true))
-                                    Button {
-                                        Task { await store.respondToConnectRequest(request, accept: false) }
-                                    } label: {
-                                        Image(systemName: "xmark").font(.caption.weight(.bold))
-                                    }
-                                    .buttonStyle(QuickAddPillStyle(filled: false))
-                                    .accessibilityLabel("Decline")
-                                }
-                            }, onOpen: { viewing = card })
-                        }
-                    }
-                }
+                // Requests (Lucas 2026-10-17, Snapchat grammar): a drop-down
+                // under the code buttons with the count on the right; open,
+                // it lists up to 12 with Accept / × per person and a Show
+                // more that adds 12 at a time.
+                requestsDropdown
 
                 let coaches = store.quickAddPeople.filter(\.isCoach)
                 let people = store.quickAddPeople.filter { !$0.isCoach }
@@ -4196,6 +4180,86 @@ private struct QuickAddSheet: View {
                 .presentationCornerRadius(28)
                 .sheetToastSurface()
         }
+    }
+
+    @State private var requestsOpen = false
+    @State private var requestsShown = 12
+
+    private var requestsDropdown: some View {
+        let requests = store.incomingConnectRequests
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { requestsOpen.toggle() }
+                Haptics.selection()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    Text("Requests")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Text("\(requests.count)")
+                        .font(.caption.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(requests.isEmpty ? MorpheTheme.textMuted : MorpheTheme.onFill(MorpheTheme.accent))
+                        .padding(.horizontal, 8)
+                        .frame(minWidth: 24, minHeight: 22)
+                        .background(Capsule().fill(requests.isEmpty ? MorpheTheme.panelStrong : MorpheTheme.accent))
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .rotationEffect(.degrees(requestsOpen ? 180 : 0))
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(requests.count) connection requests")
+            .accessibilityAddTraits(requestsOpen ? [.isSelected] : [])
+
+            if requestsOpen {
+                if requests.isEmpty {
+                    Text("No requests right now. When someone asks to connect, they land here.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .padding(.horizontal, 4)
+                } else {
+                    ForEach(requests.prefix(requestsShown)) { request in
+                        let card = store.person(for: request.fromUid)
+                            ?? PersonCard(uid: request.fromUid, name: request.fromName, username: "", headline: "", accentId: "", verified: false, isCoach: false)
+                        PersonRow(card: card, trailing: {
+                            HStack(spacing: 6) {
+                                Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
+                                    .buttonStyle(QuickAddPillStyle(filled: true))
+                                    .accessibilityLabel("Accept \(card.displayName)")
+                                Button {
+                                    Task { await store.respondToConnectRequest(request, accept: false) }
+                                } label: {
+                                    Image(systemName: "xmark").font(.caption.weight(.bold))
+                                }
+                                .buttonStyle(QuickAddPillStyle(filled: false))
+                                .accessibilityLabel("Decline \(card.displayName)")
+                            }
+                        }, onOpen: { viewing = card })
+                    }
+                    if requests.count > requestsShown {
+                        Button("Show more (\(min(12, requests.count - requestsShown)))") {
+                            withAnimation { requestsShown += 12 }
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                    }
+                }
+            }
+        }
+        .onChange(of: requests.count) { _, now in if now > 0, !requestsOpen { requestsOpen = true } }
+        .onAppear { if !requests.isEmpty { requestsOpen = true } }
     }
 
     private func personRow(_ card: PersonCard) -> some View {
