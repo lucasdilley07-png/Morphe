@@ -1276,11 +1276,39 @@ Network is deliberately left alone.
   dots walking 1 → 2 → 3; the AWAY label is gone; the floating AI button
   slides off while away (`!store.isAway`). `-MorpheAwayPreview` (local
   mode) enters away mode four seconds after launch.
-- Lightning (Lucas 2026-10-17): `LightningLayer` (GlassCard.swift) — a
-  TimelineView Canvas firing 2–3 jagged brand-blue/white bolts from the
-  helmet toward the glass in ~140 ms bursts every ~0.9 s with a random
-  offset, re-jittered each frame, additive blend; nothing under Reduce
-  Motion. It rides `MorpheOrbView` only when `frame == .activated` (the
-  pop-up before the tap, the Hey Morphe first command, the away screen,
-  the wake's activated beat) and the loading screen's Activated frame
-  (centered on the art's helmet at 38.5% height).
+- Lightning on the activated Spartan was added and removed the same
+  night (Lucas 2026-10-17): he asked for it off. No layer remains.
+  Instead the activated loading screen is his new electrified art
+  (`LoadingScreenActivated`, 850 × 1850) with `LoadingActivatedMotion`
+  over it: a breathing field wash, a pulsing helmet glow and under-line,
+  twin eye flares, and a flickering shimmer over the helmet — all masked
+  light passes over regions of the one picture (helmet 0.50/0.387, eyes
+  0.388 & 0.606 at 0.416), additive, nothing under Reduce Motion. The
+  live bar is unchanged. `MorpheAIOrbSuperActivated` is the electrified
+  orb saved as an asset and `SpartanFrame.superActivated`; not wired to
+  any state yet.
+- Morphe news page (Lucas 2026-10-17): `MorpheNewsPage`/`MorpheNewsRow`/
+  `NotificationBubble` (RootView.swift). The header wordmark is a button
+  with a red count bubble at its top right (`morpheInboxUnreadCount`:
+  news + weekly reports newer than `morpheInboxReadAt`); a tap raises
+  `showMorpheNews`, the page slides down over everything (zIndex 5, AI
+  button hidden), the chevron or a swipe up closes it and marks read.
+  `morpheNewsItems` is newest-first news/reports; every row shows kind,
+  title, full body and "Morphe · <date> at <time>". The Morphe chat
+  (`morpheConversation`) now carries only chat turns — reports and news
+  left it so the chat stays personal. `networkBadgeCount` no longer
+  counts news; `appBadgeCount` (Network + news) drives the app icon.
+  Rule: anything text-heavy from Morphe goes to the news page, not the
+  chat.
+- Intro wake (Lucas 2026-10-17): `SpartanWakeView(superWake: true)` in
+  the intro runs sleeping → still → SUPER ACTIVATED for 2 s
+  (`SuperActivatedSpartan`: breath + bob on the helmet, flickering
+  shimmer in the helmet, pulsing rim and field glow, twin eye flares,
+  additive, clipped to the orb) → sleeping for 380 ms → activated, and
+  the intro's live orb then stays `.activated` through onboarding. The
+  Hey Morphe stage keeps the plain wake. After onboarding every surface
+  defaults to `.still` as before. `-MorpheIntroPreview` taps TAP TO
+  BEGIN on its own after 1 s for simulator captures.
+- `Haptics.superActivated()` (Lucas 2026-10-17): two rigid full-intensity
+  hits 60 ms apart, fired by `SuperActivatedSpartan` whenever it goes
+  live — every showing of the super activated design vibrates in sync.

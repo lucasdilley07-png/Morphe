@@ -3478,9 +3478,9 @@ enum MorpheNews {
         MorpheInboxItem(id: "news-2026-10-10-private", kind: .news, date: day(2026, 10, 10),
                         title: "Private or public — your call",
                         body: "Profile → Who can see you now has a private switch. Private means only your connections see your posts and can message you; on boards and challenges you keep your place and score, shown as \u{201C}Private athlete\u{201D}. Nothing is deleted or recomputed when you switch either way."),
-        MorpheInboxItem(id: "news-2026-10-10-chat", kind: .news, date: day(2026, 10, 10),
-                        title: "This chat",
-                        body: "Every account has this conversation with me now. Each Monday I send your week in review from your own logs. I'll tell you here when something new ships. And you can ask me anything, any time."),
+        MorpheInboxItem(id: "news-2026-10-17-newspage", kind: .news, date: day(2026, 10, 17, hour: 4),
+                        title: "This page and the chat",
+                        body: "Every account has this page: tap the Morphe mark at the top of any screen. Each Monday your week in review lands here, from your own logs, and anything that ships is announced here, dated. The chat is separate and personal — ask me anything there, any time."),
         MorpheInboxItem(id: "news-2026-10-10-build", kind: .news, date: day(2026, 10, 10),
                         title: "Build Workout",
                         body: "Train has a Build Workout card: build one yourself, answer a few questions and I build it with you from the library, or start a multi-week program."),
@@ -3495,8 +3495,8 @@ enum MorpheNews {
                         body: "Ten ranks, Rookie to General, climbed only by logged work. Each rank unlocks its own accent color — Morphe Dark Blue to start, platinum at Colonel, gold at General. The ladder is in Learn → The Code.")
     ]
 
-    private static func day(_ y: Int, _ m: Int, _ d: Int) -> Date {
-        Calendar(identifier: .gregorian).date(from: DateComponents(year: y, month: m, day: d, hour: 9)) ?? .now
+    private static func day(_ y: Int, _ m: Int, _ d: Int, hour: Int = 9) -> Date {
+        Calendar(identifier: .gregorian).date(from: DateComponents(year: y, month: m, day: d, hour: hour)) ?? .now
     }
 }
 

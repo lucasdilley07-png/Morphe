@@ -3929,7 +3929,7 @@ struct AthleteInboxView: View {
                     Button {
                         showMorpheThread = true
                     } label: {
-                        MorpheThreadRow(lastItem: store.morpheInbox.last, lastTurn: store.morpheConversation.last, unread: store.morpheInboxUnreadCount)
+                        MorpheThreadRow(lastItem: nil, lastTurn: store.morpheConversation.last, unread: 0)
                             .padding(.horizontal, -16)
                     }
                     .buttonStyle(.plain)
@@ -4214,7 +4214,7 @@ struct MorpheThreadRow: View {
                             .foregroundStyle(unread > 0 ? MorpheTheme.accentText : MorpheTheme.textMuted)
                     }
                 }
-                Text(lastTurn.map { $0.text == "\u{2026}" ? "Morphe is thinking…" : $0.text.replacingOccurrences(of: "\n", with: ": ") } ?? "Weekly reports, news, and answers to anything you ask.")
+                Text(lastTurn.map { $0.text == "\u{2026}" ? "Morphe is thinking…" : $0.text.replacingOccurrences(of: "\n", with: ": ") } ?? "Just you and Morphe. Ask anything.")
                     .font(unread > 0 ? .caption.weight(.semibold) : .caption)
                     .foregroundStyle(unread > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
                     .lineLimit(2)

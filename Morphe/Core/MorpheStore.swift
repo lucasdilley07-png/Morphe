@@ -10647,13 +10647,44 @@ final class MorpheAppStore {
         mirrorExtrasToCloud()
     }
 
+    /// Unread announcements: news and reports newer than the last open of
+    /// the news page. Shown as the bubble on the wordmark (Lucas
+    /// 2026-10-17); questions and answers belong to the chat and never count.
     var morpheInboxUnreadCount: Int {
-        morpheInbox.filter { $0.isFromMorphe && $0.date > morpheInboxReadAt }.count
+        morpheNewsItems.filter { $0.date > morpheInboxReadAt }.count
     }
 
     func markMorpheInboxRead() {
         morpheInboxReadAt = .now
         UserDefaults.standard.set(morpheInboxReadAt.timeIntervalSince1970, forKey: morpheInboxReadKey)
+    }
+
+    // MARK: Morphe news page (Lucas 2026-10-17)
+    //
+    // Announcements, reports, updates, deals, events — anything text-heavy
+    // from Morphe — live on their own page that slides down from the
+    // wordmark. The chat stays personal: just the user and Morphe. Every
+    // item here carries a date, a time and a sender (Morphe, for now).
+
+    /// The news page is up (slides down over the whole screen).
+    var showMorpheNews = false
+
+    /// Newest first: news and weekly reports only.
+    var morpheNewsItems: [MorpheInboxItem] {
+        morpheInbox.filter { $0.kind == .news || $0.kind == .weeklyReport }.sorted { $0.date > $1.date }
+    }
+
+    func openMorpheNews() {
+        guard !showMorpheNews else { return }
+        showMorpheNews = true
+        Haptics.impact(.light)
+    }
+
+    /// Closing marks everything read — the user has seen the page.
+    func closeMorpheNews() {
+        guard showMorpheNews else { return }
+        showMorpheNews = false
+        markMorpheInboxRead()
     }
 
     /// Delivers what is due: unseen news, and the report for the week that
@@ -10776,12 +10807,14 @@ final class MorpheAppStore {
     /// Stable ids for inbox items rendered as chat turns.
     private var inboxTurnIDs: [String: UUID] = [:]
 
-    /// The ONE Morphe conversation (Lucas 2026-10-16): weekly reports and
-    /// news from the inbox plus every turn of the Morphe AI chat, in time
-    /// order. The Network chat and the floating chat both render this.
+    /// The ONE Morphe conversation (Lucas 2026-10-16): every turn of the
+    /// Morphe AI chat plus any questions and answers saved in the inbox,
+    /// in time order. The Network chat and the floating chat both render
+    /// this. Reports and news are NOT here (Lucas 2026-10-17): they live on
+    /// the news page behind the wordmark, so the chat stays personal.
     var morpheConversation: [ThreadMessage] {
         var turns: [(Date, Int, ThreadMessage)] = []
-        for (index, item) in morpheInbox.enumerated() {
+        for (index, item) in morpheInbox.enumerated() where item.kind == .question || item.kind == .answer {
             let id: UUID
             if let known = inboxTurnIDs[item.id] { id = known } else {
                 id = UUID(uuidString: item.id) ?? UUID()
@@ -16598,13 +16631,16 @@ final class MorpheAppStore {
     /// What's waiting in Network: unread chats, Morphe's unread reports and
     /// news, and connect requests to answer. Shown on the Chats tab label
     /// and the dock (Lucas 2026-10-10).
-    var networkBadgeCount: Int { unreadThreadCount + morpheInboxUnreadCount + incomingConnectRequests.count }
+    var networkBadgeCount: Int { unreadThreadCount + incomingConnectRequests.count }
+
+    /// The app icon's number: Network plus Morphe's unread announcements.
+    var appBadgeCount: Int { networkBadgeCount + morpheInboxUnreadCount }
 
     /// The app icon wears the same number (Lucas 2026-10-10). Called
     /// whenever the count changes and when the app goes to the background;
     /// iOS shows it only if the user granted badges.
     func syncAppIconBadge() {
-        let count = authUser == nil ? 0 : networkBadgeCount
+        let count = authUser == nil ? 0 : appBadgeCount
         UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
     }
 

@@ -9761,21 +9761,43 @@ final class MorpheRemembersTests: XCTestCase {
     }
 
     /// One Morphe conversation (Lucas 2026-10-16): an ask from the Network
-    /// chat shows in the floating chat's turns, and inbox reports sit in
-    /// the same timeline in date order.
+    /// chat shows in the floating chat's turns. Reports and news stay OFF
+    /// the chat (Lucas 2026-10-17) — they live on the news page.
     func testMorpheChatAndAIChatShareOneConversation() async {
         let store = freshStore()
         store.morpheInbox = [MorpheInboxItem(id: "r1", kind: .weeklyReport, date: Date(timeIntervalSinceNow: -3600), title: "Week in review", body: "Two sessions.")]
         await store.askMorpheInThread("What should I train tomorrow?")
         XCTAssertTrue(store.athleteAIAgentConversation.contains { $0.sender == .user && $0.text == "What should I train tomorrow?" })
         let merged = store.morpheConversation
-        XCTAssertTrue(merged.contains { $0.text.hasPrefix("Week in review") })
-        let reportIndex = merged.firstIndex { $0.text.hasPrefix("Week in review") }!
-        let askIndex = merged.firstIndex { $0.text == "What should I train tomorrow?" }!
-        XCTAssertLessThan(reportIndex, askIndex, "the older report comes first")
+        XCTAssertFalse(merged.contains { $0.text.hasPrefix("Week in review") }, "the report is news-page material, not chat")
+        XCTAssertTrue(merged.contains { $0.text == "What should I train tomorrow?" })
         XCTAssertFalse(store.chatsHaveTheStage)
         store.chatSurfaceDepth = 1
         XCTAssertTrue(store.chatsHaveTheStage, "an open chat surface hides the floating button")
+    }
+
+    /// Morphe's news page (Lucas 2026-10-17): news and reports, newest
+    /// first, counted on the wordmark bubble; opening and closing the page
+    /// marks them read; the Network badge no longer counts them.
+    func testMorpheNewsPageCountsAndMarksRead() {
+        let store = freshStore()
+        store.morpheInboxReadAt = Date(timeIntervalSinceNow: -7200)
+        store.morpheInbox = [
+            MorpheInboxItem(id: "n1", kind: .news, date: Date(timeIntervalSinceNow: -3600), title: "Shipped", body: "A thing."),
+            MorpheInboxItem(id: "r1", kind: .weeklyReport, date: Date(timeIntervalSinceNow: -600), title: "Week in review", body: "Two sessions."),
+            MorpheInboxItem(id: "q1", kind: .question, date: Date(timeIntervalSinceNow: -300), title: "", body: "What now?"),
+            MorpheInboxItem(id: "a1", kind: .answer, date: Date(timeIntervalSinceNow: -200), title: "", body: "Train.")
+        ]
+        XCTAssertEqual(store.morpheNewsItems.map(\.id), ["r1", "n1"], "newest first, chat turns excluded")
+        XCTAssertEqual(store.morpheInboxUnreadCount, 2)
+        XCTAssertEqual(store.networkBadgeCount, 0, "the wordmark carries the count, not Network")
+        XCTAssertEqual(store.appBadgeCount, 2)
+        store.openMorpheNews()
+        XCTAssertTrue(store.showMorpheNews)
+        store.closeMorpheNews()
+        XCTAssertFalse(store.showMorpheNews)
+        XCTAssertEqual(store.morpheInboxUnreadCount, 0, "closing the page marks it read")
+        XCTAssertTrue(store.morpheConversation.contains { $0.text == "What now?" }, "questions stay in the chat")
     }
 
     /// Explore's sections reorder and hide (Lucas 2026-10-16), and the

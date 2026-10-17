@@ -223,7 +223,7 @@ struct RootView: View {
         }
         .preferredColorScheme(store.selectedAppearance)
         // The app icon badge follows the Network count.
-        .onChange(of: store.networkBadgeCount) { _, _ in store.syncAppIconBadge() }
+        .onChange(of: store.appBadgeCount) { _, _ in store.syncAppIconBadge() }
         .onAppear { store.syncAppIconBadge() }
         // Anyone's account page, from any surface (feed, chats, board).
         .sheet(item: $store.viewingPerson) { card in
@@ -432,8 +432,11 @@ struct RootView: View {
                 }
         }
         .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
+        // Morphe news (Lucas 2026-10-17): slides down from the wordmark
+        // over the whole screen; a swipe up or the chevron sends it back.
         // Away (Lucas 2026-10-10): the popup sat untouched for 2½ minutes.
         .overlay {
+            morpheNewsCover
             if store.isAway {
                 AwayOverlay()
                     .environment(store)
@@ -503,7 +506,7 @@ struct RootView: View {
             // Never over the "hello, name" beat either (audit 2026-10-15).
             // And it slides off while the chats have the stage (Lucas
             // 2026-10-16): the list, an open thread, the search board.
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage && !store.isAway {
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage && !store.isAway && !store.showMorpheNews {
                 if store.aiButtonParked {
                     // Swiped off (Lucas 2026-10-17): a small accent chevron
                     // marks its place; a tap or a swipe left brings it back.
@@ -888,14 +891,208 @@ private struct ClientPinnedHeader: View {
         .padding(.vertical, 4)
         // The Morphe wordmark, centered on the icon row on every page
         // (Lucas 2026-10-16). An overlay, so it sits dead center no
-        // matter how many icons flank it; taps pass through to the page.
+        // matter how many icons flank it. A tap opens Morphe's news page
+        // and the bubble at its top right counts what's unread (Lucas
+        // 2026-10-17); the rest of the row still passes taps through.
         .overlay {
-            MorpheWordmark(height: 13, glows: false)
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            Button {
+                store.openMorpheNews()
+            } label: {
+                MorpheWordmark(height: 13, glows: false)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                    .overlay(alignment: .topTrailing) {
+                        if store.morpheInboxUnreadCount > 0 {
+                            NotificationBubble(count: store.morpheInboxUnreadCount)
+                                .offset(x: 4, y: 2)
+                        }
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(store.morpheInboxUnreadCount > 0 ? Text("Morphe news, \(store.morpheInboxUnreadCount) new") : Text("Morphe news"))
         }
         // No hairline, no band — icons only, page content indented below.
+    }
+}
+
+/// The red count bubble (Lucas 2026-10-17), the system badge shape.
+struct NotificationBubble: View {
+    let count: Int
+    var body: some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, count > 9 ? 5 : 0)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Capsule().fill(Color.red))
+            .accessibilityHidden(true)
+    }
+}
+
+/// Morphe's news page (Lucas 2026-10-17): announcements, weekly reports,
+/// updates, deals and events — the technical, detailed side of Morphe,
+/// dated and signed. It covers the screen from the top; a swipe up or the
+/// chevron closes it and marks everything read.
+struct MorpheNewsPage: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var dragY: CGFloat = 0
+
+    private var items: [MorpheInboxItem] { store.morpheNewsItems }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            MorpheTheme.ink.ignoresSafeArea()
+            VStack(spacing: 0) {
+                header
+                if items.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(items) { item in
+                                MorpheNewsRow(item: item, unread: item.date > store.morpheInboxReadAt)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 48)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+            }
+            .safeAreaPadding(.top, 8)
+        }
+        .offset(y: min(0, dragY))
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 16)
+                .onChanged { value in
+                    if value.translation.height < 0 { dragY = value.translation.height }
+                }
+                .onEnded { value in
+                    if value.translation.height < -90 || value.predictedEndTranslation.height < -240 {
+                        store.closeMorpheNews()
+                    }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { dragY = 0 }
+                }
+        )
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private var header: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Spacer()
+                MorpheWordmark(height: 15, glows: false)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer()
+            }
+            .overlay(alignment: .trailing) {
+                Button {
+                    store.closeMorpheNews()
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(.subheadline).weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Close Morphe news"))
+            }
+            .padding(.horizontal, 16)
+            Text(items.isEmpty ? "ANNOUNCEMENTS · REPORTS · UPDATES" : "\(items.count) \(items.count == 1 ? "ITEM" : "ITEMS") · ANNOUNCEMENTS · REPORTS · UPDATES")
+                .font(MorpheTheme.microLabel())
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+        }
+        .padding(.bottom, 4)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Spacer()
+            Text("Nothing announced yet.")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text("Weekly reports from your logs and anything that ships land here, dated.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .multilineTextAlignment(.center)
+            Spacer()
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+    }
+}
+
+/// One announcement: kind, title, full body, and the line every item
+/// carries — sender, date and time.
+struct MorpheNewsRow: View {
+    let item: MorpheInboxItem
+    let unread: Bool
+
+    private var kindLabel: String {
+        switch item.kind {
+        case .weeklyReport: "WEEKLY REPORT"
+        case .news: "UPDATE"
+        case .question, .answer: "NOTE"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                if unread {
+                    Circle().fill(MorpheTheme.accent).frame(width: 7, height: 7)
+                }
+                Text(kindLabel)
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.1)
+                    .foregroundStyle(unread ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                Spacer()
+                Text(item.date.formatted(.relative(presentation: .named)))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            if !item.title.isEmpty {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+            }
+            Text(item.body)
+                .font(.footnote)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Morphe · \(item.date.formatted(date: .abbreviated, time: .shortened))")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .padding(.top, 2)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(unread ? "New. " : "")\(kindLabel). \(item.title). \(item.body). From Morphe, \(item.date.formatted(date: .abbreviated, time: .shortened))")
+    }
+}
+
+private extension RootView {
+    /// Morphe news (Lucas 2026-10-17), as its own view so the body's
+    /// modifier chain stays type-checkable.
+    var morpheNewsCover: some View {
+        ZStack(alignment: .top) {
+            if store.showMorpheNews {
+                MorpheNewsPage()
+                    .environment(store)
+                    .transition(.move(edge: .top))
+            }
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: store.showMorpheNews)
+        .zIndex(5)
     }
 }
 

@@ -53,12 +53,13 @@ struct LaunchSequenceView: View {
                     Image("LoadingScreenActivated")
                         .resizable().interpolation(.high).scaledToFill()
                         .opacity(loadFrame == 1 ? 1 : 0)
-                    // Electricity on the activated frame (Lucas 2026-10-17),
-                    // centered on the helmet in the art.
-                    if loadFrame == 1 {
-                        LightningLayer(size: geo.size.width * 0.6)
-                            .frame(width: geo.size.width * 0.6, height: geo.size.width * 0.6)
-                            .position(x: geo.size.width / 2, y: geo.size.height * 0.385)
+                    // Layered motion over the activated art (Lucas
+                    // 2026-10-17): the field breathes, the helmet and eyes
+                    // glow in a pulse, the electricity shimmers. The art
+                    // is one picture, so each "layer" is a masked light
+                    // pass over its region. Nothing under Reduce Motion.
+                    if loadFrame == 1, !reduceMotion {
+                        LoadingActivatedMotion()
                     }
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
@@ -109,6 +110,63 @@ struct LaunchSequenceView: View {
             try? await Task.sleep(for: Self.beat)
             store.finishLaunchSequence()
         }
+    }
+}
+
+/// Subtle life on the activated loading art (Lucas 2026-10-17). Regions
+/// are fractions of the 850 × 1850 art: helmet centre (0.50, 0.387),
+/// eyes at (0.388, 0.416) and (0.606, 0.416), the glow line under the
+/// helmet at 0.573.
+private struct LoadingActivatedMotion: View {
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 40.0)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let pulse = 0.5 + 0.5 * sin(t * 2 * .pi / 1.1)          // helmet glow, 1.1 s
+            let eye = 0.5 + 0.5 * sin(t * 2 * .pi / 0.7 + 1.0)      // eyes, faster
+            let breathe = 1 + 0.006 * sin(t * 2 * .pi / 2.4)        // field
+            // Electricity: a jittery shimmer, two sines beating plus a
+            // per-frame flicker so it never reads as a smooth pulse.
+            let flickerSeed = Double((Int(t * 30) &* 1103515245 &+ 12345) & 0x7fff) / 32767
+            let shimmer = max(0, 0.35 + 0.35 * sin(t * 13.0) + 0.3 * sin(t * 29.0) - 0.4 * flickerSeed)
+            GeometryReader { geo in
+                let w = geo.size.width, h = geo.size.height
+                ZStack {
+                    // Background: a wide, slow wash that breathes.
+                    RadialGradient(colors: [MorpheTheme.brandBlue.opacity(0.18 + 0.08 * pulse), .clear], center: .center, startRadius: 0, endRadius: w * 0.9)
+                        .scaleEffect(breathe)
+                    // Helmet: the glow around it swells and settles.
+                    Circle()
+                        .fill(RadialGradient(colors: [Color(red: 0.55, green: 0.8, blue: 1).opacity(0.22 + 0.2 * pulse), .clear], center: .center, startRadius: 0, endRadius: w * 0.3))
+                        .frame(width: w * 0.6, height: w * 0.6)
+                        .position(x: w * 0.5, y: h * 0.387)
+                        .scaleEffect(1 + 0.03 * pulse)
+                    // The light line under the helmet.
+                    Ellipse()
+                        .fill(Color(red: 0.6, green: 0.85, blue: 1).opacity(0.18 + 0.18 * pulse))
+                        .frame(width: w * 0.22, height: 6)
+                        .blur(radius: 6)
+                        .position(x: w * 0.5, y: h * 0.573)
+                    // Eyes: twin flares, out of phase with the helmet.
+                    ForEach([0.388, 0.606], id: \.self) { ex in
+                        Circle()
+                            .fill(Color.white.opacity(0.35 + 0.45 * eye))
+                            .frame(width: w * 0.045, height: w * 0.045)
+                            .blur(radius: 7)
+                            .position(x: w * ex, y: h * 0.416)
+                    }
+                    // Electricity: a white shimmer masked to the helmet,
+                    // flickering.
+                    Ellipse()
+                        .fill(Color.white.opacity(0.16 * shimmer))
+                        .frame(width: w * 0.42, height: h * 0.34)
+                        .blur(radius: 14)
+                        .position(x: w * 0.5, y: h * 0.39)
+                }
+                .blendMode(.plusLighter)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -1639,6 +1697,13 @@ struct IntroView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { if phase == .tap { begin() } }
+        // `-MorpheIntroPreview`: the tap happens on its own after a second,
+        // so the simulator can capture the wake (Lucas 2026-10-17).
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("-MorpheIntroPreview") else { return }
+            try? await Task.sleep(for: .seconds(1))
+            if phase == .tap { begin() }
+        }
         .onAppear {
             guard !reduceMotion else { flash = true; return }
             withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) { flash = true }
@@ -1685,10 +1750,13 @@ struct IntroView: View {
                 // the live orb takes over.
                 ZStack {
                     if awake {
-                        MorpheOrbView(level: 0.18, speaking: bubbleIn && !formIn)
+                        MorpheOrbView(level: 0.18, speaking: bubbleIn && !formIn, frame: .activated)
                             .transition(.opacity)
                     } else {
-                        SpartanWakeView(duration: 1.3) { withAnimation(.easeInOut(duration: 0.3)) { awake = true } }
+                        // The first wake carries the super activated beat
+                        // (Lucas 2026-10-17) and settles on activated, the
+                        // design for the whole of onboarding.
+                        SpartanWakeView(duration: 1.3, superWake: true) { withAnimation(.easeInOut(duration: 0.3)) { awake = true } }
                     }
                 }
                 .frame(width: 170, height: 170)

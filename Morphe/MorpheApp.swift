@@ -76,6 +76,16 @@ struct MorpheApp: App {
                         local.enterAwayMode()
                     }
                 }
+                // `-MorpheNewsPreview`: unread news and the news page, for
+                // the simulator (Lucas 2026-10-17).
+                if ProcessInfo.processInfo.arguments.contains("-MorpheNewsPreview") {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(3))
+                        local.morpheInboxReadAt = .distantPast
+                        try? await Task.sleep(for: .seconds(4))
+                        local.openMorpheNews()
+                    }
+                }
                 // `-MorpheVoiceChatPreview`: opens the stage in chat mode
                 // after launch (no mic in the simulator).
                 if ProcessInfo.processInfo.arguments.contains("-MorpheVoiceChatPreview") {

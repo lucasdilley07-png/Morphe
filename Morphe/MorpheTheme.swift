@@ -692,6 +692,18 @@ enum Haptics {
         selectionGenerator.prepare()
     }
 
+    /// The super activated Spartan showing (Lucas 2026-10-17): one strong,
+    /// sharp hit the instant the design lands — rigid at full intensity,
+    /// twice, 60 ms apart, so it reads as a jolt rather than a tap.
+    static func superActivated() {
+        rigid.impactOccurred(intensity: 1.0)
+        rigid.prepare()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            rigid.impactOccurred(intensity: 1.0)
+            rigid.prepare()
+        }
+    }
+
     /// "Hey Morphe" heard (Lucas 2026-10-04): a real vibration, not a
     /// tick — the phone is in a pocket or on the floor mid-set, and the
     /// buzz is the only confirmation that reaches the athlete.
