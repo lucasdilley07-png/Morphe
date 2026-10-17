@@ -3463,7 +3463,9 @@ struct EditorFrameKey: PreferenceKey {
 
 /// The banner at the top of a page in editor mode.
 struct EditorModeBar: View {
-    let page: EditablePage
+    let tab: ClientTab
+    /// False on a page with no layout to arrange (Network).
+    let editable: Bool
     let onDone: () -> Void
 
     var body: some View {
@@ -3472,10 +3474,10 @@ struct EditorModeBar: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
             VStack(alignment: .leading, spacing: 1) {
-                Text("EDITING \(page.title.uppercased())")
+                Text("EDITING \(tab.title.uppercased())")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
                     .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
-                Text("Hold a box to move it · tap the eye to hide it")
+                Text(editable ? "Hold a box to lift it, then slide · tap the eye to hide it · hold a tab to move it" : "Nothing to arrange here · hold a tab below to move it")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent).opacity(0.85))
             }
@@ -3490,6 +3492,7 @@ struct EditorModeBar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.accent))
+        .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
         .accessibilityElement(children: .contain)
     }
 }
@@ -3521,6 +3524,33 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
             ForEach(cards) { card in
                 let isLifted = lifted == card
                 content(card)
+                    // The box's own controls sleep in editor mode; the hold
+                    // view below is not affected (it is a sibling overlay).
+                    .allowsHitTesting(!editing)
+                    .overlay {
+                        // Hold the box to lift it, keep holding to slide it
+                        // (Lucas 2026-10-16). A UIKit long press, so the page
+                        // still scrolls — the home-screen pattern.
+                        if editing {
+                            HoldDragOverlay(
+                                onLift: {
+                                    lifted = card
+                                    fingerY = frames[AnyHashable(card)]?.midY ?? 0
+                                    Haptics.impact(.medium)
+                                },
+                                onMove: { point in
+                                    guard lifted == card else { return }
+                                    fingerY = point.y
+                                    reorderIfNeeded(card)
+                                },
+                                onDrop: {
+                                    if lifted != nil { Haptics.impact(.light) }
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
+                                }
+                            )
+                            .padding(.trailing, 52)   // the eye stays tappable
+                        }
+                    }
                     .overlay(alignment: .topTrailing) { if editing { eye(for: card) } }
                     .overlay {
                         if editing {
@@ -3537,37 +3567,8 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
                     .shadow(color: .black.opacity(isLifted ? 0.28 : 0), radius: 14, y: 8)
                     .zIndex(isLifted ? 2 : 0)
                     .background(GeometryReader { geo in
-                        Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(card): geo.frame(in: .named("sectionEditor"))])
+                        Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(card): geo.frame(in: .global)])
                     })
-                    .allowsHitTesting(!editing || lifted == nil)
-                    .overlay {
-                        // In editor mode the box is a drag handle, not a control.
-                        if editing {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .gesture(
-                                    LongPressGesture(minimumDuration: 0.3)
-                                        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("sectionEditor")))
-                                        .onChanged { value in
-                                            switch value {
-                                            case .second(true, let drag):
-                                                if lifted != card {
-                                                    lifted = card
-                                                    fingerY = frames[AnyHashable(card)]?.midY ?? 0
-                                                    Haptics.impact(.medium)
-                                                }
-                                                if let drag { fingerY = drag.location.y; reorderIfNeeded(card) }
-                                            default: break
-                                            }
-                                        }
-                                        .onEnded { _ in
-                                            if lifted != nil { Haptics.impact(.light) }
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
-                                        }
-                                )
-                                .padding(.trailing, 52)   // the eye stays tappable
-                        }
-                    }
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
                     .accessibilityAction(named: "Hide \(title(card))") { hide(card) }
             }
@@ -3592,7 +3593,6 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
                 .padding(.top, 4)
             }
         }
-        .coordinateSpace(name: "sectionEditor")
         .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: cards)
     }
@@ -3651,61 +3651,72 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
 
 /// The tab bar's order, edited by holding an icon and dragging it along
 /// the strip; shown above the bar while any page is in editor mode.
+/// Editor mode's tab bar (Lucas 2026-10-16): it stands in for the system
+/// bar while editing. Tap switches tabs; hold a tab to lift it and slide
+/// it left or right inside the bubble; the order saves on drop.
 struct TabOrderStrip: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var frames: [AnyHashable: CGRect] = [:]
     @State private var lifted: ClientTab? = nil
     @State private var fingerX: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text("HOLD AN ICON AND DRAG TO REORDER THE TABS")
-                .font(MorpheTheme.microLabel(9)).tracking(1.4)
-                .foregroundStyle(MorpheTheme.textMuted)
-            HStack(spacing: 0) {
-                ForEach(store.tabLayout) { tab in
-                    let isLifted = lifted == tab
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.systemImage)
-                            .font(.title3.weight(.semibold))
-                        Text(tab.title)
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundStyle(isLifted ? MorpheTheme.accentText : MorpheTheme.textPrimary)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .scaleEffect(isLifted ? 1.15 : 1)
-                    .offset(x: isLifted ? fingerX - (frames[AnyHashable(tab)]?.midX ?? fingerX) : 0)
-                    .zIndex(isLifted ? 2 : 0)
-                    .background(GeometryReader { geo in
-                        Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(tab): geo.frame(in: .named("tabStrip"))])
-                    })
-                    .contentShape(Rectangle())
-                    .gesture(
-                        LongPressGesture(minimumDuration: 0.3)
-                            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("tabStrip")))
-                            .onChanged { value in
-                                if case .second(true, let drag) = value {
-                                    if lifted != tab { lifted = tab; fingerX = frames[AnyHashable(tab)]?.midX ?? 0; Haptics.impact(.medium) }
-                                    if let drag { fingerX = drag.location.x; reorderIfNeeded(tab) }
-                                }
-                            }
-                            .onEnded { _ in
-                                if lifted != nil { Haptics.impact(.light) }
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
-                            }
-                    )
-                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
-                    .accessibilityLabel("\(tab.title) tab")
+        HStack(spacing: 0) {
+            ForEach(store.tabLayout) { tab in
+                let isLifted = lifted == tab
+                let isSelected = store.selectedClientTab == tab
+                VStack(spacing: 3) {
+                    Image(systemName: tab.systemImage)
+                        .font(.title3.weight(.semibold))
+                    Text(tab.title)
+                        .font(.caption2.weight(.semibold))
                 }
+                .foregroundStyle(isLifted || isSelected ? MorpheTheme.accentText : MorpheTheme.textSecondary)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(MorpheTheme.accent.opacity(isLifted ? 0.22 : 0))
+                        .padding(.horizontal, 2)
+                )
+                .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
+                .offset(x: isLifted ? fingerX - (frames[AnyHashable(tab)]?.midX ?? fingerX) : 0)
+                .shadow(color: .black.opacity(isLifted ? 0.3 : 0), radius: 10, y: 4)
+                .zIndex(isLifted ? 2 : 0)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(tab): geo.frame(in: .global)])
+                })
+                .overlay {
+                    HoldDragOverlay(
+                        onTap: { store.selectedClientTab = tab },
+                        onLift: {
+                            lifted = tab
+                            fingerX = frames[AnyHashable(tab)]?.midX ?? 0
+                            Haptics.impact(.medium)
+                        },
+                        onMove: { point in
+                            guard lifted == tab else { return }
+                            // The icon stays inside the bubble.
+                            let xs = frames.values.map(\.midX)
+                            fingerX = min(max(point.x, xs.min() ?? point.x), xs.max() ?? point.x)
+                            reorderIfNeeded(tab)
+                        },
+                        onDrop: {
+                            if lifted != nil { Haptics.impact(.light) }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
+                        }
+                    )
+                }
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
+                .accessibilityLabel("\(tab.title) tab")
             }
-            .coordinateSpace(name: "tabStrip")
-            .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.tabLayout)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.ink.opacity(0.97)))
-        .overlay(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1))
+        .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.tabLayout)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(Capsule(style: .continuous).fill(.ultraThinMaterial))
+        .overlay(Capsule(style: .continuous).stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1))
         .padding(.horizontal, 16)
     }
 
@@ -3718,6 +3729,63 @@ struct TabOrderStrip: View {
         var next = others; next.insert(tab, at: target)
         Haptics.selection()
         store.setTabOrder(next.map(\.rawValue))
+    }
+}
+
+/// Hold to lift, keep holding to move (Lucas 2026-10-16). A UIKit long
+/// press so it lives beside the page's scroll instead of swallowing it;
+/// the point is in window (SwiftUI `.global`) coordinates. While a box is
+/// lifted the enclosing scroll view is frozen so the slide doesn't scroll.
+struct HoldDragOverlay: UIViewRepresentable {
+    /// The hold before a box lifts — Lucas asked for a deliberate hold.
+    static let holdSeconds: TimeInterval = 2.0
+
+    var onTap: (() -> Void)? = nil
+    let onLift: () -> Void
+    let onMove: (CGPoint) -> Void
+    let onDrop: () -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = nil
+        view.isOpaque = false
+        let hold = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleHold(_:)))
+        hold.minimumPressDuration = Self.holdSeconds
+        hold.allowableMovement = 12
+        view.addGestureRecognizer(hold)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
+        view.addGestureRecognizer(tap)
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) { context.coordinator.parent = self }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject {
+        var parent: HoldDragOverlay
+        private weak var frozenScroll: UIScrollView?
+        init(_ parent: HoldDragOverlay) { self.parent = parent }
+
+        @objc func handleTap() { parent.onTap?() }
+
+        @objc func handleHold(_ gesture: UILongPressGestureRecognizer) {
+            let point = gesture.location(in: nil)
+            switch gesture.state {
+            case .began:
+                var ancestor = gesture.view?.superview
+                while let view = ancestor, !(view is UIScrollView) { ancestor = view.superview }
+                if let scroll = ancestor as? UIScrollView { scroll.isScrollEnabled = false; frozenScroll = scroll }
+                parent.onLift()
+                parent.onMove(point)
+            case .changed:
+                parent.onMove(point)
+            case .ended, .cancelled, .failed:
+                frozenScroll?.isScrollEnabled = true
+                frozenScroll = nil
+                parent.onDrop()
+            default: break
+            }
+        }
     }
 }
 

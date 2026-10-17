@@ -484,6 +484,26 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// The editable page a tab shows, if it has one (Network and the hub
+    /// have no layout to edit).
+    func editablePage(for tab: ClientTab) -> EditablePage? {
+        switch tab {
+        case .today: return .today
+        case .train: return .train
+        case .discover: return .discover
+        case .more: return .learn
+        case .community, .hub: return nil
+        }
+    }
+
+    /// Editor mode follows the user across tabs until they tap Done
+    /// (Lucas 2026-10-16): switching pages mid-edit keeps editing, on the
+    /// new page when it has one.
+    func followEditing(to tab: ClientTab) {
+        guard editingPage != nil, let page = editablePage(for: tab) else { return }
+        editingPage = page
+    }
+
     /// The tab bar in the user's order.
     var tabLayout: [ClientTab] {
         var order = styleProfile.tabOrder.compactMap(ClientTab.init(rawValue:)).filter { ClientTab.visibleCases.contains($0) }
@@ -551,6 +571,66 @@ final class MorpheAppStore {
     }
 
     // MARK: The visible learning loop (personalization phase 4)
+
+    /// Morphe's directive under the strip (Lucas 2026-10-16): one short
+    /// command built from the user's own state — what matters most right
+    /// now, in priority order — and the line changes once an hour by
+    /// rotating through the top three. Nothing invented: every line is
+    /// gated on a real number. Clock injectable for tests.
+    func morpheDirective(now: Date = .now) -> String? {
+        guard hasCompletedOnboarding else { return nil }
+        var lines: [String] = []
+        let target = max(clientProfile.trainingDaysPerWeek, 1)
+        let done = currentAthleteWorkoutSummary.workoutsThisWeek
+        let hour = Calendar.current.component(.hour, from: now)
+        let logs = currentAthleteWorkoutLogs
+
+        if isWorkoutSessionActive {
+            lines.append("Finish your session in Train.")
+        }
+        if let atRisk = streakOnTheLineDays {
+            lines.append("Train today to keep your \(atRisk)-day streak.")
+        }
+        if !isWorkoutLoggedToday, !isPlannedRestDay, !isWorkoutSessionActive {
+            if let last = logs.first?.completedAt,
+               let days = Calendar.current.dateComponents([.day], from: last, to: now).day, days >= 3 {
+                lines.append("\(days) days off — start light today.")
+            } else if done < target {
+                lines.append("Train today — \(done) of \(target) this week.")
+            }
+        }
+        if isPlannedRestDay {
+            lines.append("Rest day. Walk and eat well.")
+        }
+        if todayRecoveryEntry == nil, !isWorkoutLoggedToday {
+            lines.append("Do your 20-second check-in.")
+        }
+        if Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) == nil {
+            lines.append("Log your weight in Profile for real targets.")
+        }
+        if hour >= 13, nutrition.proteinGoal > 0, nutrition.proteinConsumed * 2 < nutrition.proteinGoal {
+            lines.append("Log a meal — protein \(nutrition.proteinConsumed) of \(nutrition.proteinGoal) g.")
+        }
+        if let stalled = stalledExerciseNames.first {
+            lines.append("Stalled on \(stalled) — change the rep range.")
+        }
+        let open = todayTasks.filter { !$0.isCompleted }
+        if let first = open.first {
+            lines.append(open.count == 1 ? "One goal left: \(first.title)." : "\(open.count) goals left. Start with \(first.title).")
+        }
+        if networkBadgeCount > 0 {
+            lines.append("\(networkBadgeCount) new in Network.")
+        }
+        if let next = upcomingAppointments.first, Calendar.current.isDate(next.date, inSameDayAs: now) {
+            lines.append("Session at \(next.date.formatted(date: .omitted, time: .shortened)) today.")
+        }
+        if lines.isEmpty {
+            return isWorkoutLoggedToday ? "All set for today. Rest up." : nil
+        }
+        // The top three matter; the hour picks which one speaks.
+        let pool = Array(lines.prefix(3))
+        return pool[hour % pool.count]
+    }
 
     /// One line of what Morphe actually knows, spoken on Today under the
     /// greeting. Deterministic day-rotation across the facts that exist —
@@ -14981,9 +15061,9 @@ final class MorpheAppStore {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
         case 5..<12: return "Good morning, \(greetingName)."
-        case 12..<17: return "Hi \(greetingName)."
+        case 12..<17: return "Hello, \(greetingName)."
         case 17..<22: return "Good evening, \(greetingName)."
-        default: return "Late one, \(greetingName)?"
+        default: return "Hello, \(greetingName)."
         }
     }
 
@@ -15241,6 +15321,10 @@ final class MorpheAppStore {
         case eveningShort
         case eveningMinWin
         case eveningTomorrow
+        /// A different workout than the plan's (Lucas 2026-10-16).
+        case otherWorkout
+        /// Straight to Fuel to log a meal (Lucas 2026-10-16).
+        case logMeal
         case other
     }
 
@@ -15372,22 +15456,17 @@ final class MorpheAppStore {
         // Answered means answered (audit 13, P1): once tonight's check-in
         // has a reply, re-opens fall through to the standard state instead
         // of re-asking a question whose chips would all be silent no-ops.
-        if evening, !isPlannedRestDay,
-           eveningCheckInReplyToday == nil {
-            return eveningCheckInLine
-        }
+        // The evening voice no longer rewrites the line (Lucas 2026-10-16):
+        // one offer, morning or night.
         if isPlannedRestDay {
             return "It's your rest day — what's the move?"
         }
         // Only the recovery memory is reachable (the popup's "lighter"
         // answer records .tired) — the other mood variants were dead copy
         // (audit 11, P2-7).
-        switch yesterdaysAskMood {
-        case .tired, .sore:
-            return "Yesterday was a recovery day — what's the move today?"
-        default:
-            return "What's the move today?"
-        }
+        // One line, no question (Lucas 2026-10-16): the buttons are the
+        // offer.
+        return "Here's what I have for you today."
     }
 
     /// Three most-common choices for the CURRENT state, plus Other. Every
@@ -15410,19 +15489,9 @@ final class MorpheAppStore {
             choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
             return choices
         }
-        // Same answered-steps-aside condition as the question (audit 13, P1).
-        if evening, !isPlannedRestDay,
-           eveningCheckInReplyToday == nil {
-            // The evening voice: honest outs, same real actions as the
-            // old evening card's chips.
-            choices = [
-                DayPopupChoice(kind: .eveningShort, label: "Short session tonight", symbol: "clock.fill"),
-                DayPopupChoice(kind: .eveningMinWin, label: "Minimum win", symbol: "checkmark.circle.fill"),
-                DayPopupChoice(kind: .eveningTomorrow, label: "Tomorrow, promise", symbol: "moon.stars.fill")
-            ]
-            choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
-            return choices
-        }
+        // The evening set (short session / minimum win / tomorrow) is
+        // retired from the pop-up (Lucas 2026-10-16); the evening card on
+        // Today still offers those outs.
         if isPlannedRestDay {
             choices = [
                 DayPopupChoice(kind: .restUp, label: "Rest up — recovery counts", symbol: "moon.zzz.fill"),
@@ -15430,10 +15499,12 @@ final class MorpheAppStore {
                 DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
             ]
         } else {
+            // Train <today's workout> · Other workout · Log a meal · Other
+            // (Lucas 2026-10-16).
             choices = [
-                DayPopupChoice(kind: .start, label: "Start my workout", symbol: "figure.strengthtraining.traditional"),
-                DayPopupChoice(kind: .lighter, label: "Something lighter today", symbol: "leaf.fill"),
-                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
+                DayPopupChoice(kind: .start, label: "Train \(currentWorkout.name)", symbol: "figure.strengthtraining.traditional"),
+                DayPopupChoice(kind: .otherWorkout, label: "Other workout", symbol: "arrow.left.arrow.right"),
+                DayPopupChoice(kind: .logMeal, label: "Log a meal", symbol: "fork.knife")
             ]
         }
         choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
@@ -15483,6 +15554,12 @@ final class MorpheAppStore {
         case .eveningTomorrow:
             _ = answerEveningCheckIn(.tomorrow)
             return
+        case .otherWorkout:
+            persistDayReply("Pick the one you want — it's all in Train.")
+            if !requestWorkoutSwitch() { showTrainTab() }
+        case .logMeal:
+            persistDayReply("Fuel's open — log what you ate.")
+            openHub(.nutrition)
         case .other:
             // Hands off to the real conversation.
             openAIAgent()

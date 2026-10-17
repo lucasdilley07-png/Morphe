@@ -895,9 +895,6 @@ struct WorkoutView: View {
                     titleSize: 16
                 )
 
-                if store.editingPage == .train {
-                    EditorModeBar(page: .train) { store.endEditing() }
-                }
 
                 // The hint describes the first session; it retires the
                 // moment one is logged (audit 2026-10-16, U11).
@@ -4978,9 +4975,6 @@ struct DiscoverCatalogSection: View {
                 }
             } else {
             // In-place editor (Lucas 2026-10-16).
-            if store.editingPage == .discover {
-                EditorModeBar(page: .discover) { store.endEditing() }
-            }
             SectionEditorList(
                 editing: store.editingPage == .discover,
                 cards: store.visibleDiscoverCards,
@@ -6377,7 +6371,9 @@ private struct WorkoutRestControlBar: View {
                 Button(isRunning ? "Pause" : "Start") {
                     isRunning.toggle()
                 }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+                // The user's accent, not the ink alt (Lucas 2026-10-16):
+                // Start reads as the same color as every other Start.
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
                 // +15s rides the onChange re-anchor below, so the lock
                 // screen moves with it. Works paused too — it just arms
@@ -7801,7 +7797,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                 Spacer()
 
                                 Menu {
-                                    Button("Train Today") { onQueueBuilt(template) }
+                                    Button("Today's training") { onQueueBuilt(template) }
                                     Button("Edit") { onEditBuilt(template) }
                                     folderSubmenu(templateID: template.id)
                                     Button("Delete", role: .destructive) { onDeleteBuilt(template) }
@@ -7886,7 +7882,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                 Menu {
                                     // Stage Today = make it today's workout,
                                     // staged in Train without starting.
-                                    Button("Train Today") {
+                                    Button("Today's training") {
                                         onQueue(item)
                                     }
 

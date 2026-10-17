@@ -693,8 +693,15 @@ private struct ClientExperienceShell: View {
                     // button (Apple-UI audit 2026-10-16, #6).
                     .safeAreaPadding(.bottom, 60)
                     // The tab-order strip rides above the bar in editor mode.
+                    // In editor mode the strip stands in for the system bar
+                    // (Lucas 2026-10-16): one bar, hold a tab to move it.
+                    .toolbar(store.editingPage == nil ? .visible : .hidden, for: .tabBar)
                     .safeAreaInset(edge: .bottom) {
-                        if store.editingPage != nil { TabOrderStrip().padding(.bottom, 6) }
+                        if store.editingPage != nil {
+                            TabOrderStrip()
+                                .padding(.bottom, 8)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
                     .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                     .badge(tab == .community ? store.networkBadgeCount : 0)
@@ -730,6 +737,20 @@ private struct ClientExperienceShell: View {
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
         }
+        .overlay(alignment: .top) {
+            // Editor mode's banner (Lucas 2026-10-16): one bar for every
+            // page, over the quick-add/search row, sliding down when the
+            // mode turns on and back up when Done is tapped. It follows
+            // the user across tabs.
+            if store.editingPage != nil {
+                EditorModeBar(tab: store.selectedClientTab, editable: store.editablePage(for: store.selectedClientTab) != nil) {
+                    store.endEditing()
+                }
+                .padding(.horizontal, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.editingPage == nil)
         // The system tab bar (Apple-UI audit 2026-10-16, #7): Liquid Glass
         // on iOS 26, the tab-bar trait for VoiceOver, Dynamic Type for the
         // labels, keyboard avoidance — all for free. The custom capsule
@@ -738,6 +759,7 @@ private struct ClientExperienceShell: View {
         .onChange(of: store.selectedClientTab) { _, tab in
             // A tab switch lands at the top of that tab's first page.
             store.popTabToRoot(tab.rawValue)
+            store.followEditing(to: tab)
         }
         }
     }
@@ -831,6 +853,15 @@ private struct ClientPinnedHeader: View {
         }
         .padding(.horizontal, 2)
         .padding(.vertical, 4)
+        // The Morphe wordmark, centered on the icon row on every page
+        // (Lucas 2026-10-16). An overlay, so it sits dead center no
+        // matter how many icons flank it; taps pass through to the page.
+        .overlay {
+            MorpheWordmark(height: 13, glows: false)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         // No hairline, no band — icons only, page content indented below.
     }
 }

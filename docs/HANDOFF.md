@@ -878,3 +878,46 @@ Network is deliberately left alone.
   doors (`doorsGrid`): Train (today's workout name · minutes), Nutrition,
   Network, Learn — Morphe says nothing there. `nextMoveCard` stays for the
   rest-day / logged states only.
+- Welcome pop-up (Lucas): the greeting is "Hello, name." outside morning /
+  evening (no more "Late one?"), the line under it is "Here's what I have
+  for you today." (no question; yesterday's mood no longer rewrites it),
+  and the standard buttons are Train <today's workout> · Other workout
+  (`.otherWorkout` → the switch sheet) · Log a meal (`.logMeal` → Fuel) ·
+  Other…. Rest-day, evening and logged states keep their own buttons.
+- Under the strip, the learned line ("X is your most-trained exercise…")
+  is replaced by **Morphe's directive** (`morpheDirective(now:)`): one
+  short command from the user's own state in priority order — finish the
+  live session, keep the streak, train today (N of T), days off, rest day,
+  check-in, log weight, protein after 1 PM, a stalled lift, open goals,
+  new in Network, today's appointment — rotating hourly through the top
+  three; "All set for today. Rest up." once the day's logged; nothing
+  invented. `learnedInsightLine` stays for the AI brain.
+- Evening pop-up (Lucas): the "Short session tonight / Minimum win /
+  Tomorrow" set is retired from the pop-up — one offer, morning or night
+  (the evening card on Today still has those outs).
+- Editor mode, rebuilt (Lucas 2026-10-16, three passes):
+  - One banner for every page (`EditorModeBar(tab:editable:)`), an
+    overlay in RootView over the avatar/search/quick-add row; it slides
+    down when editing starts and up on Done; it follows the user across
+    tabs (`followEditing(to:)` in the tab `onChange`) until Done.
+  - The system tab bar hides while editing (`.toolbar(.hidden, for:
+    .tabBar)`) and `TabOrderStrip` stands in its place: tap switches tabs,
+    hold a tab ~2 s to lift it, slide left/right inside the bubble, order
+    saves on drop. No second row above the real bar.
+  - Every box in `SectionEditorList` uses the same hold-highlight-move:
+    `HoldDragOverlay` is a `UILongPressGestureRecognizer`
+    (`holdSeconds = 2.0`, `allowableMovement = 12`) so the page still
+    scrolls (the old SwiftUI long-press+drag swallowed scrolling); while a
+    box is lifted the enclosing `UIScrollView` is frozen. Frames are in
+    `.global` space to match the UIKit point. The eye and dashed outline
+    draw above the hold layer. Pinned Today pieces (Schedule, Goals,
+    Nutrition, Progress) hide/show only.
+- Today doors: Train is filled with the user's accent (the Start-button
+  color, ink via `onFill`); the Learn door is now **Discover** and opens
+  Discover on its Feed (`openFeed()`). The rest timer's Start uses
+  `MorpheTheme.accent` (was `accentAlt`, near-black on Spartan).
+- Saved-workout menus: "Train Today" → "Today's training".
+- Header: the Morphe wordmark (template image, `textPrimary`, no glow) is
+  centered on the icon row of every page (`ClientPinnedHeader` overlay).
+- Today kicker order: `@handle · ● ONLINE · N DAYS LOGGED`; the dot is a
+  `FlickerDot` (random dips / double-blinks; still under Reduce Motion).

@@ -378,9 +378,6 @@ struct MoreView: View {
             // The sections are the user's to order and hide (Lucas
             // 2026-10-16) — the same editor Today and Train have. Coach
             // notes lead once there are some, unless the user ordered it.
-            if store.editingPage == .learn {
-                EditorModeBar(page: .learn) { store.endEditing() }
-            }
             SectionEditorList(
                 editing: store.editingPage == .learn,
                 cards: store.visibleLearnCards,

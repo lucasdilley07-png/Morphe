@@ -43,9 +43,6 @@ struct HomeView: View {
                 // time-aware greeting and one context question derived from
                 // real state — coach session due, rest day, streak, or the
                 // plain "what are we training?"
-                if store.editingPage == .today {
-                    EditorModeBar(page: .today) { store.endEditing() }
-                }
                 VStack(spacing: 6) {
                     // The "Good evening, name" line left Today (Lucas
                     // 2026-10-16) — it belongs to the welcome pop-up. The
@@ -58,20 +55,21 @@ struct HomeView: View {
                     // The question under the strip moved to the welcome
                     // pop-up with the greeting (Lucas 2026-10-16). The plan
                     // card is the next thing on the page.
-                    // The visible learning loop (phase 4): one line of what
-                    // Morphe actually derived — absent until the honesty
-                    // gates have real data.
-                    if let learned = store.learnedInsightLine() {
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Image(systemName: "wand.and.stars")
+                    // Morphe's directive (Lucas 2026-10-16): one short
+                    // command from the user's own state, rotating hourly.
+                    if let directive = store.morpheDirective() {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Image(systemName: "sparkle")
                                 .font(.caption2.weight(.bold))
-                            Text(learned)
+                                .foregroundStyle(MorpheTheme.accentText)
+                            Text(directive)
                                 .multilineTextAlignment(.center)
                         }
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .padding(.top, 2)
-                        .accessibilityLabel("Morphe learned: \(learned)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .padding(.top, 4)
+                        .contentTransition(.opacity)
+                        .accessibilityLabel("Morphe: \(directive)")
                     }
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
@@ -487,6 +485,9 @@ struct HomeView: View {
                 title: "Train",
                 detail: "\(store.currentWorkout.name) · \(store.currentWorkout.durationMinutes) min",
                 detailIsMuted: false,
+                // The Train door is the page's primary action: filled with
+                // the user's accent like a Start button (Lucas 2026-10-16).
+                prominent: true,
                 accessibilityLabel: "Train — \(store.currentWorkout.name), \(store.currentWorkout.durationMinutes) minutes"
             ) { store.showTrainTab() }
             HomeLinkTile(
@@ -504,12 +505,12 @@ struct HomeView: View {
                 accessibilityLabel: "Network"
             ) { store.openCommunity(.forYou) }
             HomeLinkTile(
-                systemImage: "book.fill",
-                title: "Learn",
-                detail: "Today's quiz, lessons, the library",
+                systemImage: "safari.fill",
+                title: "Discover",
+                detail: "Feed, new workouts, programs",
                 detailIsMuted: true,
-                accessibilityLabel: "Learn"
-            ) { store.openHub(.learn) }
+                accessibilityLabel: "Discover"
+            ) { store.openFeed() }
         }
     }
 
@@ -760,40 +761,59 @@ private struct HomeLinkTile: View {
     let title: String
     let detail: String
     let detailIsMuted: Bool
+    /// Filled with the user's accent (the Start-button color); ink follows
+    /// the fill so every palette stays legible.
+    var prominent: Bool = false
     let accessibilityLabel: String
     let action: () -> Void
 
+    private var ink: Color { prominent ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary }
+
     var body: some View {
         Button(action: action) {
-            GlassCard(.quiet) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: systemImage)
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.accentText)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                        .lineLimit(1)
-
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(detailIsMuted ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
-                        .lineLimit(1)
+            Group {
+                if prominent {
+                    tileBody
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(MorpheTheme.accent)
+                        )
+                } else {
+                    GlassCard(.quiet) { tileBody }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
+
+    private var tileBody: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: systemImage)
+                    .font(.headline)
+                    .foregroundStyle(prominent ? ink : MorpheTheme.accentText)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(prominent ? ink.opacity(0.8) : MorpheTheme.textMuted)
+            }
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(ink)
+                .lineLimit(1)
+
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(prominent ? ink.opacity(0.85) : (detailIsMuted ? MorpheTheme.textMuted : MorpheTheme.textSecondary))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
 }
 
 private struct HomePatternInsightCard: View {
@@ -2803,20 +2823,19 @@ private struct TodayIdentityStrip: View {
         VStack(spacing: 10) {
             // One centered line, one font: MORPHE ONLINE · @handle · N days
             // logged (Lucas 2026-10-16). The days opens the week's read.
+            // Order (Lucas 2026-10-16): @handle · ● ONLINE · N DAYS LOGGED,
+            // under the wordmark in the header. The status dot flickers.
             HStack(spacing: 10) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(MorpheTheme.accent)
-                        .frame(width: 6, height: 6)
-                        .shadow(color: MorpheTheme.accent.opacity(glow ? 0.9 : 0.2), radius: glow ? 6 : 1)
-                    Text("MORPHE ONLINE")
-                        .foregroundStyle(MorpheTheme.accentText)
-                }
                 if !store.profileShowcase.username.isEmpty {
-                    dot
                     Text("@\(store.profileShowcase.username)")
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .electricSweep(armed: appeared)
+                    dot
+                }
+                HStack(spacing: 6) {
+                    FlickerDot(color: MorpheTheme.accent)
+                    Text("ONLINE")
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
                 dot
                 Button {
@@ -3107,4 +3126,34 @@ private struct ElectricSweep: ViewModifier {
 
 extension View {
     func electricSweep(armed: Bool) -> some View { modifier(ElectricSweep(armed: armed)) }
+}
+
+
+/// A status LED that flickers (Lucas 2026-10-16): mostly lit, with short
+/// random dips and the odd double-blink, like a live link indicator.
+/// Still under Reduce Motion.
+private struct FlickerDot: View {
+    let color: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var lit = true
+
+    var body: some View {
+        Circle()
+            .fill(color.opacity(lit ? 1 : 0.25))
+            .frame(width: 6, height: 6)
+            .shadow(color: color.opacity(lit ? 0.9 : 0.1), radius: lit ? 6 : 1)
+            .task {
+                guard !reduceMotion else { return }
+                while !Task.isCancelled {
+                    // On for 0.6–2.4 s, off for a blink, sometimes twice.
+                    try? await Task.sleep(for: .milliseconds(Int.random(in: 600...2400)))
+                    for _ in 0..<(Int.random(in: 0...4) == 0 ? 2 : 1) {
+                        withAnimation(.easeOut(duration: 0.08)) { lit = false }
+                        try? await Task.sleep(for: .milliseconds(Int.random(in: 70...160)))
+                        withAnimation(.easeIn(duration: 0.12)) { lit = true }
+                        try? await Task.sleep(for: .milliseconds(120))
+                    }
+                }
+            }
+    }
 }

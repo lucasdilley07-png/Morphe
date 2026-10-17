@@ -752,8 +752,8 @@ final class WorkoutSessionTests: XCTestCase {
     /// shapes today's question from it — the friend checking back in.
     func testMorpheAskRemembersYesterdaysAnswer() {
         let store = freshStore()
-        XCTAssertFalse(store.dayPopupQuestion(evening: false).contains("recovery day"),
-                      "no memory, no claim — the default question stands")
+        XCTAssertEqual(store.dayPopupQuestion(evening: false), "Here's what I have for you today.",
+                       "one fixed line — the buttons are the offer (Lucas 2026-10-16)")
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -762,8 +762,8 @@ final class WorkoutSessionTests: XCTestCase {
             "Tired",
             forKey: "morphe.ask.\(store.clientProfile.id.uuidString).mood.\(formatter.string(from: yesterday))"
         )
-        XCTAssertTrue(store.dayPopupQuestion(evening: false).contains("recovery day"),
-                      "yesterday's 'Tired' shapes today's question")
+        XCTAssertEqual(store.dayPopupQuestion(evening: false), "Here's what I have for you today.",
+                       "yesterday's mood no longer rewrites the line; it still feeds the plan")
     }
 
     /// Moments engine phase 3: the PR-proximity line is pure Epley math on
@@ -925,11 +925,12 @@ final class WorkoutSessionTests: XCTestCase {
         let choices = store.dayPopupChoices(evening: false)
         XCTAssertEqual(choices.count, 4, "three common answers plus Other")
         XCTAssertEqual(choices.last?.label, "Other…", "the fourth choice is always Other")
-        XCTAssertEqual(choices.first?.label, "Start my workout")
+        XCTAssertTrue(choices.first?.label.hasPrefix("Train ") == true, "the first button names today's workout")
+        XCTAssertEqual(choices.map(\.label)[1...2], ["Other workout", "Log a meal"])
 
         let evening = store.dayPopupChoices(evening: true)
-        XCTAssertEqual(evening.count, 4, "the evening voice keeps the 3+Other shape")
-        XCTAssertEqual(evening.first?.label, "Short session tonight")
+        XCTAssertEqual(evening.count, 4, "evening keeps the 3+Other shape")
+        XCTAssertTrue(evening.first?.label.hasPrefix("Train ") == true, "one offer, morning or night (Lucas 2026-10-16)")
         XCTAssertEqual(evening.last?.label, "Other…")
 
         store.answerDayPopup(.restUp)
@@ -981,10 +982,11 @@ final class WorkoutSessionTests: XCTestCase {
     /// whose chips would all be silent no-ops.
     func testEveningPopupStepsAsideOnceAnswered() {
         let store = freshStore()
-        XCTAssertEqual(store.dayPopupChoices(evening: true).first?.label, "Short session tonight")
+        XCTAssertTrue(store.dayPopupChoices(evening: true).first?.label.hasPrefix("Train ") == true,
+                      "the evening pop-up makes the same one offer (Lucas 2026-10-16)")
 
         _ = store.answerEveningCheckIn(.tomorrow)
-        XCTAssertEqual(store.dayPopupChoices(evening: true).first?.label, "Start my workout",
+        XCTAssertEqual(store.dayPopupChoices(evening: true).first?.label, "Train " + store.currentWorkout.name,
                        "an answered evening falls back to the standard chips")
         XCTAssertFalse(store.dayPopupQuestion(evening: true).contains("Evening check-in"),
                        "the question and choices stay in the same state")
@@ -5012,6 +5014,25 @@ final class PersonalizationEngineTests: XCTestCase {
         store.setLearnLayout(hidden: ["whyMorphe"])
         XCTAssertFalse(store.visibleLearnCards.contains(.whyMorphe))
         XCTAssertEqual(LearnCardID.resolvedOrder(from: ["bogus", "lessons"]).first, .lessons, "unknown ids are dropped")
+    }
+
+    func testMorpheDirectiveIsShortDerivedAndRotatesHourly() {
+        let store = freshStore()
+        store.clientProfile.bodyWeight = ""
+        let cal = Calendar.current
+        let noon = cal.date(bySettingHour: 12, minute: 0, second: 0, of: .now)!
+        let line = store.morpheDirective(now: noon)
+        XCTAssertNotNil(line)
+        XCTAssertTrue(line!.count <= 60, "a command, not a paragraph — got \(line!)")
+        // Every candidate is a real gate: no weight → the weight line is in the pool.
+        let hours = (0..<24).compactMap { h -> String? in
+            store.morpheDirective(now: cal.date(bySettingHour: h, minute: 0, second: 0, of: .now)!)
+        }
+        XCTAssertTrue(hours.contains { $0.contains("Log your weight") })
+        XCTAssertTrue(Set(hours).count >= 2, "the line changes across the day")
+        store.updateBodyMetrics(height: "", weight: "170 lb")
+        let after = (0..<24).compactMap { h in store.morpheDirective(now: cal.date(bySettingHour: h, minute: 0, second: 0, of: .now)!) }
+        XCTAssertFalse(after.contains { $0.contains("Log your weight") }, "a done task leaves the pool")
     }
 
     func testWorkWordsAndDoneUtterance() {
@@ -9595,6 +9616,21 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertLessThan(most, quizzes.count * 6 / 10, "no single slot holds most answers: \(shownAt)")
         XCTAssertEqual(quizzes[0].displayOrder, quizzes[0].displayOrder, "stable per quiz")
         XCTAssertEqual(Set(quizzes[0].displayOrder), Set(quizzes[0].options.indices))
+    }
+
+    /// Editor mode follows the user across tabs until Done (Lucas 2026-10-16).
+    func testEditorModeFollowsTabSwitches() {
+        let store = freshStore()
+        store.beginEditing(.today)
+        store.followEditing(to: .train)
+        XCTAssertEqual(store.editingPage, .train)
+        store.followEditing(to: .community)
+        XCTAssertEqual(store.editingPage, .train, "a page with no layout keeps the mode alive")
+        store.followEditing(to: .more)
+        XCTAssertEqual(store.editingPage, .learn)
+        store.endEditing()
+        store.followEditing(to: .today)
+        XCTAssertNil(store.editingPage, "Done ends it; a later switch does not restart it")
     }
 }
 
