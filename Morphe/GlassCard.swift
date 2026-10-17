@@ -481,12 +481,27 @@ struct MorpheOrbView: View {
                 // orb, glow, mask (Lucas 2026-10-10).
                 // The finished Spartan orb (Lucas 2026-10-17: one image,
                 // helmet baked in). It breathes with the voice as a whole.
-                Image(frame.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .scaleEffect(reduceMotion ? 1 : 1 + level * 0.06)
-                    .animation(.easeOut(duration: 0.1), value: level)
-                    .id(frame)
+                // Two tempos (Lucas 2026-10-17). Listening: the design
+                // kicks with the user's voice — a bigger, snappier spring
+                // on each syllable, so it moves to their rhythm. Morphe
+                // speaking: fluid and smooth — a softer, slower swell on
+                // the level plus a slow sway and bob of the whole design.
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !live)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    let sway = live && speaking ? sin(t * 1.6) * 1.8 : 0
+                    let bob = live && speaking ? CGFloat(sin(t * 1.1 + 0.7)) * size * 0.008 : 0
+                    Image(frame.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .scaleEffect(reduceMotion ? 1 : 1 + level * (speaking ? 0.045 : 0.10))
+                        .rotationEffect(.degrees(sway))
+                        .offset(y: bob)
+                        .animation(speaking
+                                   ? .easeInOut(duration: 0.3)
+                                   : .interactiveSpring(response: 0.13, dampingFraction: 0.52),
+                                   value: level)
+                        .id(frame)
+                }
                 innerGlow(size)
                 if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)).opacity(0.5) }
                 if live { rimLight(size) }
@@ -572,7 +587,7 @@ struct MorpheOrbView: View {
             .fill(RadialGradient(
                 colors: [Self.electric.opacity(0.18 + level * 0.32), .clear],
                 center: .center, startRadius: 0, endRadius: size * 0.5))
-            .animation(.easeOut(duration: 0.12), value: level)
+            .animation(speaking ? .easeInOut(duration: 0.3) : .easeOut(duration: 0.08), value: level)
     }
 
     /// A small glow just inside the rim, brightening a little with the
@@ -586,7 +601,7 @@ struct MorpheOrbView: View {
             .padding(size * 0.03)
             .blur(radius: size * 0.03)
             .opacity(0.5 + level * 0.3)
-            .animation(.easeOut(duration: 0.12), value: level)
+            .animation(speaking ? .easeInOut(duration: 0.3) : .easeOut(duration: 0.08), value: level)
     }
 
     /// A light running along the rim — Siri's orb shimmer, slow.
@@ -3959,10 +3974,11 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
     }
 
     private func hide(_ card: Card) {
-        guard cards.count > 1 else {
-            // The last box on a page can't go: a shake, a buzz, one line.
+        guard cards.count > MorpheAppStore.minimumVisibleSections else {
+            // Two boxes stay on every page (Lucas 2026-10-17): a shake, a
+            // buzz, one line.
             Haptics.error()
-            store.showToast("Keep at least one section on this page.")
+            store.showToast("Keep at least two sections on this page.")
             withAnimation(.default.speed(3).repeatCount(3, autoreverses: true)) { shaking = card }
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(260))

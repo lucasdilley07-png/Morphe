@@ -275,19 +275,12 @@ struct OnboardingFlowView: View {
         // but are no longer in the path.
         // The intro (Lucas 2026-10-16) already took the handle and the
         // birth year, and the welcome page is the intro itself.
+        // The intro is the welcome (Lucas 2026-10-17); the questions start
+        // at the name. Seven short screens, one decision each.
         if store.introSuppliedIdentity {
             return [.name, .goal, .sport, .experience, .schedule, .review]
         }
-        return [
-            .welcome,
-            .name,
-            .username,
-            .goal,
-            .sport,
-            .experience,
-            .schedule,
-            .review
-        ]
+        return [.name, .username, .goal, .sport, .experience, .schedule, .review]
     }
 
     /// Get started from the intro: no questions, straight to the loading
@@ -343,9 +336,9 @@ struct OnboardingFlowView: View {
         case .welcome:
             return "Start"
         case .review, .week:
-            return isCoachFlow ? "Create Workspace" : "Create Plan"
+            return isCoachFlow ? "Create Workspace" : "Create plan"
         default:
-            return "Continue"
+            return "Next"
         }
     }
 
@@ -365,14 +358,28 @@ struct OnboardingFlowView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         if currentStep != .welcome {
-                            // Thin bar + count, nothing else (the old header
-                            // card repeated a title and a subtitle on every
-                            // step). The account already counts as done.
-                            // No welcome step after the intro (Lucas 2026-10-17):
-                            // the count is the question's own number.
-                            let hasWelcome = steps.first == .welcome
-                            let total = hasWelcome ? steps.count - 1 : steps.count
-                            let answered = hasWelcome ? max(stepIndex, 1) : stepIndex + 1
+                            // Morphe asks (Lucas 2026-10-17): the small
+                            // activated Spartan at the top, the question in
+                            // its bubble, then the cards. No titles or
+                            // subtitles on the cards themselves.
+                            VStack(spacing: 4) {
+                                MorpheOrbView(level: 0.12, frame: .activated)
+                                    .frame(width: 96, height: 96)
+                                    .accessibilityHidden(true)
+                                IntroBubble(tail: true) {
+                                    Text(question(for: currentStep))
+                                        .font(.headline.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, -8)
+
+                            // Thin bar + count, nothing else.
+                            let total = steps.count
+                            let answered = stepIndex + 1
                             HStack(spacing: 12) {
                                 ProgressBarView(
                                     progress: Double(answered) / Double(total),
@@ -514,6 +521,27 @@ struct OnboardingFlowView: View {
         }
     }
 
+    /// What Morphe asks on each screen — one line, in its bubble.
+    private func question(for step: OnboardingStep) -> String {
+        switch step {
+        case .name: return "What should I call you?"
+        case .username: return "Pick your @handle."
+        case .goal: return "What are you working toward?"
+        case .sport: return "What do you train?"
+        case .experience: return "How experienced are you?"
+        case .schedule: return "How many days a week?"
+        case .review: return "Here's your starting plan."
+        case .gender: return "How should I refer to you?"
+        case .equipment: return "What do you train with?"
+        case .injuryPain: return "Anything I should know?"
+        case .mealPrep: return "Do you meal prep?"
+        case .identity: return "Who are you?"
+        case .training: return "How do you train?"
+        case .week: return "Your week."
+        case .welcome: return ""
+        }
+    }
+
     @ViewBuilder
     private func stepView(for step: OnboardingStep) -> some View {
         @Bindable var store = store
@@ -648,16 +676,7 @@ private struct UsernameStep: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("CLAIM YOUR USERNAME")
-                    .font(MorpheTheme.microLabel())
-                    .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accentText)
-
-                Text("Pick your @name")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                Text("This is how coaches and training partners find you later. We suggested one — keep it, tweak it, or replace it. You can change it anytime in Profile.")
+                Text("Keep it, tweak it, or replace it.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -841,7 +860,7 @@ private struct NameStep: View {
                         .frame(width: 28, height: 28)
                         .matchedGeometryEffect(id: "brandMark", in: namespace, isSource: false)
                         .accessibilityHidden(true)
-                    TextField("Your first name", text: $name)
+                    TextField("First name", text: $name)
                     .textFieldStyle(MorpheFieldStyle())
                     .textContentType(.givenName)
                     .submitLabel(.done)
@@ -855,21 +874,10 @@ private struct NameStep: View {
                     }
                 }
 
-                // Only while the field is empty — an example under a filled
-                // name read as a correction (audit 2026-10-15).
-                if name.trimmingCharacters(in: .whitespaces).isEmpty {
-                    HStack(spacing: 4) {
-                        Text("Example:")
-                        TypewriterText(text: "Alex", startDelay: 0.5)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                }
-
                 // Age gate (fix wave 2026-10-13): asked neutrally, no hint
                 // at the cutoff, and it becomes the profile age.
                 if askBirthYear {
-                TextField("Year you were born", text: $yearText)
+                TextField("Birth year", text: $yearText)
                     .textFieldStyle(MorpheFieldStyle())
                     .keyboardType(.numberPad)
                     .onAppear { if let birthYear { yearText = String(birthYear) } }
@@ -1194,7 +1202,7 @@ private struct ScheduleStep: View {
                     }
                 }
 
-                Text("\(days) day\(days == 1 ? "" : "s") a week — you can change this anytime.")
+                Text("\(days) day\(days == 1 ? "" : "s") a week. Change it anytime.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
             }
@@ -1303,12 +1311,6 @@ private struct ProfileReviewStep: View {
                     ProfileLine(title: "First action", value: "Add your first client and share their invite code")
                     ProfileLine(title: "Workspace summary", value: "A \(store.onboardingDraft.sport.rawValue) coaching workspace sized for \(store.onboardingDraft.coachRoster.rawValue.lowercased()) — roster, library, and outreach in one place. Everything grows from the athletes you connect.")
                 }
-                Text(isCoach
-                    ? "Tap Create Workspace and Morphe will set up your coaching home."
-                    : "That's all Morphe needs. Tap Create Plan — you can change any answer later in Profile.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
                 // Required consent — the finish button stays disabled until
                 // checked, and agreeing here satisfies the terms gate too.
                 // The whole row is the target (audit 2026-10-15: taps on the
@@ -1473,17 +1475,15 @@ private struct OnboardingCard<Content: View>: View {
     }
 
     var body: some View {
+        // The question lives in Morphe's bubble above (Lucas 2026-10-17);
+        // the title and subtitle are kept for accessibility only.
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text(title)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
                 content
             }
         }
+        .accessibilityLabel(Text(title))
+        .accessibilityHint(Text(subtitle))
     }
 }
 
@@ -1654,22 +1654,11 @@ struct IntroView: View {
     @State private var lightScale: CGFloat = 0.01
     @State private var orbIn = false
     @State private var awake = false
-    @State private var bubbleIn = false
-    @State private var formIn = false
-    @State private var username = ""
-    @State private var birthday = Calendar.current.date(byAdding: .year, value: -20, to: .now) ?? .now
-    @State private var touchedBirthday = false
-    @FocusState private var usernameFocused: Bool
-
-    private var normalizedUsername: String { UsernameRules.normalize(username) }
-    private var usernameError: String? {
-        username.isEmpty ? nil : UsernameRules.validationError(normalizedUsername)
-    }
-    private var birthYear: Int { Calendar.current.component(.year, from: birthday) }
-    private var oldEnough: Bool { OnboardingDraft.age(fromBirthYear: birthYear) >= OnboardingDraft.minimumAge }
-    private var canContinue: Bool {
-        !username.isEmpty && usernameError == nil && touchedBirthday && oldEnough
-    }
+    /// Morphe's beats after the wake (Lucas 2026-10-17): 1 "Hello there."
+    /// · 2 "I am Morphe." · 3 what it was built for · 4 the bubbles leave
+    /// and the orb shrinks to the top · 5 the question and the two doors.
+    @State private var beat = 0
+    @State private var chosen = false
 
     var body: some View {
         ZStack {
@@ -1754,19 +1743,41 @@ struct IntroView: View {
             try? await Task.sleep(for: .seconds(1))
             orbIn = true
             withAnimation(.easeOut(duration: 0.3)) { phase = .morphe }
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 1500))
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { bubbleIn = true }
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 450))
-            withAnimation(.easeOut(duration: 0.35)) { formIn = true }
         }
     }
 
+    /// Runs once the wake has settled on activated.
+    private func speak() {
+        let quick = reduceMotion
+        Task { @MainActor in
+            let bubble = Animation.spring(response: 0.45, dampingFraction: 0.78)
+            try? await Task.sleep(for: .milliseconds(quick ? 100 : 400))
+            withAnimation(bubble) { beat = 1 }                       // Hello there.
+            try? await Task.sleep(for: .milliseconds(quick ? 200 : 1500))
+            withAnimation(bubble) { beat = 2 }                       // I am Morphe.
+            try? await Task.sleep(for: .milliseconds(quick ? 200 : 1500))
+            withAnimation(bubble) { beat = 3 }                       // what I was built for
+            try? await Task.sleep(for: .milliseconds(quick ? 300 : 4200))
+            withAnimation(.easeInOut(duration: 0.3)) { beat = 4 }    // bubbles leave
+            try? await Task.sleep(for: .milliseconds(quick ? 100 : 350))
+            // The orb shrinks 35% and settles at the top — a fluid, slightly
+            // magnetic spring.
+            withAnimation(.spring(response: 0.75, dampingFraction: 0.62)) { orbTop = true }
+            try? await Task.sleep(for: .milliseconds(quick ? 100 : 700))
+            withAnimation(bubble) { beat = 5 }                       // the question
+            try? await Task.sleep(for: .milliseconds(quick ? 100 : 600))
+            withAnimation(.easeOut(duration: 0.4)) { doorsIn = true } // the two doors
+        }
+    }
+    @State private var orbTop = false
+    @State private var doorsIn = false
+
     private func choose(_ choice: MorpheAppStore.IntroChoice) {
-        guard canContinue else { return }
-        usernameFocused = false
+        guard !chosen else { return }
+        chosen = true
         Haptics.impact(.light)
         SoundEffects.play(.star)
-        store.completeIntro(username: normalizedUsername, birthYear: birthYear, choice: choice)
+        store.completeIntro(choice: choice)
     }
 
     // MARK: The reveal
@@ -1801,131 +1812,127 @@ struct IntroView: View {
 
     // MARK: Morphe
 
-    private var morphe: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 24)
+    private var orbSide: CGFloat { orbTop ? 110 : 170 }   // −35% at the top
 
-                // The Spartan wakes after the tap (Lucas 2026-10-17), then
-                // the live orb takes over.
-                ZStack {
-                    if awake {
-                        MorpheOrbView(level: 0.18, speaking: bubbleIn && !formIn, frame: .activated)
-                            .transition(.opacity)
-                    } else {
-                        // The first wake carries the super activated beat
-                        // (Lucas 2026-10-17) and settles on activated, the
-                        // design for the whole of onboarding.
-                        SpartanWakeView(duration: 1.3, superWake: true) { withAnimation(.easeInOut(duration: 0.3)) { awake = true } }
+    private var morphe: some View {
+        VStack(spacing: 0) {
+            // The Spartan wakes after the tap (Lucas 2026-10-17), then the
+            // live orb takes over — activated through all of onboarding.
+            ZStack {
+                if awake {
+                    MorpheOrbView(level: 0.18, speaking: beat >= 1 && beat <= 3, frame: .activated)
+                        .transition(.opacity)
+                } else {
+                    SpartanWakeView(duration: 1.3, superWake: true) {
+                        withAnimation(.easeInOut(duration: 0.3)) { awake = true }
+                        speak()
                     }
                 }
-                .frame(width: 170, height: 170)
-                .opacity(orbIn ? 1 : 0)
-                .scaleEffect(orbIn || reduceMotion ? 1 : 0.9)
-                .accessibilityHidden(true)
+            }
+            .frame(width: orbSide, height: orbSide)
+            .padding(.top, orbTop ? 8 : 24)
+            .opacity(orbIn ? 1 : 0)
+            .scaleEffect(orbIn || reduceMotion ? 1 : 0.9)
+            .accessibilityHidden(true)
 
-                MorpheSpeechBubble {
-                    VStack(spacing: 8) {
-                        Text("Hello there.")
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        // [DRAFT] Lucas re-says this in his own words.
-                        Text("I'm Morphe. You log honestly and I do the rest — your plan, every set, what to eat — all from your own logs. Two quick things and we're in.")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+            // Morphe's lines, one bubble each, stacked as they land. The
+            // words are Lucas's (2026-10-17).
+            if beat >= 1 && beat <= 3 {
+                VStack(spacing: 10) {
+                    IntroBubble(tail: true) { line("Hello there.", bold: true) }
+                    if beat >= 2 { IntroBubble(tail: false) { line("I am Morphe.", bold: true) } }
+                    if beat >= 3 {
+                        IntroBubble(tail: false) {
+                            line("I was built to help strengthen your habits and fix your training so you can finally reach those goals you're always talking about.", bold: false)
+                        }
                     }
                 }
                 .padding(.top, -6)
-                .scaleEffect(bubbleIn || reduceMotion ? 1 : 0.85, anchor: .top)
-                .opacity(bubbleIn ? 1 : 0)
-
-                form
-                    .padding(.top, 22)
-                    .opacity(formIn ? 1 : 0)
-                    .offset(y: formIn || reduceMotion ? 0 : 12)
-
-                Spacer(minLength: 24)
+                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
             }
-            .frame(maxWidth: 360)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 24)
+
+            if beat >= 5 {
+                VStack(spacing: 18) {
+                    IntroBubble(tail: true) {
+                        line("Do you have your profile set up already? Or do you need to build one now?", bold: true)
+                    }
+                    VStack(spacing: 12) {
+                        Button {
+                            choose(.buildProfile)
+                        } label: {
+                            Label("Build one now", systemImage: "person.crop.circle.badge.plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .shadow(color: MorpheTheme.accent.opacity(0.35), radius: 14, y: 6)
+
+                        Button {
+                            choose(.signIn)
+                        } label: {
+                            Label("I have a profile", systemImage: "person.crop.circle.badge.checkmark")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                    .opacity(doorsIn ? 1 : 0)
+                    .offset(y: doorsIn || reduceMotion ? 0 : 10)
+
+                    Text("Continuing agrees to the Terms and the Privacy Policy.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .multilineTextAlignment(.center)
+                        .opacity(doorsIn ? 1 : 0)
+                }
+                .padding(.top, -6)
+                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
+            }
+
+            Spacer(minLength: 24)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .frame(maxWidth: 360)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
     }
 
-    private var form: some View {
-        VStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("USERNAME")
-                    .font(MorpheTheme.microLabel(10)).tracking(1.4)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                HStack(spacing: 4) {
-                    Text("@").foregroundStyle(MorpheTheme.textMuted)
-                    TextField("yourname", text: $username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.asciiCapable)
-                        .submitLabel(.done)
-                        .focused($usernameFocused)
-                }
-                .textFieldStyle(MorpheFieldStyle())
-                if let usernameError {
-                    Text(usernameError)
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.warning)
-                }
+    private func line(_ text: String, bold: Bool) -> some View {
+        Text(text)
+            .font(bold ? .headline.weight(.bold) : .subheadline)
+            .foregroundStyle(bold ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One of Morphe's bubbles (Lucas 2026-10-17): the first in a run carries
+/// the tail up toward the orb, the rest are plain. Solid, like the pop-up's.
+struct IntroBubble<Content: View>: View {
+    var tail: Bool
+    @ViewBuilder var content: () -> Content
+
+    private var fill: Color {
+        MorpheTheme.isLight
+            ? Color(red: 0.96, green: 0.96, blue: 0.965)
+            : Color(red: 0.125, green: 0.125, blue: 0.135)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if tail {
+                Triangle()
+                    .fill(fill)
+                    .frame(width: 22, height: 11)
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("BIRTHDAY")
-                    .font(MorpheTheme.microLabel(10)).tracking(1.4)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                DatePicker("Birthday", selection: $birthday, in: ...Date.now, displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
-                    .onChange(of: birthday) { _, _ in touchedBirthday = true }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if touchedBirthday, !oldEnough {
-                    Text("Morphe is for people \(OnboardingDraft.minimumAge) and older.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.warning)
-                }
-            }
-
-            // The highlighted door, then the quiet one.
-            Button {
-                choose(.buildProfile)
-            } label: {
-                Label("Build my profile", systemImage: "person.crop.circle.badge.checkmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-            .shadow(color: MorpheTheme.accent.opacity(canContinue ? 0.35 : 0), radius: 14, y: 6)
-            .padding(.top, 8)
-            .disabled(!canContinue)
-            .opacity(canContinue ? 1 : 0.55)
-
-            Button("Get started without a profile") { choose(.quickStart) }
-                .buttonStyle(.plain)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
-                .frame(minHeight: 44)
-                .disabled(!canContinue)
-                .opacity(canContinue ? 1 : 0.55)
-
-            if !canContinue {
-                Text(username.isEmpty ? "Pick a username and your birthday to continue." : (!touchedBirthday ? "Set your birthday to continue." : " "))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-
-            Text("By continuing you agree to the Terms and the Privacy Policy. Your birthday is never shown to anyone.")
-                .font(.caption2)
-                .foregroundStyle(MorpheTheme.textMuted)
-                .multilineTextAlignment(.center)
-                .padding(.top, 2)
+            content()
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .frame(maxWidth: 340)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(fill)
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.14), radius: 4, y: 3)
+                        .shadow(color: .black.opacity(0.14), radius: 26, y: 14)
+                )
         }
     }
 }

@@ -1325,3 +1325,40 @@ Network is deliberately left alone.
   it. Everywhere else the scroll belongs to the list. `appSwipeBlocked` stands the app-wide swipe down under
   the news page, away screen, pop-up, hello beat and Hey Morphe stage;
   the window pan also ignores touches while a sheet is presented.
+- Intro beats + onboarding reframe (Lucas 2026-10-17): after the wake
+  Morphe speaks in stacked `IntroBubble`s — "Hello there." / "I am
+  Morphe." / his built-to line — then the bubbles leave, the orb springs
+  to the top at −35% (170 → 110), and the question bubble asks "Do you
+  have your profile set up already? Or do you need to build one now?"
+  with two doors: Build one now → `completeIntro(choice: .buildProfile)`
+  (name, birth year and @handle are now onboarding's first screens);
+  I have a profile → `.signIn` (AuthView opens on sign-in; without
+  accounts it resolves to quick start). Onboarding screens: small
+  activated orb + the question in a bubble + cards; `OnboardingCard`
+  no longer draws titles/subtitles (kept as accessibility label/hint);
+  example lines and the long explanations are gone; CTAs are Next /
+  Create plan. Seven screens: name, handle, goal, sport, experience,
+  days, plan.
+- Starter layouts (Lucas 2026-10-17): `applyStarterLayouts()` runs in
+  `completeOnboarding` right after the fresh-user mint. Today → Morphe's
+  line + Progress; Train → Your program + My Library; Fitness → Build +
+  Condition; Lessons → Quizzes + Lessons; Nutrition → Check a food +
+  Today's Fuel; Chats / Library / Board / Calendar show all (two or
+  fewer). `minimumVisibleSections = 2`: no page hides below two (store
+  guards + the editor's shake toast "Keep at least two sections").
+- Hold the orb to talk (Lucas 2026-10-17): on the voice stage (not chat
+  mode) a finger on the Spartan calls `engine.beginOrbHold()` — speaking
+  → barge with full routing, thinking → cancel then active capture,
+  passive → active capture — and `settleOrFire` waits (up to 2 min)
+  while `holdingOrb`; release → `endOrbHold()` arms a 0.45 s settle and
+  the command fires through the normal path, so bubbles and the Morphe
+  chat sync as before. The orb shows the sleeping design while held,
+  lifts 6% with an accent glow, and a "Listening… release to send" line
+  sits under it until words arrive. Morphe's bubble is hit-test-off so
+  the wash tap still cancels.
+- Orb tempo (Lucas 2026-10-17): in `MorpheOrbView` the design kicks to
+  the user's voice while listening (scale 1 + level × 0.10 on an
+  interactive spring, bloom/inner glow at 80 ms) and moves fluidly while
+  Morphe speaks (scale × 0.045 on a 0.3 s ease, plus a slow ±1.8° sway
+  and a bob). Applies to every Spartan frame on the voice stage. Holding
+  the orb fires `Haptics.wake()` (heavy + system vibrate).

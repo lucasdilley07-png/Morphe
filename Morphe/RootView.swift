@@ -1968,10 +1968,57 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// 0.45 s they are still talking (the recognizer's partials lag the
     /// voice), so wait a little longer instead of firing half a sentence.
     /// A 30 s ceiling keeps a loud gym from holding the capture open.
+    // MARK: Hold the orb to talk (Lucas 2026-10-17)
+    //
+    // On the voice stage, holding the Spartan stops Morphe mid-answer and
+    // keeps the mic open for as long as the finger is down; releasing
+    // sends what was said. The exchange still lands in the bubbles and
+    // the Morphe chat through the normal command path.
+
+    /// True while the orb is held — the settle timer waits instead of firing.
+    private(set) var holdingOrb = false
+
+    func beginOrbHold() {
+        guard state != .off, !mutedForChat else { return }
+        holdingOrb = true
+        switch state {
+        case .speaking:
+            // Cut the answer and capture — a deliberate interruption with
+            // full routing (the user chose to talk, no wake needed).
+            bargeIn(with: "", viaWake: true)
+        case .thinking:
+            cancelStreamedSpeech()
+            if state == .passive { _ = enterActiveCapture() }
+        case .passive:
+            _ = enterActiveCapture()
+        case .active, .off:
+            break
+        }
+        if state == .active { armCommandTimer(after: 0.5) }
+    }
+
+    /// Released: a short settle, then the command fires and Morphe answers.
+    func endOrbHold() {
+        guard holdingOrb else { return }
+        holdingOrb = false
+        guard state == .active else { return }
+        activeSince = nil
+        armCommandTimer(after: 0.45)
+    }
+
     private func settleOrFire() {
         guard state == .active else { return }
         let started = captureStartedAt ?? Date()
         let stillTalking = Date().timeIntervalSince(lastVoicedAt) < 0.45
+        // Held: keep listening, up to two minutes (Lucas 2026-10-17).
+        if holdingOrb, Date().timeIntervalSince(started) < 120 {
+            let timer = Timer(timeInterval: 0.5, repeats: false) { [weak self] _ in
+                DispatchQueue.main.async { self?.settleOrFire() }
+            }
+            commandTimer = timer
+            RunLoop.main.add(timer, forMode: .common)
+            return
+        }
         if stillTalking, Date().timeIntervalSince(started) < 30, settleExtensions < 40 {
             settleExtensions += 1
             let timer = Timer(timeInterval: 0.5, repeats: false) { [weak self] _ in
@@ -5652,8 +5699,12 @@ private struct HeyMorpheStage: View {
     /// Morphe speaking = still.
     @State private var exchangesCompleted = 0
     @State private var wasCapturing = false
+    /// The finger is on the orb (Lucas 2026-10-17): Morphe stops and
+    /// listens until it lifts.
+    @State private var holdingOrb = false
 
     private var spartanFrame: SpartanFrame {
+        if holdingOrb { return .sleeping }                 // listening while held
         switch engine.state {
         case .active: return exchangesCompleted == 0 ? .activated : .sleeping
         default: return .still
@@ -5730,7 +5781,6 @@ private struct HeyMorpheStage: View {
                     Spacer(minLength: 0)
                     column
                         .padding(.bottom, 24)
-                        .allowsHitTesting(false)
                         .scaleEffect(arrived || reduceMotion ? 1 : 0.92)
                         .opacity(arrived || reduceMotion ? 1 : 0)
                     Spacer(minLength: 0)
@@ -5748,7 +5798,10 @@ private struct HeyMorpheStage: View {
             if reduceMotion { arrived = true; return }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
         }
-        .onDisappear { arrived = false; stageAwake = false; composing = false; voiceActiveLine = nil; exchangesCompleted = 0; wasCapturing = false }
+        .onDisappear {
+            arrived = false; stageAwake = false; composing = false; voiceActiveLine = nil; exchangesCompleted = 0; wasCapturing = false
+            if holdingOrb { holdingOrb = false; engine.endOrbHold() }
+        }
         .onChange(of: engine.state) { _, state in
             // A capture that hands off to thinking/speaking is one exchange.
             if state == .active { wasCapturing = true }
@@ -5975,6 +6028,7 @@ private struct HeyMorpheStage: View {
                     .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous)))
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .accessibilityLabel("Morphe: \(line)")
+                    .allowsHitTesting(false)
             }
 
             // The Spartan: the waveform behind, the orb in front, breathing
@@ -5989,7 +6043,38 @@ private struct HeyMorpheStage: View {
                 }
             }
             .frame(width: 170, height: 170)
+            .scaleEffect(holdingOrb && !reduceMotion ? 1.06 : 1)
+            .shadow(color: MorpheTheme.accent.opacity(holdingOrb ? 0.5 : 0), radius: 26)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: holdingOrb)
+            .contentShape(Circle())
+            // Hold the Spartan to talk (Lucas 2026-10-17): Morphe stops
+            // and listens while the finger is down; release sends.
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !holdingOrb else { return }
+                        holdingOrb = true
+                        Haptics.wake()                       // a real vibration (Lucas 2026-10-17)
+                        engine.beginOrbHold()
+                    }
+                    .onEnded { _ in
+                        guard holdingOrb else { return }
+                        holdingOrb = false
+                        Haptics.impact(.light)
+                        engine.endOrbHold()
+                    }
+            )
+            .accessibilityLabel(holdingOrb ? "Listening. Release to send." : "Morphe. Hold to talk.")
+            .accessibilityAddTraits(.isButton)
             .matchedGeometryEffect(id: "orb", in: orbSpace)
+
+            if holdingOrb, (userLine ?? "").isEmpty {
+                Text("Listening… release to send")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+            }
 
             // The user, below.
             if let line = userLine {

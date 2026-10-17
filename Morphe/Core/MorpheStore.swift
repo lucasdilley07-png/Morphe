@@ -478,7 +478,7 @@ final class MorpheAppStore {
 
     /// Build my profile (the onboarding questions) or Get started (straight
     /// in with safe defaults).
-    enum IntroChoice: String { case buildProfile, quickStart }
+    enum IntroChoice: String { case buildProfile, quickStart, signIn }
 
     static let introSeenKey = "morphe.intro.seen"
     static let introChoiceKey = "morphe.intro.choice"
@@ -505,6 +505,22 @@ final class MorpheAppStore {
         hasSeenIntro = true
         UserDefaults.standard.set(true, forKey: Self.introSeenKey)
     }
+
+    /// The intro's two doors (Lucas 2026-10-17): "Build one now" → the
+    /// questions (name, birth year and handle are asked there now); "I have
+    /// a profile" → sign in when accounts are on, otherwise straight in
+    /// with safe defaults. Continuing agrees to the terms.
+    func completeIntro(choice: IntroChoice) {
+        onboardingDraft.agreedToTerms = true
+        let resolved: IntroChoice = (choice == .signIn && !FeatureFlags.accountsEnabled) ? .quickStart : choice
+        introChoice = resolved
+        UserDefaults.standard.set(resolved.rawValue, forKey: Self.introChoiceKey)
+        markIntroSeen()
+    }
+
+    /// True when the intro's "I have a profile" door was taken: the auth
+    /// screen opens on sign-in, not sign-up.
+    var introWantsSignIn: Bool { introChoice == .signIn }
 
     func completeIntro(username: String, birthYear: Int, choice: IntroChoice) {
         onboardingDraft.username = UsernameRules.normalize(username)
@@ -641,12 +657,32 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
-    /// Hides a Today card unless it's the last visible thing on the page.
+    /// Every page keeps at least this many boxes showing (Lucas
+    /// 2026-10-17). Pages born with fewer simply can't hide anything.
+    static let minimumVisibleSections = 2
+
+    /// The starter layout for a brand-new account (Lucas 2026-10-17): only
+    /// the most necessary box or two per page, everything else hidden
+    /// until the user adds it back in editor mode. Pages with two boxes or
+    /// fewer (Chats, Library, Board, Calendar) show all of theirs.
+    func applyStarterLayouts() {
+        styleProfile.homeHiddenCards = [HomeCardID.schedule, .goals, .nutrition, .adjustments, .support].map(\.rawValue)
+        styleProfile.trainHiddenCards = [TrainCardID.builder, .partner, .progress, .technique].map(\.rawValue)
+        styleProfile.discoverHiddenCards = [DiscoverCardID.coaches, .newInLibrary, .mostDone, .restore].map(\.rawValue)
+        styleProfile.learnHiddenCards = [LearnCardID.whyMorphe, .rules, .coachNotes].map(\.rawValue)
+        var nutrition = styleProfile.sectionLayouts[EditablePage.nutrition.rawValue] ?? PageLayoutRecord()
+        nutrition.hidden = [NutritionCardID.chart, .basics, .insight].map(\.rawValue)
+        styleProfile.sectionLayouts[EditablePage.nutrition.rawValue] = nutrition
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    /// Hides a Today card unless the page is already at its minimum.
     @discardableResult
     func hideHomeCard(_ card: HomeCardID) -> Bool {
-        guard visibleHomeCards.count > 1 else {
+        guard visibleHomeCards.count > Self.minimumVisibleSections else {
             Haptics.error()
-            showToast("Keep at least one section on this page.")
+            showToast("Keep at least two sections on this page.")
             return false
         }
         var hidden = styleProfile.homeHiddenCards
@@ -787,10 +823,10 @@ final class MorpheAppStore {
         let rest = pageLayout(C.self, page: page).filter { !visible.contains($0) }
         setPageLayout(page, order: (visible + rest).map(\.rawValue))
     }
-    /// False when the card is the last one showing (min one per page).
+    /// False when the page is at its minimum (two per page).
     @discardableResult
     func hidePageCard<C: LayoutCard>(_ card: C, page: EditablePage) -> Bool {
-        guard visiblePageCards(C.self, page: page).count > 1 else { return false }
+        guard visiblePageCards(C.self, page: page).count > Self.minimumVisibleSections else { return false }
         var hidden = styleProfile.sectionLayouts[page.rawValue]?.hidden ?? []
         if !hidden.contains(card.rawValue) { hidden.append(card.rawValue) }
         setPageLayout(page, hidden: hidden)
@@ -7586,6 +7622,9 @@ final class MorpheAppStore {
         // starts in THEIR OWN empty account, not the demo athlete's.
         let preMintPrefsKey = trainingPreferencesDefaultsKey
         resetToFreshUser()
+        // A new account opens on the essentials only (Lucas 2026-10-17):
+        // two boxes per page, the rest one Edit away.
+        applyStarterLayouts()
 
         // Week one starts NOW — stamped AFTER the mint so it lands under the
         // key this profile will actually read on relaunch, then explicitly

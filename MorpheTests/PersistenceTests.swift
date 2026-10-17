@@ -3059,6 +3059,9 @@ final class StyleProfileTests: XCTestCase {
 
     func testLayoutSuggestionProposesAppliesAndDeclinesCardWide() {
         let store = makeStore()
+        // The starter layout hides Support (Lucas 2026-10-17); the
+        // proposal needs it showing.
+        store.setStyleChoice(homeHiddenCards: [])
         // Tier 2 (5 logs) so schedule/adjustments/support all render.
         for day in 1...5 {
             store.workoutLogs.append(log(store, title: "W\(day)", daysAgo: day,
@@ -9776,6 +9779,39 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertTrue(store.chatsHaveTheStage, "an open chat surface hides the floating button")
     }
 
+    /// A new account opens on the essentials (Lucas 2026-10-17): two boxes
+    /// on every page that has more, and no page can hide below two.
+    func testFreshAccountStartsMinimalAndKeepsTwoSections() {
+        let store = freshStore()
+        XCTAssertEqual(store.visibleHomeCards, [.insight, .progress])
+        XCTAssertEqual(store.visibleTrainCards, [.program, .library])
+        XCTAssertEqual(store.visibleDiscoverCards, [.build, .condition])
+        XCTAssertEqual(store.visibleLearnCards, [.quizzes, .lessons])
+        XCTAssertEqual(store.visiblePageCards(NutritionCardID.self, page: .nutrition), [.check, .fuel])
+        XCTAssertEqual(store.visiblePageCards(ChatsCardID.self, page: .chats), [.people, .conversations], "two-box pages show everything")
+        XCTAssertFalse(store.hideHomeCard(.progress), "never below two")
+        XCTAssertFalse(store.hidePageCard(NutritionCardID.fuel, page: .nutrition))
+        store.showHomeCard(.goals)
+        XCTAssertEqual(store.visibleHomeCards.count, 3)
+        XCTAssertTrue(store.hideHomeCard(.goals), "above two it hides again")
+    }
+
+    /// The intro's two doors (Lucas 2026-10-17): Build one now leaves the
+    /// identity to the questions; I have a profile is a sign-in when
+    /// accounts are on, otherwise a quick start. Both agree to the terms.
+    func testIntroDoorsLeaveIdentityToOnboarding() {
+        let store = MorpheAppStore()
+        store.completeIntro(choice: .buildProfile)
+        XCTAssertTrue(store.hasSeenIntro)
+        XCTAssertEqual(store.introChoice, .buildProfile)
+        XCTAssertFalse(store.introSuppliedIdentity, "name, birth year and handle are asked in the questions now")
+        XCTAssertTrue(store.onboardingDraft.agreedToTerms)
+        let other = MorpheAppStore()
+        other.completeIntro(choice: .signIn)
+        XCTAssertEqual(other.introWantsSignIn, FeatureFlags.accountsEnabled)
+        if !FeatureFlags.accountsEnabled { XCTAssertEqual(other.introChoice, .quickStart) }
+    }
+
     /// Morphe's news page (Lucas 2026-10-17): news and reports, newest
     /// first, counted on the wordmark bubble; opening and closing the page
     /// marks them read; the Network badge no longer counts them.
@@ -9916,6 +9952,9 @@ final class MorpheRemembersTests: XCTestCase {
     /// and the Discover-style page mapping follows the section.
     func testPageLayoutsReorderHideAndKeepOne() {
         let store = freshStore()
+        // A new account starts minimal (Lucas 2026-10-17); this test works
+        // the editor from the full page.
+        store.setPageLayout(.nutrition, hidden: [])
         XCTAssertEqual(store.visiblePageCards(NutritionCardID.self, page: .nutrition), NutritionCardID.defaultOrder)
         store.movePageCards([NutritionCardID.fuel, .check, .chart, .basics, .insight], page: .nutrition)
         XCTAssertEqual(store.visiblePageCards(NutritionCardID.self, page: .nutrition).first, .fuel)

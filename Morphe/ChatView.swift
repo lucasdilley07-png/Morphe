@@ -4536,7 +4536,7 @@ struct CreatorFeed: View {
                     title: \.title,
                     onMove: { store.setExploreLayout(order: $0.map(\.rawValue)) },
                     onHide: { card in
-                        guard store.visibleExploreCards.count > 1 else { return }
+                        guard store.visibleExploreCards.count > MorpheAppStore.minimumVisibleSections else { return }
                         store.setExploreLayout(hidden: store.styleProfile.exploreHiddenCards + [card.rawValue])
                     },
                     onShow: { card in

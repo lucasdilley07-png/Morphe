@@ -14,6 +14,7 @@ struct AuthView: View {
     var body: some View {
         ZStack {
             PremiumBackground()
+                .onAppear { if store.introWantsSignIn { isSignUp = false } }
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
