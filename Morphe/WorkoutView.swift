@@ -5060,21 +5060,30 @@ struct DiscoverCatalogSection: View {
         case .coaches: fromCoachesSection
         case .newInLibrary: newThisWeekSection
         case .mostDone: mostDoneSection
-        case .families: familiesSection
+        case .build: familySection("Build")
+        case .condition: familySection("Condition")
+        case .restore: familySection("Restore")
         }
     }
 
-    private var familiesSection: some View {
+    /// One family's section (Lucas 2026-10-17: Build / Condition / Restore
+    /// are separate editor boxes). Tiles inside still rank by what the
+    /// user opens most; the family order is the user's own.
+    @ViewBuilder
+    private func familySection(_ name: String) -> some View {
         let byCategory = Dictionary(grouping: filteredWorkouts, by: \.categoryTag)
-        return         ForEach(rankedFamilies, id: \.name) { family in
+        if let family = rankedFamilies.first(where: { $0.name == name }) {
             let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
-            if !presentCategories.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    sectionHeader(
-                        title: family.name,
-                        count: presentCategories.reduce(0) { $0 + (byCategory[$1]?.count ?? 0) }
-                    )
-
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(
+                    title: family.name,
+                    count: presentCategories.reduce(0) { $0 + (byCategory[$1]?.count ?? 0) }
+                )
+                if presentCategories.isEmpty {
+                    Text("Nothing here matches the filters.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else {
                     LazyVGrid(
                         columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
                         spacing: 10

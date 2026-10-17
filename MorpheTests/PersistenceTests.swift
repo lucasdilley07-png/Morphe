@@ -5076,8 +5076,8 @@ final class PersonalizationEngineTests: XCTestCase {
     func testDiscoverAndLearnLayoutsPersistAndResolve() {
         let store = freshStore()
         XCTAssertEqual(store.discoverCardLayout, DiscoverCardID.defaultOrder)
-        store.setDiscoverLayout(order: ["mostDone", "families"], hidden: ["coaches"])
-        XCTAssertEqual(store.discoverCardLayout.prefix(2), [.mostDone, .families], "saved order leads")
+        store.setDiscoverLayout(order: ["mostDone", "restore", "families"], hidden: ["coaches"])
+        XCTAssertEqual(store.discoverCardLayout.prefix(2), [.mostDone, .restore], "saved order leads; the retired families id drops")
         XCTAssertEqual(store.discoverCardLayout.count, DiscoverCardID.allCases.count, "the rest append")
         XCTAssertFalse(store.visibleDiscoverCards.contains(.coaches))
 

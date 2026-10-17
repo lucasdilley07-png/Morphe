@@ -1221,3 +1221,8 @@ Network is deliberately left alone.
   square) with a 3 px feathered alpha edge, so the orb fills its circle in
   the pop-up, the stage, the floating button and the chat row with no
   margin or ring.
+- Discover → Fitness editor (Lucas 2026-10-17): Build, Condition and
+  Restore are three `DiscoverCardID` cases (replacing `.families`), each
+  its own box in `SectionEditorList` — hide one, keep the others; hold to
+  drag the groups up and down. Saved orders carrying the old "families"
+  id drop it and append the three in default order.

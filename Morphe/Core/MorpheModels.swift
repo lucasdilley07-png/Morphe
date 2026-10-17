@@ -1191,14 +1191,19 @@ extension LayoutCard {
 }
 
 enum DiscoverCardID: String, LayoutCard {
-    case coaches, newInLibrary, mostDone, families
+    /// Build · Condition · Restore are three sections (Lucas 2026-10-17):
+    /// each hides and reorders on its own. Saved orders that still say
+    /// "families" drop that id and append the three in default order.
+    case coaches, newInLibrary, mostDone, build, condition, restore
 
     var title: String {
         switch self {
         case .coaches: return "From Coaches"
         case .newInLibrary: return "New in the Library"
         case .mostDone: return "Your Most Done"
-        case .families: return "Build · Condition · Sport · Recover"
+        case .build: return "Build"
+        case .condition: return "Condition"
+        case .restore: return "Restore"
         }
     }
     var detail: String {
@@ -1206,10 +1211,12 @@ enum DiscoverCardID: String, LayoutCard {
         case .coaches: return "Workouts published by approved Creator Coaches"
         case .newInLibrary: return "The newest categories, your level first"
         case .mostDone: return "Ranked by your own completions"
-        case .families: return "Every category, grouped by what it's for"
+        case .build: return "Strength, lifting, bodyweight, kettlebell, strongman"
+        case .condition: return "HIIT, functional, cardio, combat, dance, sport"
+        case .restore: return "Yoga, mobility, Pilates, barre, recovery"
         }
     }
-    static let defaultOrder: [DiscoverCardID] = [.coaches, .newInLibrary, .mostDone, .families]
+    static let defaultOrder: [DiscoverCardID] = [.coaches, .newInLibrary, .mostDone, .build, .condition, .restore]
 }
 
 enum LearnCardID: String, LayoutCard {
