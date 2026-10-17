@@ -2999,15 +2999,15 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertEqual(HomeCardID.resolvedOrder(from: []), HomeCardID.defaultOrder,
                        "empty means the default layout")
         XCTAssertEqual(HomeCardID.resolvedOrder(from: ["support", "bogus", "schedule"]),
-                       [.support, .schedule, .insight, .adjustments],
+                       [.support, .schedule, .insight, .goals, .nutrition, .progress, .adjustments],
                        "unknown ids drop; missing cards append in default order")
     }
 
     func testHiddenCardsLeaveTheVisibleLayout() {
         let store = makeStore()
         store.setStyleChoice(homeHiddenCards: ["insight"])
-        XCTAssertEqual(store.visibleHomeCards, [.schedule, .adjustments, .support])
-        XCTAssertEqual(store.homeCardLayout.count, 4, "hidden cards stay in the editor list")
+        XCTAssertEqual(store.visibleHomeCards, HomeCardID.defaultOrder.filter { $0 != .insight })
+        XCTAssertEqual(store.homeCardLayout.count, HomeCardID.allCases.count, "hidden cards stay in the editor list")
         store.setStyleChoice(homeHiddenCards: [])
         XCTAssertEqual(store.visibleHomeCards, HomeCardID.defaultOrder)
     }
@@ -3054,7 +3054,7 @@ final class StyleProfileTests: XCTestCase {
         }
         XCTAssertEqual(second.move, .adjustments)
         store.applyHomeLayoutSuggestion(second)
-        XCTAssertEqual(store.homeCardLayout.count, 4, "apply keeps every card")
+        XCTAssertEqual(store.homeCardLayout.count, HomeCardID.allCases.count, "apply keeps every card")
         XCTAssertEqual(store.homeCardLayout.first, .adjustments,
                        "moved directly above the proposal's target (the visible top card)")
         XCTAssertTrue(store.styleProfile.homeCardTaps.isEmpty,

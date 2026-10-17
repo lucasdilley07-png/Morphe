@@ -1115,6 +1115,9 @@ struct MorpheCharacter: Identifiable, Equatable {
 enum HomeCardID: String, CaseIterable, Identifiable {
     case insight
     case schedule
+    /// The three glance tiles under the plan, hideable one by one
+    /// (Lucas 2026-10-16).
+    case goals, nutrition, progress
     case adjustments
     case support
 
@@ -1124,6 +1127,9 @@ enum HomeCardID: String, CaseIterable, Identifiable {
         switch self {
         case .insight: return "Pattern insight"
         case .schedule: return "Schedule & messages"
+        case .goals: return "Goals"
+        case .nutrition: return "Nutrition"
+        case .progress: return "Progress"
         case .adjustments: return "If plans change"
         case .support: return "Support & progress"
         }
@@ -1133,12 +1139,24 @@ enum HomeCardID: String, CaseIterable, Identifiable {
         switch self {
         case .insight: return "What your logs say about how you train"
         case .schedule: return "Booked sessions and conversations"
+        case .goals: return "Today's checklist tile"
+        case .nutrition: return "Calories and protein tile"
+        case .progress: return "Sessions this week tile"
         case .adjustments: return "Lighter days and backup plans"
         case .support: return "Plan context, partners, and your scores"
         }
     }
 
-    static let defaultOrder: [HomeCardID] = [.insight, .schedule, .adjustments, .support]
+    /// Pinned under the plan card in this order — reorderable among the
+    /// rest only in the sense of hide/show.
+    var isPinnedUnderPlan: Bool {
+        switch self {
+        case .schedule, .goals, .nutrition, .progress: return true
+        default: return false
+        }
+    }
+
+    static let defaultOrder: [HomeCardID] = [.insight, .schedule, .goals, .nutrition, .progress, .adjustments, .support]
 
     /// Resolves a persisted order: unknown ids drop, missing ids append
     /// in default order — the page can never lose a card to bad data.
@@ -1604,6 +1622,8 @@ struct UserStyleProfile: Codable, Equatable {
     var discoverHiddenCards: [String] = []
     var learnCardOrder: [String] = []
     var learnHiddenCards: [String] = []
+    /// The tab bar's order (raw ClientTab values); empty = default.
+    var tabOrder: [String] = []
     /// How often each Today card gets used (learned half — feeds the
     /// suggest-then-confirm layout proposal, never silent rearranging).
     var homeCardTaps: [String: Int] = [:]
@@ -1639,6 +1659,7 @@ struct UserStyleProfile: Codable, Equatable {
         discoverHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .discoverHiddenCards)) ?? nil) ?? []
         learnCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .learnCardOrder)) ?? nil) ?? []
         learnHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .learnHiddenCards)) ?? nil) ?? []
+        tabOrder = ((try? c.decodeIfPresent([String].self, forKey: .tabOrder)) ?? nil) ?? []
         homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
         declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []
         updatedAt = ((try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? nil) ?? .distantPast

@@ -848,3 +848,29 @@ Network is deliberately left alone.
   days count (sessions logged, from the log) opens the week's read sheet.
 - "What workout would you like to start today?" left Today too (Lucas):
   strip → plan card. `homePrompt` still feeds the day pop-up bubble.
+- Today's status strip (`TodayStatusStrip`: avatar, name, goal, readiness /
+  score / energy) is deleted — the identity strip carries it. The avatar
+  → Profile door in the header was never touched.
+- Edit Today's layout can now hide Schedule, Goals, Nutrition and Progress
+  one by one (`HomeCardID.goals/.nutrition/.progress`, `isPinnedUnderPlan`);
+  they stay pinned under the plan card in that order, hide/show only.
+
+## In-place layout editor (2026-10-16)
+
+- No pop-up: "Edit X's layout" puts the page into editor mode
+  (`store.editingPage`, `EditorModeBar` on top with Done). Every section
+  gets a dashed outline and an eye; tap the eye → a rigid tap and the box
+  pops away; hold a box → a medium buzz, it lifts, drag it up or down and
+  the order saves on drop (`SectionEditorList` in GlassCard.swift, frames
+  via `EditorFrameKey`). Today's pinned pieces (Schedule, Goals, Nutrition,
+  Progress) get an eye only (`editorEye`).
+- Nothing can be lost: hidden sections sit in a HIDDEN row with Show
+  chips; the last visible section can't be hidden (error buzz + shake +
+  "Keep at least one section on this page").
+- Tabs: in editor mode a strip above the tab bar lets the user hold and
+  drag an icon to reorder (`TabOrderStrip`, `styleProfile.tabOrder`,
+  `store.tabLayout`); the TabView renders in that order (`tabPage(_:)`).
+- The four editor sheets (`HomeLayoutEditorSheet`, `TrainLayoutEditorSheet`,
+  `LayoutEditorSheet`) are no longer presented; code kept for now.
+- "Your typical session runs about N minutes" is gone from the learned
+  line under the greeting.

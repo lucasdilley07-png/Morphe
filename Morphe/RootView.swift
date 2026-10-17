@@ -491,7 +491,7 @@ struct RootView: View {
             // stage (Lucas 2026-10-04): the voice is already the door, so
             // the button gets out of the way and returns when it's done.
             // Never over the "hello, name" beat either (audit 2026-10-15).
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat {
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
@@ -682,61 +682,24 @@ private struct ClientExperienceShell: View {
         return GeometryReader { geo in
         let topInset = geo.safeAreaInsets.top
         TabView(selection: $store.selectedClientTab) {
-            // Each screen's identity is keyed off tabResetKey, so tapping the
-            // tab icon rebuilds it at its root (top of page, drill-ins
-            // closed). Train is deliberately NOT keyed — a tab tap must never
-            // reset a live session or running rest timer.
-            HomeView()
-                .id(store.tabResetKey("today"))
-                .pageTopInset(topInset)
-                // The last row of every tab clears the floating Morphe AI
-                // button (Apple-UI audit 2026-10-16, #6).
-                .safeAreaPadding(.bottom, 60)
-                .tabItem { Label(ClientTab.today.title, systemImage: ClientTab.today.systemImage) }
-                .tag(ClientTab.today)
-
-            WorkoutView()
-                .pageTopInset(topInset)
-                // The last row of every tab clears the floating Morphe AI
-                // button (Apple-UI audit 2026-10-16, #6).
-                .safeAreaPadding(.bottom, 60)
-                .tabItem { Label(ClientTab.train.title, systemImage: ClientTab.train.systemImage) }
-                .tag(ClientTab.train)
-
-            // Discover is a first-class tab again; Progress presents as a
-            // sheet from the profile row and the old doors (Lucas 2026-08-26).
-            // Pager order = bar order (today, train, discover, network, learn).
-            DiscoverScreenView()
-                .id(store.tabResetKey("discover"))
-                .pageTopInset(topInset)
-                // The last row of every tab clears the floating Morphe AI
-                // button (Apple-UI audit 2026-10-16, #6).
-                .safeAreaPadding(.bottom, 60)
-                .tabItem { Label(ClientTab.discover.title, systemImage: ClientTab.discover.systemImage) }
-                .tag(ClientTab.discover)
-
-            // Un-gated: the For You feed is REAL now (Firestore posts).
-            // CommunityView gates its own demo-only sections internally.
-            CommunityView()
-                // Keyed like the other tabs: re-tapping Network lands back
-                // at the top of a fresh feed instead of doing nothing.
-                .id(store.tabResetKey("community"))
-                .pageTopInset(topInset)
-                // The last row of every tab clears the floating Morphe AI
-                // button (Apple-UI audit 2026-10-16, #6).
-                .safeAreaPadding(.bottom, 60)
-                .tabItem { Label(ClientTab.community.title, systemImage: ClientTab.community.systemImage) }
-                .badge(store.networkBadgeCount)
-                .tag(ClientTab.community)
-
-            MoreView()
-                .id(store.tabResetKey("more"))
-                .pageTopInset(topInset)
-                // The last row of every tab clears the floating Morphe AI
-                // button (Apple-UI audit 2026-10-16, #6).
-                .safeAreaPadding(.bottom, 60)
-                .tabItem { Label(ClientTab.more.title, systemImage: ClientTab.more.systemImage) }
-                .tag(ClientTab.more)
+            // Tabs render in the user's order (Lucas 2026-10-16); each
+            // screen's identity is keyed off tabResetKey so tapping the tab
+            // icon rebuilds it at its root. Train is deliberately NOT keyed —
+            // a tab tap must never reset a live session or rest timer.
+            ForEach(store.tabLayout) { tab in
+                tabPage(tab)
+                    .pageTopInset(topInset)
+                    // The last row of every tab clears the floating Morphe AI
+                    // button (Apple-UI audit 2026-10-16, #6).
+                    .safeAreaPadding(.bottom, 60)
+                    // The tab-order strip rides above the bar in editor mode.
+                    .safeAreaInset(edge: .bottom) {
+                        if store.editingPage != nil { TabOrderStrip().padding(.bottom, 6) }
+                    }
+                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
+                    .badge(tab == .community ? store.networkBadgeCount : 0)
+                    .tag(tab)
+            }
         }
         // The main tabs no longer page (Lucas 2026-10-13): the swipe belongs to
         // the pages inside each tab; the dock switches tabs.
@@ -776,6 +739,19 @@ private struct ClientExperienceShell: View {
             // A tab switch lands at the top of that tab's first page.
             store.popTabToRoot(tab.rawValue)
         }
+        }
+    }
+}
+
+private extension ClientExperienceShell {
+    @ViewBuilder
+    func tabPage(_ tab: ClientTab) -> some View {
+        switch tab {
+        case .today: HomeView().id(store.tabResetKey("today"))
+        case .train: WorkoutView()
+        case .discover: DiscoverScreenView().id(store.tabResetKey("discover"))
+        case .community: CommunityView().id(store.tabResetKey("community"))
+        default: MoreView().id(store.tabResetKey("more"))
         }
     }
 }

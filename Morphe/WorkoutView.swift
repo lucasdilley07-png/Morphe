@@ -41,7 +41,6 @@ struct WorkoutView: View {
     @State private var showSessionQueue = false
     /// Runs after the library sheet finishes dismissing.
     @State private var pendingLibraryAction: (() -> Void)?
-    @State private var showTrainLayoutEditor = false
     @State private var showBuilder = false
     /// Build Workout (Lucas 2026-10-10): the chooser, then one of three doors.
     @State private var showBuildChooser = false
@@ -896,6 +895,10 @@ struct WorkoutView: View {
                     titleSize: 16
                 )
 
+                if store.editingPage == .train {
+                    EditorModeBar(page: .train) { store.endEditing() }
+                }
+
                 // The hint describes the first session; it retires the
                 // moment one is logged (audit 2026-10-16, U11).
                 if store.loggedWorkoutCount == 0, !store.hasCompletedWorkoutFlow {
@@ -1079,33 +1082,34 @@ struct WorkoutView: View {
                 // post-finish review owns the screen until the session is
                 // logged or discarded; nothing is deleted.
                 if !store.hasCompletedWorkoutFlow {
-                    ForEach(store.visibleTrainCards) { card in
+                    SectionEditorList(
+                        editing: store.editingPage == .train,
+                        cards: store.visibleTrainCards,
+                        hidden: store.trainCardLayout.filter { store.styleProfile.trainHiddenCards.contains($0.rawValue) },
+                        title: \.title,
+                        onMove: { visible in
+                            let moved = Set(visible); var order: [TrainCardID] = []; var next = visible.makeIterator()
+                            for card in store.trainCardLayout {
+                                if moved.contains(card) { if let v = next.next() { order.append(v) } } else { order.append(card) }
+                            }
+                            store.setTrainLayout(order: order.map(\.rawValue))
+                        },
+                        onHide: { card in
+                            var set = store.styleProfile.trainHiddenCards
+                            if !set.contains(card.rawValue) { set.append(card.rawValue) }
+                            store.setTrainLayout(hidden: set)
+                        },
+                        onShow: { card in
+                            var set = store.styleProfile.trainHiddenCards
+                            set.removeAll { $0 == card.rawValue }
+                            store.setTrainLayout(hidden: set)
+                        }
+                    ) { card in
                         trainCard(card)
                     }
 
-                    if store.visibleTrainCards.isEmpty {
-                        Text("All sections hidden — tap Edit Train's layout to bring them back.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 8)
-                    }
-
-                    Button {
-                        showTrainLayoutEditor = true
-                    } label: {
-                        Label("Edit Train's layout", systemImage: "slider.horizontal.3")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .frame(minHeight: 32)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Edit Train's layout — reorder or hide sections")
-                    .sheet(isPresented: $showTrainLayoutEditor) {
-                        TrainLayoutEditorSheet()
-                            .environment(store)
-                            .presentationCornerRadius(28)
+                    if store.editingPage != .train {
+                        EditLayoutButton(page: "Train") { store.beginEditing(.train) }
                     }
                 }
             }
@@ -4511,7 +4515,6 @@ struct DiscoverCatalogSection: View {
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
     @State private var showTechniqueLibrary = false
-    @State private var showDiscoverLayoutEditor = false
 
     /// Time filters are ranges, not exact matches — catalog sessions run
     /// odd lengths (15/24/36/38 min), so exact chips would make most
@@ -4974,30 +4977,38 @@ struct DiscoverCatalogSection: View {
                     }
                 }
             } else {
-            // The sections are the user's to order and hide (Lucas
-            // 2026-10-16) — the same editor Today and Train have.
-            ForEach(store.visibleDiscoverCards) { card in
+            // In-place editor (Lucas 2026-10-16).
+            if store.editingPage == .discover {
+                EditorModeBar(page: .discover) { store.endEditing() }
+            }
+            SectionEditorList(
+                editing: store.editingPage == .discover,
+                cards: store.visibleDiscoverCards,
+                hidden: store.discoverCardLayout.filter { store.styleProfile.discoverHiddenCards.contains($0.rawValue) },
+                title: \.title,
+                onMove: { visible in
+                    let moved = Set(visible); var order: [DiscoverCardID] = []; var next = visible.makeIterator()
+                    for card in store.discoverCardLayout {
+                        if moved.contains(card) { if let v = next.next() { order.append(v) } } else { order.append(card) }
+                    }
+                    store.setDiscoverLayout(order: order.map(\.rawValue))
+                },
+                onHide: { card in
+                    var set = store.styleProfile.discoverHiddenCards
+                    if !set.contains(card.rawValue) { set.append(card.rawValue) }
+                    store.setDiscoverLayout(hidden: set)
+                },
+                onShow: { card in
+                    var set = store.styleProfile.discoverHiddenCards
+                    set.removeAll { $0 == card.rawValue }
+                    store.setDiscoverLayout(hidden: set)
+                }
+            ) { card in
                 discoverCard(card)
             }
-            if store.visibleDiscoverCards.isEmpty {
-                Text("All sections hidden — tap Edit Discover's layout to bring them back.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 8)
+            if store.editingPage != .discover {
+                EditLayoutButton(page: "Discover") { store.beginEditing(.discover) }
             }
-            EditLayoutButton(page: "Discover") { showDiscoverLayoutEditor = true }
-                .sheet(isPresented: $showDiscoverLayoutEditor) {
-                    LayoutEditorSheet(
-                        title: "Discover's layout",
-                        header: "Drag to reorder — search and filters stay on top.",
-                        layout: store.discoverCardLayout,
-                        hidden: store.styleProfile.discoverHiddenCards,
-                        onHidden: { store.setDiscoverLayout(hidden: $0) },
-                        onOrder: { store.setDiscoverLayout(order: $0) })
-                    .environment(store)
-                    .presentationCornerRadius(28)
-                }
             }
         }
     }

@@ -7,7 +7,6 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var showAppointments = false
     @State private var showEmptyLibraryNotice = false
-    @State private var showLayoutEditor = false
     @State private var showGoalsEditor = false
     @State private var greetingAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -44,6 +43,9 @@ struct HomeView: View {
                 // time-aware greeting and one context question derived from
                 // real state — coach session due, rest day, streak, or the
                 // plain "what are we training?"
+                if store.editingPage == .today {
+                    EditorModeBar(page: .today) { store.endEditing() }
+                }
                 VStack(spacing: 6) {
                     // The "Good evening, name" line left Today (Lucas
                     // 2026-10-16) — it belongs to the welcome pop-up. The
@@ -257,23 +259,9 @@ struct HomeView: View {
                     FirstWeekCard(steps: steps)
                 }
 
-                // Progressive disclosure: a first-run user sees the hero and
-                // who they are — no zero-metrics, no tools that need history.
-                // Everything below is earned by logging workouts (see
-                // todayExperienceTier).
-                TodayStatusStrip(
-                    showcase: store.profileShowcase,
-                    goal: store.clientProfile.goal,
-                    fitnessLevel: store.clientProfile.fitnessLevel,
-                    coachName: store.clientProfile.planCreatedBy,
-                    recovery: store.recovery,
-                    morpheScore: store.clientProfile.health.score,
-                    morpheTier: morpheScoreTitle,
-                    morpheDetail: store.clientProfile.health.detail,
-                    showMetrics: store.todayExperienceTier >= 1,
-                    hasCheckedIn: store.didCompleteQuickCheckIn
-                )
-
+                // The profile box that sat here (avatar, name, goal, readiness /
+                // score / energy) is gone (Lucas 2026-10-16): the identity
+                // strip at the top carries those numbers now.
                 // A2 (Apple benchmark): last month sets this month's bar —
                 // pure arithmetic on real logs, invisible without a base month.
                 if let challenge = store.monthlyChallenge, !store.monthlyChallengeDismissed {
@@ -363,29 +351,32 @@ struct HomeView: View {
                 if let suggestion = store.homeLayoutSuggestion {
                     HomeLayoutSuggestionChip(suggestion: suggestion)
                 }
-                ForEach(store.visibleHomeCards) { card in
+                // In-place editor (Lucas 2026-10-16): hold to move, eye to
+                // hide; the pinned pieces under the plan hide/show only.
+                SectionEditorList(
+                    editing: store.editingPage == .today,
+                    cards: store.visibleHomeCards.filter { !$0.isPinnedUnderPlan },
+                    hidden: store.homeCardLayout.filter { store.styleProfile.homeHiddenCards.contains($0.rawValue) },
+                    title: \.title,
+                    onMove: { visible in
+                        // The saved order keeps hidden and pinned cards in place.
+                        let moved = Set(visible)
+                        var order: [HomeCardID] = []
+                        var next = visible.makeIterator()
+                        for card in store.homeCardLayout {
+                            if moved.contains(card) { if let v = next.next() { order.append(v) } } else { order.append(card) }
+                        }
+                        store.setStyleChoice(homeCardOrder: order.map(\.rawValue))
+                    },
+                    onHide: { store.hideHomeCard($0) },
+                    onShow: { store.showHomeCard($0) }
+                ) { card in
                     homeCard(card)
                 }
 
-                if store.visibleHomeCards.isEmpty {
-                    Text("All cards hidden — tap Edit Today's layout to bring them back.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 8)
+                if store.editingPage != .today {
+                    EditLayoutButton(page: "Today") { store.beginEditing(.today) }
                 }
-
-                Button {
-                    showLayoutEditor = true
-                } label: {
-                    Label("Edit Today's layout", systemImage: "slider.horizontal.3")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .frame(minHeight: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit Today's layout — reorder or hide cards")
 
 
 
@@ -406,12 +397,6 @@ struct HomeView: View {
         .onAppear { store.recordAppOpen() }
         .sheet(isPresented: $showGoalsEditor) {
             TodayGoalsSheet()
-                .environment(store)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $showLayoutEditor) {
-            HomeLayoutEditorSheet()
                 .environment(store)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -442,8 +427,14 @@ struct HomeView: View {
         // outranks the what-if tools below. When Messages and
         // Schedule are BOTH present they share one slim two-column
         // row so Today doesn't end in a stack of look-alike cards.
-        if store.liveThreads.isEmpty {
+        // Each piece honors Edit Today's layout (Lucas 2026-10-16).
+        let hidden = store.styleProfile.homeHiddenCards
+        let editing = store.editingPage == .today
+        if hidden.contains(HomeCardID.schedule.rawValue) {
+            EmptyView()
+        } else if store.liveThreads.isEmpty {
             scheduleLinkCard
+                .editorEye(editing, title: "Schedule") { store.hideHomeCard(.schedule) }
         } else {
             HStack(alignment: .top, spacing: 12) {
                 HomeLinkTile(
@@ -472,11 +463,18 @@ struct HomeView: View {
             }
         }
 
-        TodayGlanceRow(
-            onOpenGoals: { showGoalsEditor = true },
-            onOpenNutrition: { store.openHub(.nutrition) },
-            onOpenProgress: { store.openProgress() }
-        )
+        if !(hidden.contains(HomeCardID.goals.rawValue) && hidden.contains(HomeCardID.nutrition.rawValue) && hidden.contains(HomeCardID.progress.rawValue)) {
+            TodayGlanceRow(
+                showGoals: !hidden.contains(HomeCardID.goals.rawValue),
+                showNutrition: !hidden.contains(HomeCardID.nutrition.rawValue),
+                showProgress: !hidden.contains(HomeCardID.progress.rawValue),
+                editing: editing,
+                onHide: { store.hideHomeCard($0) },
+                onOpenGoals: { showGoalsEditor = true },
+                onOpenNutrition: { store.openHub(.nutrition) },
+                onOpenProgress: { store.openProgress() }
+            )
+        }
     }
 
     private var nextMoveCard: some View {
@@ -546,8 +544,8 @@ struct HomeView: View {
                     store.openProgress()
                 }
             }
-        case .schedule:
-            // Pinned under today's plan now (planFollowUps).
+        case .schedule, .goals, .nutrition, .progress:
+            // Pinned under today's plan (planFollowUps); hide/show only.
             EmptyView()
         case .adjustments:
             if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
@@ -807,73 +805,6 @@ private struct HomePatternInsightCard: View {
     }
 }
 
-private struct TodayStatusStrip: View {
-    let showcase: ProfileShowcase
-    let goal: String
-    let fitnessLevel: String
-    let coachName: String
-    let recovery: RecoverySnapshot
-    let morpheScore: Int
-    let morpheTier: String
-    let morpheDetail: String
-    /// False on first run: a new user has no readiness/score/energy yet, so
-    /// showing three zeros would only be noise to decode.
-    var showMetrics: Bool = true
-    /// Readiness/energy are measurements only after a check-in — before one,
-    /// the default RecoverySnapshot is a synthetic starting point and renders
-    /// as an em dash instead of pretending to be data.
-    var hasCheckedIn: Bool = false
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    MorpheAvatarView(avatar: showcase.avatar, size: 54)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(showcase.displayName)
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        Text("\(goal) • \(fitnessLevel)")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    if showMetrics {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Plan by \(coachName)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textMuted)
-                            Text(morpheTier)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
-                    }
-                }
-
-                if showMetrics {
-                    HStack(spacing: 8) {
-                        MetricPill(label: "Readiness", value: hasCheckedIn ? "\(recovery.score)" : "—")
-                        MetricPill(label: "Score", value: "\(morpheScore)")
-                        MetricPill(label: "Energy", value: hasCheckedIn ? "\(recovery.energy)/10" : "—")
-                    }
-
-                    // "Plan by" already sits top-right in this card.
-                    Text(morpheDetail)
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                } else {
-                    Text("Morphe Score reads your consistency (sessions + streak, 10–100), readiness comes from your check-ins, and energy is what you report. All three go live with your first logged workout.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-}
 
 private struct HomeExpandableSection<Content: View>: View {
     let title: String
@@ -1078,13 +1009,13 @@ struct HomeLayoutEditorSheet: View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(store.homeCardLayout.filter { $0 != .schedule }) { card in
+                    ForEach(store.homeCardLayout) { card in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(card.title)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(MorpheTheme.textPrimary)
-                                Text(card.detail)
+                                Text(card.isPinnedUnderPlan ? "\(card.detail) · pinned under the plan" : card.detail)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
                                 // The eye can be on while the tier gate is
@@ -1124,7 +1055,7 @@ struct HomeLayoutEditorSheet: View {
                         Haptics.selection()
                     }
                 } header: {
-                    Text("Drag to reorder — the greeting and workout hero stay on top.")
+                    Text("Drag to reorder — the workout hero stays on top; Schedule, Goals, Nutrition and Progress stay pinned under it (hide or show them).")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                 } footer: {
@@ -2475,6 +2406,11 @@ struct AwayOverlay: View {
 private struct TodayGlanceRow: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dynamicTypeSize) private var typeSize
+    var showGoals = true
+    var showNutrition = true
+    var showProgress = true
+    var editing = false
+    var onHide: (HomeCardID) -> Void = { _ in }
     let onOpenGoals: () -> Void
     let onOpenNutrition: () -> Void
     let onOpenProgress: () -> Void
@@ -2484,9 +2420,9 @@ private struct TodayGlanceRow: View {
             ? AnyLayout(VStackLayout(spacing: 10))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
         layout {
-            goalsTile
-            nutritionTile
-            progressTile
+            if showGoals { goalsTile.editorEye(editing, title: "Goals", compact: true) { onHide(.goals) } }
+            if showNutrition { nutritionTile.editorEye(editing, title: "Nutrition", compact: true) { onHide(.nutrition) } }
+            if showProgress { progressTile.editorEye(editing, title: "Progress", compact: true) { onHide(.progress) } }
         }
     }
 

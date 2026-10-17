@@ -15,7 +15,6 @@ struct MoreView: View {
     @State private var quizPage: Int?
     /// The full quiz wall, behind "Show all" (audit 2026-10-16, U12).
     @State private var showAllQuizzes = false
-    @State private var showLearnLayoutEditor = false
     private static let quizPageSize = 10
 
     private var defaultQuizPage: Int {
@@ -379,28 +378,37 @@ struct MoreView: View {
             // The sections are the user's to order and hide (Lucas
             // 2026-10-16) — the same editor Today and Train have. Coach
             // notes lead once there are some, unless the user ordered it.
-            ForEach(store.visibleLearnCards) { card in
+            if store.editingPage == .learn {
+                EditorModeBar(page: .learn) { store.endEditing() }
+            }
+            SectionEditorList(
+                editing: store.editingPage == .learn,
+                cards: store.visibleLearnCards,
+                hidden: store.learnCardLayout.filter { store.styleProfile.learnHiddenCards.contains($0.rawValue) },
+                title: \.title,
+                onMove: { visible in
+                    let moved = Set(visible); var order: [LearnCardID] = []; var next = visible.makeIterator()
+                    for card in store.learnCardLayout {
+                        if moved.contains(card) { if let v = next.next() { order.append(v) } } else { order.append(card) }
+                    }
+                    store.setLearnLayout(order: order.map(\.rawValue))
+                },
+                onHide: { card in
+                    var set = store.styleProfile.learnHiddenCards
+                    if !set.contains(card.rawValue) { set.append(card.rawValue) }
+                    store.setLearnLayout(hidden: set)
+                },
+                onShow: { card in
+                    var set = store.styleProfile.learnHiddenCards
+                    set.removeAll { $0 == card.rawValue }
+                    store.setLearnLayout(hidden: set)
+                }
+            ) { card in
                 learnCard(card)
             }
-            if store.visibleLearnCards.isEmpty {
-                Text("All sections hidden — tap Edit Learn's layout to bring them back.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 8)
+            if store.editingPage != .learn {
+                EditLayoutButton(page: "Learn") { store.beginEditing(.learn) }
             }
-            EditLayoutButton(page: "Learn") { showLearnLayoutEditor = true }
-                .sheet(isPresented: $showLearnLayoutEditor) {
-                    LayoutEditorSheet(
-                        title: "Learn's layout",
-                        header: "Drag to reorder — the Lessons / Nutrition / Library switch stays on top.",
-                        layout: store.learnCardLayout,
-                        hidden: store.styleProfile.learnHiddenCards,
-                        onHidden: { store.setLearnLayout(hidden: $0) },
-                        onOrder: { store.setLearnLayout(order: $0) })
-                    .environment(store)
-                    .presentationCornerRadius(28)
-                }
         }
     }
 

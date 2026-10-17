@@ -469,6 +469,54 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: In-place layout editor (Lucas 2026-10-16)
+
+    /// The page in editor mode, if any. No pop-up: the page itself edits.
+    var editingPage: EditablePage?
+
+    func beginEditing(_ page: EditablePage) {
+        editingPage = page
+        Haptics.impact(.medium)
+    }
+
+    func endEditing() {
+        editingPage = nil
+        Haptics.impact(.light)
+    }
+
+    /// The tab bar in the user's order.
+    var tabLayout: [ClientTab] {
+        var order = styleProfile.tabOrder.compactMap(ClientTab.init(rawValue:)).filter { ClientTab.visibleCases.contains($0) }
+        for tab in ClientTab.visibleCases where !order.contains(tab) { order.append(tab) }
+        return order
+    }
+
+    func setTabOrder(_ order: [String]) {
+        styleProfile.tabOrder = order
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    /// Hides a Today card unless it's the last visible thing on the page.
+    @discardableResult
+    func hideHomeCard(_ card: HomeCardID) -> Bool {
+        guard visibleHomeCards.count > 1 else {
+            Haptics.error()
+            showToast("Keep at least one section on this page.")
+            return false
+        }
+        var hidden = styleProfile.homeHiddenCards
+        if !hidden.contains(card.rawValue) { hidden.append(card.rawValue) }
+        setStyleChoice(homeHiddenCards: hidden)
+        return true
+    }
+
+    func showHomeCard(_ card: HomeCardID) {
+        var hidden = styleProfile.homeHiddenCards
+        hidden.removeAll { $0 == card.rawValue }
+        setStyleChoice(homeHiddenCards: hidden)
+    }
+
     // MARK: Discover + Learn layout (Lucas 2026-10-16)
 
     var discoverCardLayout: [DiscoverCardID] { DiscoverCardID.resolvedOrder(from: styleProfile.discoverCardOrder) }
@@ -535,9 +583,8 @@ final class MorpheAppStore {
         if let intensity = styleProfile.preferredIntensity, let rating = styleProfile.averageRating {
             lines.append("You mostly call sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D} and rate them \(rating.formatted(.number.precision(.fractionLength(1))))/10.")
         }
-        if let minutes = styleProfile.typicalDurationMinutes {
-            lines.append("Your typical session runs about \(minutes) minute\(minutes == 1 ? "" : "s").")
-        }
+        // "Your typical session runs about N minutes" is retired (Lucas
+        // 2026-10-16); the duration still feeds the plan, not the greeting.
         guard !lines.isEmpty else { return nil }
         let day = Calendar.current.ordinality(of: .day, in: .year, for: now) ?? 0
         // In the window, ALTERNATE days lead with the window line instead
@@ -594,7 +641,7 @@ final class MorpheAppStore {
         switch card {
         case .insight:
             return todayExperienceTier >= 2 && primaryAthletePatternInsight != nil
-        case .schedule:
+        case .schedule, .goals, .nutrition, .progress:
             // Pinned under today's plan (2026-10-15), not in the stack.
             return false
         case .adjustments:
@@ -610,7 +657,7 @@ final class MorpheAppStore {
         guard !homeCardRendersContent(card) else { return nil }
         switch card {
         case .insight: return "Appears once 5+ sessions reveal a pattern"
-        case .schedule: return nil
+        case .schedule, .goals, .nutrition, .progress: return nil
         case .adjustments: return "Appears after your first logged session"
         case .support: return "Appears after 5 logged sessions"
         }

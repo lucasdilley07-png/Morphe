@@ -3439,3 +3439,338 @@ struct EditLayoutButton: View {
         .accessibilityLabel("Edit \(page)'s layout — reorder or hide sections")
     }
 }
+
+// MARK: - In-place layout editor (Lucas 2026-10-16)
+//
+// No pop-up: "Edit X's layout" puts the page itself into editor mode.
+// Every section gets an eye (tap → it pops out, with a tap you feel), and
+// a hold lifts it (a buzz) so it can be dragged up or down the page; the
+// order is saved the moment it's dropped. Nothing can be lost: hidden
+// sections wait in a HIDDEN row at the bottom with a Show button, and the
+// last visible section can't be hidden.
+
+enum EditablePage: String { case today, train, discover, learn
+    var title: String { rawValue.capitalized }
+}
+
+/// Frames of every section in the editor's coordinate space.
+struct EditorFrameKey: PreferenceKey {
+    static var defaultValue: [AnyHashable: CGRect] = [:]
+    static func reduce(value: inout [AnyHashable: CGRect], nextValue: () -> [AnyHashable: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+/// The banner at the top of a page in editor mode.
+struct EditorModeBar: View {
+    let page: EditablePage
+    let onDone: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("EDITING \(page.title.uppercased())")
+                    .font(MorpheTheme.microLabel(10)).tracking(1.6)
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                Text("Hold a box to move it · tap the eye to hide it")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent).opacity(0.85))
+            }
+            Spacer(minLength: 8)
+            Button("Done", action: onDone)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.accent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(MorpheTheme.onFill(MorpheTheme.accent)))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.accent))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// The reorderable, hideable list of a page's sections.
+struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
+    let editing: Bool
+    /// Visible cards in order.
+    let cards: [Card]
+    /// Hidden cards, for the HIDDEN row.
+    let hidden: [Card]
+    let title: (Card) -> String
+    /// New visible order (hidden cards keep their place in the saved list).
+    let onMove: ([Card]) -> Void
+    let onHide: (Card) -> Void
+    let onShow: (Card) -> Void
+    @ViewBuilder let content: (Card) -> Content
+
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var frames: [AnyHashable: CGRect] = [:]
+    @State private var lifted: Card? = nil
+    @State private var fingerY: CGFloat = 0
+    @State private var popping: Card? = nil
+    @State private var shaking: Card? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(cards) { card in
+                let isLifted = lifted == card
+                content(card)
+                    .overlay(alignment: .topTrailing) { if editing { eye(for: card) } }
+                    .overlay {
+                        if editing {
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+                                .foregroundStyle(MorpheTheme.accent.opacity(isLifted ? 0.9 : 0.45))
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .scaleEffect(popping == card ? 0.001 : (isLifted && !reduceMotion ? 1.03 : 1))
+                    .opacity(popping == card ? 0 : 1)
+                    .offset(x: shaking == card ? 8 : 0)
+                    .offset(y: isLifted ? fingerY - (frames[AnyHashable(card)]?.midY ?? fingerY) : 0)
+                    .shadow(color: .black.opacity(isLifted ? 0.28 : 0), radius: 14, y: 8)
+                    .zIndex(isLifted ? 2 : 0)
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(card): geo.frame(in: .named("sectionEditor"))])
+                    })
+                    .allowsHitTesting(!editing || lifted == nil)
+                    .overlay {
+                        // In editor mode the box is a drag handle, not a control.
+                        if editing {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .gesture(
+                                    LongPressGesture(minimumDuration: 0.3)
+                                        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("sectionEditor")))
+                                        .onChanged { value in
+                                            switch value {
+                                            case .second(true, let drag):
+                                                if lifted != card {
+                                                    lifted = card
+                                                    fingerY = frames[AnyHashable(card)]?.midY ?? 0
+                                                    Haptics.impact(.medium)
+                                                }
+                                                if let drag { fingerY = drag.location.y; reorderIfNeeded(card) }
+                                            default: break
+                                            }
+                                        }
+                                        .onEnded { _ in
+                                            if lifted != nil { Haptics.impact(.light) }
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
+                                        }
+                                )
+                                .padding(.trailing, 52)   // the eye stays tappable
+                        }
+                    }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
+                    .accessibilityAction(named: "Hide \(title(card))") { hide(card) }
+            }
+            if editing, !hidden.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("HIDDEN")
+                        .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(hidden) { card in
+                            Button {
+                                onShow(card)
+                                Haptics.impact(.light)
+                            } label: {
+                                Label("Show \(title(card))", systemImage: "eye")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .coordinateSpace(name: "sectionEditor")
+        .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: cards)
+    }
+
+    private func eye(for card: Card) -> some View {
+        Button {
+            hide(card)
+        } label: {
+            Image(systemName: "eye.slash")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(MorpheTheme.accent))
+                .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
+        .padding(8)
+        .accessibilityLabel("Hide \(title(card))")
+    }
+
+    private func hide(_ card: Card) {
+        guard cards.count > 1 else {
+            // The last box on a page can't go: a shake, a buzz, one line.
+            Haptics.error()
+            store.showToast("Keep at least one section on this page.")
+            withAnimation(.default.speed(3).repeatCount(3, autoreverses: true)) { shaking = card }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(260))
+                shaking = nil
+            }
+            return
+        }
+        // The quick pop (Lucas): it shrinks away with a rigid tap.
+        Haptics.impact(.rigid)
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.25, dampingFraction: 0.7)) { popping = card }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(220))
+            onHide(card)
+            popping = nil
+        }
+    }
+
+    private func reorderIfNeeded(_ card: Card) {
+        guard let from = cards.firstIndex(of: card) else { return }
+        // The dragged box belongs before the first other box whose middle
+        // is below the finger.
+        let others = cards.filter { $0 != card }
+        let target = others.filter { (frames[AnyHashable($0)]?.midY ?? .infinity) < fingerY }.count
+        guard target != from else { return }
+        var next = others
+        next.insert(card, at: target)
+        Haptics.selection()
+        onMove(next)
+    }
+}
+
+/// The tab bar's order, edited by holding an icon and dragging it along
+/// the strip; shown above the bar while any page is in editor mode.
+struct TabOrderStrip: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var frames: [AnyHashable: CGRect] = [:]
+    @State private var lifted: ClientTab? = nil
+    @State private var fingerX: CGFloat = 0
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("HOLD AN ICON AND DRAG TO REORDER THE TABS")
+                .font(MorpheTheme.microLabel(9)).tracking(1.4)
+                .foregroundStyle(MorpheTheme.textMuted)
+            HStack(spacing: 0) {
+                ForEach(store.tabLayout) { tab in
+                    let isLifted = lifted == tab
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.systemImage)
+                            .font(.title3.weight(.semibold))
+                        Text(tab.title)
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(isLifted ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .scaleEffect(isLifted ? 1.15 : 1)
+                    .offset(x: isLifted ? fingerX - (frames[AnyHashable(tab)]?.midX ?? fingerX) : 0)
+                    .zIndex(isLifted ? 2 : 0)
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(key: EditorFrameKey.self, value: [AnyHashable(tab): geo.frame(in: .named("tabStrip"))])
+                    })
+                    .contentShape(Rectangle())
+                    .gesture(
+                        LongPressGesture(minimumDuration: 0.3)
+                            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("tabStrip")))
+                            .onChanged { value in
+                                if case .second(true, let drag) = value {
+                                    if lifted != tab { lifted = tab; fingerX = frames[AnyHashable(tab)]?.midX ?? 0; Haptics.impact(.medium) }
+                                    if let drag { fingerX = drag.location.x; reorderIfNeeded(tab) }
+                                }
+                            }
+                            .onEnded { _ in
+                                if lifted != nil { Haptics.impact(.light) }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { lifted = nil }
+                            }
+                    )
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
+                    .accessibilityLabel("\(tab.title) tab")
+                }
+            }
+            .coordinateSpace(name: "tabStrip")
+            .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.tabLayout)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.ink.opacity(0.97)))
+        .overlay(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    private func reorderIfNeeded(_ tab: ClientTab) {
+        let order = store.tabLayout
+        guard let from = order.firstIndex(of: tab) else { return }
+        let others = order.filter { $0 != tab }
+        let target = others.filter { (frames[AnyHashable($0)]?.midX ?? .infinity) < fingerX }.count
+        guard target != from else { return }
+        var next = others; next.insert(tab, at: target)
+        Haptics.selection()
+        store.setTabOrder(next.map(\.rawValue))
+    }
+}
+
+
+/// An eye on a pinned (non-reorderable) box in editor mode.
+private struct EditorEye: ViewModifier {
+    let editing: Bool
+    let title: String
+    let compact: Bool
+    let onHide: () -> Void
+    @State private var popping = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if editing {
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+                        .foregroundStyle(MorpheTheme.accent.opacity(0.45))
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if editing {
+                    Button {
+                        Haptics.impact(.rigid)
+                        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.25, dampingFraction: 0.7)) { popping = true }
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(220))
+                            onHide(); popping = false
+                        }
+                    } label: {
+                        Image(systemName: "eye.slash")
+                            .font((compact ? Font.caption : .subheadline).weight(.bold))
+                            .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                            .frame(width: compact ? 28 : 36, height: compact ? 28 : 36)
+                            .background(Circle().fill(MorpheTheme.accent))
+                            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(compact ? 4 : 8)
+                    .accessibilityLabel("Hide \(title)")
+                }
+            }
+            .scaleEffect(popping ? 0.001 : 1)
+            .opacity(popping ? 0 : 1)
+            .allowsHitTesting(!editing || true)
+    }
+}
+
+extension View {
+    func editorEye(_ editing: Bool, title: String, compact: Bool = false, onHide: @escaping () -> Void) -> some View {
+        modifier(EditorEye(editing: editing, title: title, compact: compact, onHide: onHide))
+    }
+}
