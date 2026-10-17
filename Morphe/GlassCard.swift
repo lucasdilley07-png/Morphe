@@ -155,36 +155,58 @@ struct MonoSectionTabs<ID: Hashable>: View {
 
 /// Morphe's line under a page's tabs (Lucas 2026-10-17): the sparkle and
 /// one sentence, the same grammar as Today's directive.
-/// The Spartan waking inside the orb (Lucas 2026-10-17): the dark visor,
-/// the half-lit one, then the eyes — three crossfades with a small pop on
-/// the last. Runs once on appear over `duration`; Reduce Motion shows the
-/// awake frame.
+/// The three Spartan designs (Lucas 2026-10-17): Activated (eyes lit) is
+/// the on/first-command face; Still (half-lit visor) is listening/reading
+/// — Morphe speaking, the user reading; Sleeping (dark visor) is
+/// thinking/computing — the user speaking after the first command.
+enum SpartanFrame: Hashable {
+    case activated, still, sleeping
+    var imageName: String {
+        switch self {
+        case .activated: return "MorpheAIOrbActivated"
+        case .still: return "MorpheAIOrbStill"
+        case .sleeping: return "MorpheAIOrbSleeping"
+        }
+    }
+}
+
+/// The Spartan waking inside the orb (Lucas 2026-10-17): sleeping fades
+/// on, the visor half-lights (still), the eyes light (activated), and it
+/// settles on still. Runs once on appear over `duration`; Reduce Motion
+/// shows the still frame.
 struct SpartanWakeView: View {
     var duration: Double = 1.1
     var onAwake: (() -> Void)? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// 0 sleeping · 1 still · 2 activated · 3 still (settled).
     @State private var wake = 0
+    @State private var shown = false
 
     var body: some View {
         ZStack {
-            Image("MorpheAIOrbIdle").resizable().interpolation(.high).scaledToFit()
+            Image(SpartanFrame.sleeping.imageName).resizable().interpolation(.high).scaledToFit()
                 .opacity(wake == 0 ? 1 : 0)
-            Image("MorpheAIOrbWaking").resizable().interpolation(.high).scaledToFit()
-                .opacity(wake == 1 ? 1 : 0)
-            Image("MorpheAIOrbBase").resizable().interpolation(.high).scaledToFit()
-                .opacity(wake >= 2 ? 1 : 0)
-                .shadow(color: MorpheTheme.brandBlue.opacity(wake >= 2 ? 0.7 : 0), radius: wake >= 2 ? 28 : 0)
+            Image(SpartanFrame.still.imageName).resizable().interpolation(.high).scaledToFit()
+                .opacity(wake == 1 || wake == 3 ? 1 : 0)
+            Image(SpartanFrame.activated.imageName).resizable().interpolation(.high).scaledToFit()
+                .opacity(wake == 2 ? 1 : 0)
+                .shadow(color: MorpheTheme.brandBlue.opacity(wake == 2 ? 0.7 : 0), radius: wake == 2 ? 28 : 0)
         }
-        .scaleEffect(wake >= 2 && !reduceMotion ? 1.04 : 1)
+        .scaleEffect(wake == 2 && !reduceMotion ? 1.04 : 1)
+        .opacity(shown ? 1 : 0)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: wake)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: shown)
         .task {
-            if reduceMotion { wake = 2; onAwake?(); return }
-            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.45)))
-            wake = 1
+            if reduceMotion { shown = true; wake = 3; onAwake?(); return }
+            shown = true                                   // sleeping fades on
             try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.35)))
-            wake = 2
+            wake = 1                                       // still
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.25)))
+            wake = 2                                       // activated
             Haptics.impact(.light)
-            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.2)))
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.25)))
+            wake = 3                                       // settles on still
+            try? await Task.sleep(for: .milliseconds(Int(duration * 1000 * 0.15)))
             onAwake?()
         }
         .accessibilityHidden(true)
@@ -305,6 +327,8 @@ struct MorpheHelmetMark: View {
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
     var size: CGFloat = 170
+    /// Which Spartan shows (Lucas 2026-10-17).
+    var frame: SpartanFrame = .still
 
     var body: some View {
         // Thinking (luxury audit): a tight, steady presence — working,
@@ -314,7 +338,8 @@ struct MorpheVoiceRingHost: View {
         MorpheOrbView(
             level: thinking ? 0.45 : store.heyMorphe.voiceLevel,
             speaking: store.heyMorphe.state == .speaking,
-            thinking: thinking
+            thinking: thinking,
+            frame: frame
         )
         .frame(width: size, height: size)
     }
@@ -336,6 +361,8 @@ struct MorpheOrbView: View {
     var thinking: Bool = false
     /// False draws one still frame (buttons, list rows).
     var animates: Bool = true
+    /// Which Spartan design shows (Lucas 2026-10-17).
+    var frame: SpartanFrame = .activated
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The orb fades on (Lucas 2026-10-16) wherever it is mounted live —
     /// the Hey Morphe stage, the welcome pop-up — instead of appearing.
@@ -360,11 +387,12 @@ struct MorpheOrbView: View {
                 // orb, glow, mask (Lucas 2026-10-10).
                 // The finished Spartan orb (Lucas 2026-10-17: one image,
                 // helmet baked in). It breathes with the voice as a whole.
-                Image("MorpheAIOrbBase")
+                Image(frame.imageName)
                     .resizable()
                     .scaledToFit()
                     .scaleEffect(reduceMotion ? 1 : 1 + level * 0.06)
                     .animation(.easeOut(duration: 0.1), value: level)
+                    .id(frame)
                 innerGlow(size)
                 if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)).opacity(0.5) }
                 if live { rimLight(size) }

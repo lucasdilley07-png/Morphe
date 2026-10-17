@@ -1154,6 +1154,9 @@ struct MorpheDayPopup: View {
     @State private var ringLevel: Double = 0.22
     @State private var ringSpeaking = false
     @State private var ringPulse = false
+    /// The Spartan switches to the still design on the first tap (Lucas
+    /// 2026-10-17), with no animation.
+    @State private var orbStill = false
     /// The answer being acknowledged before the popup leaves.
     @State private var chosen: MorpheAppStore.DayPopupChoiceKind?
     @State private var flareTask: Task<Void, Never>?
@@ -1329,6 +1332,8 @@ struct MorpheDayPopup: View {
     /// bit of life, nothing spoken and nothing changed.
     private func tapRing() {
         noteInteraction()
+        var t = Transaction(); t.disablesAnimations = true
+        withTransaction(t) { orbStill = true }
         Haptics.selection()
         guard !reduceMotion else { return }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { ringPulse = true }
@@ -1346,7 +1351,7 @@ struct MorpheDayPopup: View {
             // leaf view reads the ~46/s mic level so the popup itself
             // doesn't re-render per sample; it steps aside under the stage
             // so there is one orb on screen, not two.
-            PopupOrbHost(ringLevel: ringLevel, ringSpeaking: ringSpeaking)
+            PopupOrbHost(ringLevel: ringLevel, ringSpeaking: ringSpeaking, frame: orbStill ? .still : .activated)
                 .frame(width: 170, height: 170)
                 .scaleEffect(ringPulse ? 1.07 : (ringIn || reduceMotion ? 1 : 0.55))
                 .opacity(ringIn || reduceMotion ? 1 : 0)
@@ -1385,6 +1390,11 @@ struct MorpheDayPopup: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
+        // Any tap on the pop-up switches the Spartan to still, no animation.
+        .simultaneousGesture(TapGesture().onEnded {
+            var t = Transaction(); t.disablesAnimations = true
+            withTransaction(t) { orbStill = true }
+        })
     }
 
     /// One answer chip: staggered in 45ms behind the one above, and when
@@ -1459,12 +1469,15 @@ private struct PopupOrbHost: View {
     @Environment(MorpheAppStore.self) private var store
     var ringLevel: Double
     var ringSpeaking: Bool
+    /// Activated until the user taps, then still (Lucas 2026-10-17).
+    var frame: SpartanFrame = .activated
 
     var body: some View {
         let engine = store.heyMorphe
         let live = engine.state == .active || engine.state == .speaking || engine.state == .thinking
         MorpheOrbView(level: live ? max(ringLevel, engine.voiceLevel) : ringLevel,
-                      speaking: ringSpeaking || engine.state == .speaking)
+                      speaking: ringSpeaking || engine.state == .speaking,
+                      frame: frame)
             .opacity(live ? 0 : 1)
             .animation(.easeInOut(duration: 0.2), value: live)
     }

@@ -5421,6 +5421,19 @@ private struct HeyMorpheStage: View {
     @State private var arrived = false
     /// False until the wake frames have played on this stage.
     @State private var stageAwake = false
+    /// Exchanges finished on this stage (user spoke → Morphe answered).
+    /// The activated design shows only for the first command (Lucas
+    /// 2026-10-17); after that the user speaking = sleeping/thinking and
+    /// Morphe speaking = still.
+    @State private var exchangesCompleted = 0
+    @State private var wasCapturing = false
+
+    private var spartanFrame: SpartanFrame {
+        switch engine.state {
+        case .active: return exchangesCompleted == 0 ? .activated : .sleeping
+        default: return .still
+        }
+    }
     @State private var draft = ""
     @FocusState private var composing: Bool
     @Namespace private var orbSpace
@@ -5510,7 +5523,12 @@ private struct HeyMorpheStage: View {
             if reduceMotion { arrived = true; return }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
         }
-        .onDisappear { arrived = false; stageAwake = false; composing = false; voiceActiveLine = nil }
+        .onDisappear { arrived = false; stageAwake = false; composing = false; voiceActiveLine = nil; exchangesCompleted = 0; wasCapturing = false }
+        .onChange(of: engine.state) { _, state in
+            // A capture that hands off to thinking/speaking is one exchange.
+            if state == .active { wasCapturing = true }
+            if wasCapturing, state == .thinking || state == .speaking { exchangesCompleted += 1; wasCapturing = false }
+        }
         .recordingEdgeGlow(recorder)
         .onChange(of: composing) { _, focused in
             // Tapping the bar opens chat mode: the orb slides up, the
@@ -5524,7 +5542,7 @@ private struct HeyMorpheStage: View {
 
     private var chatHeader: some View {
         VStack(spacing: 10) {
-            MorpheVoiceRingHost(size: 110)
+            MorpheVoiceRingHost(size: 110, frame: .still)
                 .frame(width: 110, height: 110)
                 .matchedGeometryEffect(id: "orb", in: orbSpace)
             Text(store.voiceChatReplyLine ?? "Chat active…")
@@ -5738,7 +5756,7 @@ private struct HeyMorpheStage: View {
             // with the real mic level while listening. It wakes on arrival
             // (Lucas 2026-10-17): the three frames, then the live orb.
             ZStack {
-                MorpheVoiceRingHost(size: 170)
+                MorpheVoiceRingHost(size: 170, frame: spartanFrame)
                     .opacity(stageAwake ? 1 : 0)
                 if !stageAwake {
                     SpartanWakeView(duration: 1.0) { withAnimation(.easeInOut(duration: 0.25)) { stageAwake = true } }

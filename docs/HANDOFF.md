@@ -1188,3 +1188,14 @@ Network is deliberately left alone.
   rated up takes more days); #14 a level change raises the celebration
   banner. Not done: #1 localization (needs a String Catalog + translations),
   #7–#9 engineering refactors, #10 distribution, #12 post-to-Explore.
+- Spartan designs renamed (Lucas 2026-10-17): `SpartanFrame.activated`
+  (eyes lit, asset MorpheAIOrbActivated), `.still` (half-lit visor,
+  MorpheAIOrbStill — listening/reading), `.sleeping` (dark visor,
+  MorpheAIOrbSleeping — thinking/computing). `SpartanWakeView` now runs
+  sleeping fades on → still → activated → still (used on the intro after
+  the tap and on the loading screen). The welcome pop-up shows activated
+  and switches to still with no animation on any tap of the pop-up. The
+  Hey Morphe stage: first command = activated while the user speaks; once
+  an exchange completes, the user speaking = sleeping and Morphe speaking
+  / thinking = still (`spartanFrame`, `exchangesCompleted` per stage
+  session). `MorpheOrbView` / `MorpheVoiceRingHost` take `frame:`.
