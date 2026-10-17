@@ -755,3 +755,15 @@ performance" was getting "Dumbbell Lean-Out Circuit":
   warm-up / mobility / stretch names infer the hold unit whatever the
   workout's category; the review's "Readiness check-ins" bullet names the
   evening check-in that exists.
+
+## Edit option on every page but Network (2026-10-16)
+
+Today and Train already had "Edit X's layout"; Discover and Learn now
+have the same footer. `LayoutCard` protocol + `DiscoverCardID` (coaches,
+new in library, most done, category families, technique library) and
+`LearnCardID` (quizzes, lessons, why Morphe, personal rules, coach notes)
+in MorpheModels; order/hidden persist in `StyleProfile`
+(`discover…`/`learn…CardOrder/HiddenCards`); one generic
+`LayoutEditorSheet` + `EditLayoutButton` in GlassCard.swift. Coach notes
+still lead Learn once there are some unless the user ordered the page.
+Network is deliberately left alone.

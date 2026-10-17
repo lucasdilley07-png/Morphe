@@ -4502,6 +4502,7 @@ struct DiscoverCatalogSection: View {
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
     @State private var showTechniqueLibrary = false
+    @State private var showDiscoverLayoutEditor = false
 
     /// Time filters are ranges, not exact matches — catalog sessions run
     /// odd lengths (15/24/36/38 min), so exact chips would make most
@@ -4964,35 +4965,65 @@ struct DiscoverCatalogSection: View {
                     }
                 }
             } else {
-            fromCoachesSection
-            newThisWeekSection
-            mostDoneSection
-            ForEach(rankedFamilies, id: \.name) { family in
-                let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
-                if !presentCategories.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        sectionHeader(
-                            title: family.name,
-                            count: presentCategories.reduce(0) { $0 + (byCategory[$1]?.count ?? 0) }
-                        )
+            // The sections are the user's to order and hide (Lucas
+            // 2026-10-16) — the same editor Today and Train have.
+            ForEach(store.visibleDiscoverCards) { card in
+                discoverCard(card)
+            }
+            if store.visibleDiscoverCards.isEmpty {
+                Text("All sections hidden — tap Edit Discover's layout to bring them back.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+            }
+            EditLayoutButton(page: "Discover") { showDiscoverLayoutEditor = true }
+                .sheet(isPresented: $showDiscoverLayoutEditor) {
+                    LayoutEditorSheet(
+                        title: "Discover's layout",
+                        header: "Drag to reorder — search and filters stay on top.",
+                        layout: store.discoverCardLayout,
+                        hidden: store.styleProfile.discoverHiddenCards,
+                        onHidden: { store.setDiscoverLayout(hidden: $0) },
+                        onOrder: { store.setDiscoverLayout(order: $0) })
+                    .environment(store)
+                    .presentationCornerRadius(28)
+                }
+            }
+        }
+    }
 
-                        LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                            spacing: 10
-                        ) {
-                            ForEach(presentCategories, id: \.self) { category in
-                                categoryTile(category, count: byCategory[category]?.count ?? 0)
-                            }
+    @ViewBuilder
+    private func discoverCard(_ card: DiscoverCardID) -> some View {
+        switch card {
+        case .coaches: fromCoachesSection
+        case .newInLibrary: newThisWeekSection
+        case .mostDone: mostDoneSection
+        case .families: familiesSection
+        case .technique: techniqueLibraryCard
+        }
+    }
+
+    private var familiesSection: some View {
+        let byCategory = Dictionary(grouping: filteredWorkouts, by: \.categoryTag)
+        return         ForEach(rankedFamilies, id: \.name) { family in
+            let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
+            if !presentCategories.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionHeader(
+                        title: family.name,
+                        count: presentCategories.reduce(0) { $0 + (byCategory[$1]?.count ?? 0) }
+                    )
+
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                        spacing: 10
+                    ) {
+                        ForEach(presentCategories, id: \.self) { category in
+                            categoryTile(category, count: byCategory[category]?.count ?? 0)
                         }
                     }
                 }
-            }
-
-            // Connect / scan lives on Network now (Lucas 2026-10-04) —
-            // pairing belongs with the people, not the workout shelf.
-
-            // Under the workouts, above Programs (Lucas 2026-10-04).
-            techniqueLibraryCard
             }
         }
     }

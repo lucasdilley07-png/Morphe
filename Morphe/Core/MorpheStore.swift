@@ -469,6 +469,39 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: Discover + Learn layout (Lucas 2026-10-16)
+
+    var discoverCardLayout: [DiscoverCardID] { DiscoverCardID.resolvedOrder(from: styleProfile.discoverCardOrder) }
+    var visibleDiscoverCards: [DiscoverCardID] {
+        discoverCardLayout.filter { !styleProfile.discoverHiddenCards.contains($0.rawValue) }
+    }
+    func setDiscoverLayout(order: [String]? = nil, hidden: [String]? = nil) {
+        if let order { styleProfile.discoverCardOrder = order }
+        if let hidden { styleProfile.discoverHiddenCards = hidden }
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    /// Coach notes lead once there are some — unless the user ordered the
+    /// page themselves.
+    var learnCardLayout: [LearnCardID] {
+        var order = LearnCardID.resolvedOrder(from: styleProfile.learnCardOrder)
+        if styleProfile.learnCardOrder.isEmpty, !creatorNotes.isEmpty,
+           let index = order.firstIndex(of: .coachNotes) {
+            order.remove(at: index); order.insert(.coachNotes, at: 0)
+        }
+        return order
+    }
+    var visibleLearnCards: [LearnCardID] {
+        learnCardLayout.filter { !styleProfile.learnHiddenCards.contains($0.rawValue) }
+    }
+    func setLearnLayout(order: [String]? = nil, hidden: [String]? = nil) {
+        if let order { styleProfile.learnCardOrder = order }
+        if let hidden { styleProfile.learnHiddenCards = hidden }
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
     // MARK: The visible learning loop (personalization phase 4)
 
     /// One line of what Morphe actually knows, spoken on Today under the

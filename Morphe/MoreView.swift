@@ -15,6 +15,7 @@ struct MoreView: View {
     @State private var quizPage: Int?
     /// The full quiz wall, behind "Show all" (audit 2026-10-16, U12).
     @State private var showAllQuizzes = false
+    @State private var showLearnLayoutEditor = false
     private static let quizPageSize = 10
 
     private var defaultQuizPage: Int {
@@ -112,18 +113,9 @@ struct MoreView: View {
         case .nutrition:
             nutritionPanel
         default:
-            Group {
-                // Coach notes lead once there are some; an empty card sits
-                // below the lessons instead of opening the page (audit
-                // 2026-10-15).
-                if store.creatorNotes.isEmpty {
-                    learningPanel
-                    CoachNotesCard()
-                } else {
-                    CoachNotesCard()
-                    learningPanel
-                }
-            }
+            // Coach notes are a section of the page now (Lucas 2026-10-16);
+            // `learnCardLayout` still leads with them once there are some.
+            learningPanel
         }
     }
 
@@ -384,127 +376,167 @@ struct MoreView: View {
                         .presentationCornerRadius(28)
                 }
 
-            // Discover-style quiz wall (Lucas 2026-08-16): every quiz is a
-            // tall calling card in a two-column grid — today's card is live,
-            // finished ones review, the rest honestly say when they unlock.
-            VStack(spacing: 12) {
-                HStack {
-                    Text("Quizzes")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accentAlt)
-                        .accessibilityLabel("\(store.completedQuizIDs.count) of \(store.quizzes.count) quizzes complete")
-                }
-
-                Text("One new question a day — answer it right the first time to earn XP.")
+            // The sections are the user's to order and hide (Lucas
+            // 2026-10-16) — the same editor Today and Train have. Coach
+            // notes lead once there are some, unless the user ordered it.
+            ForEach(store.visibleLearnCards) { card in
+                learnCard(card)
+            }
+            if store.visibleLearnCards.isEmpty {
+                Text("All sections hidden — tap Edit Learn's layout to bring them back.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-
-                // Ten at a time (Lucas 2026-10-10): pages of 1–10, 11–20, …
-                // sized to the real quiz count; the page holding today's
-                // quiz opens first.
-                let pageCount = max(1, (store.quizzes.count + Self.quizPageSize - 1) / Self.quizPageSize)
-                let page = min(quizPage ?? defaultQuizPage, pageCount - 1)
-                // Today's quiz and the next one lead; the locked wall of
-                // grey cards read as missing content (audit 2026-10-16, U12).
-                let todayIndex = store.quizzes.firstIndex { !store.completedQuizIDs.contains($0.id) } ?? max(0, store.quizzes.count - 1)
-                let shown = showAllQuizzes
-                    ? Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
-                    : Array(store.quizzes.enumerated()).dropFirst(max(todayIndex - (todayIndex == store.quizzes.count - 1 ? 1 : 0), 0)).prefix(2)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-                    ForEach(Array(shown), id: \.element.id) { index, quiz in
-                        QuizCallingCard(
-                            quiz: quiz,
-                            index: index,
-                            state: quizTileState(for: quiz)
-                        ) {
-                            openedQuiz = quiz
-                        }
-                    }
-                }
-
-                if !showAllQuizzes, store.quizzes.count > 2 {
-                    Button("Show all \(store.quizzes.count)") {
-                        withAnimation(.easeInOut(duration: 0.2)) { showAllQuizzes = true }
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentText)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                }
-
-                // The 1–10 / 11–20 pager sits under the quizzes (Lucas 2026-10-10).
-                if showAllQuizzes, pageCount > 1 {
-                    HStack(spacing: 8) {
-                        ForEach(0..<pageCount, id: \.self) { index in
-                            let first = index * Self.quizPageSize + 1
-                            let last = min((index + 1) * Self.quizPageSize, store.quizzes.count)
-                            Button("\(first)–\(last)") {
-                                withAnimation(.easeInOut(duration: 0.2)) { quizPage = index }
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: page == index))
-                            .accessibilityLabel("Quizzes \(first) to \(last)")
-                            .accessibilityAddTraits(page == index ? .isSelected : [])
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
             }
-            .sheet(item: $openedQuiz) { quiz in
-                QuizSheet(quiz: quiz)
+            EditLayoutButton(page: "Learn") { showLearnLayoutEditor = true }
+                .sheet(isPresented: $showLearnLayoutEditor) {
+                    LayoutEditorSheet(
+                        title: "Learn's layout",
+                        header: "Drag to reorder — the Lessons / Nutrition / Library switch stays on top.",
+                        layout: store.learnCardLayout,
+                        hidden: store.styleProfile.learnHiddenCards,
+                        onHidden: { store.setLearnLayout(hidden: $0) },
+                        onOrder: { store.setLearnLayout(order: $0) })
                     .environment(store)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
                     .presentationCornerRadius(28)
-                    .background(PremiumBackground())
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func learnCard(_ card: LearnCardID) -> some View {
+        switch card {
+        case .quizzes: quizzesSection
+        case .lessons: lessonsSection
+        case .whyMorphe: whyMorpheSection
+        case .rules: rulesSection
+        case .coachNotes: CoachNotesCard()
+        }
+    }
+
+    private var quizzesSection: some View {
+            VStack(spacing: 12) {
+            HStack {
+                Text("Quizzes")
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer()
+                Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                    .accessibilityLabel("\(store.completedQuizIDs.count) of \(store.quizzes.count) quizzes complete")
             }
 
-            // Drop-downs (Lucas 2026-10-10): Lessons and Why Morphe fold
-            // away so the page doesn't run long.
-            LearnDisclosure(title: "Lessons", subtitle: "Two-minute reads on training, recovery, and effort.", isExpanded: $showLessons) {
-                VStack(alignment: .leading, spacing: 12) {
-                    let lessons = orderedLessons
+            Text("One new question a day — answer it right the first time to earn XP.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
 
-                    if !lessons.forYou.isEmpty {
-                        Text("For you")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                            .textCase(.uppercase)
-
-                        ForEach(lessons.forYou) { lesson in
-                            lessonRow(lesson)
-                        }
-
-                        Text("All lessons")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .textCase(.uppercase)
-                            .padding(.top, 4)
+            // Ten at a time (Lucas 2026-10-10): pages of 1–10, 11–20, …
+            // sized to the real quiz count; the page holding today's
+            // quiz opens first.
+            let pageCount = max(1, (store.quizzes.count + Self.quizPageSize - 1) / Self.quizPageSize)
+            let page = min(quizPage ?? defaultQuizPage, pageCount - 1)
+            // Today's quiz and the next one lead; the locked wall of
+            // grey cards read as missing content (audit 2026-10-16, U12).
+            let todayIndex = store.quizzes.firstIndex { !store.completedQuizIDs.contains($0.id) } ?? max(0, store.quizzes.count - 1)
+            let shown = showAllQuizzes
+                ? Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
+                : Array(store.quizzes.enumerated()).dropFirst(max(todayIndex - (todayIndex == store.quizzes.count - 1 ? 1 : 0), 0)).prefix(2)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                ForEach(Array(shown), id: \.element.id) { index, quiz in
+                    QuizCallingCard(
+                        quiz: quiz,
+                        index: index,
+                        state: quizTileState(for: quiz)
+                    ) {
+                        openedQuiz = quiz
                     }
+                }
+            }
 
-                    ForEach(lessons.rest) { lesson in
+            if !showAllQuizzes, store.quizzes.count > 2 {
+                Button("Show all \(store.quizzes.count)") {
+                    withAnimation(.easeInOut(duration: 0.2)) { showAllQuizzes = true }
+                }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+
+            // The 1–10 / 11–20 pager sits under the quizzes (Lucas 2026-10-10).
+            if showAllQuizzes, pageCount > 1 {
+                HStack(spacing: 8) {
+                    ForEach(0..<pageCount, id: \.self) { index in
+                        let first = index * Self.quizPageSize + 1
+                        let last = min((index + 1) * Self.quizPageSize, store.quizzes.count)
+                        Button("\(first)–\(last)") {
+                            withAnimation(.easeInOut(duration: 0.2)) { quizPage = index }
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: page == index))
+                        .accessibilityLabel("Quizzes \(first) to \(last)")
+                        .accessibilityAddTraits(page == index ? .isSelected : [])
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+        }
+        .sheet(item: $openedQuiz) { quiz in
+            QuizSheet(quiz: quiz)
+                .environment(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+                .background(PremiumBackground())
+        }
+    }
+
+    private var lessonsSection: some View {
+            LearnDisclosure(title: "Lessons", subtitle: "Two-minute reads on training, recovery, and effort.", isExpanded: $showLessons) {
+            VStack(alignment: .leading, spacing: 12) {
+                let lessons = orderedLessons
+
+                if !lessons.forYou.isEmpty {
+                    Text("For you")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                        .textCase(.uppercase)
+
+                    ForEach(lessons.forYou) { lesson in
                         lessonRow(lesson)
                     }
+
+                    Text("All lessons")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .textCase(.uppercase)
+                        .padding(.top, 4)
                 }
-            }
 
-            LearnDisclosure(title: "Why Morphe", subtitle: "The four rules the app is built on.", isExpanded: $showWhyMorphe) {
-                ManifestoCard()
-            }
-
-            // Personal Rules lived on the deleted Quick Tools panel; the rules
-            // are learned habits, so they belong with the lessons.
-            if !store.personalRules.isEmpty {
-                PersonalRulesCard(rules: store.personalRules)
+                ForEach(lessons.rest) { lesson in
+                    lessonRow(lesson)
+                }
             }
         }
     }
+
+    private var whyMorpheSection: some View {
+            LearnDisclosure(title: "Why Morphe", subtitle: "The four rules the app is built on.", isExpanded: $showWhyMorphe) {
+            ManifestoCard()
+        }
+    }
+
+    @ViewBuilder
+    private var rulesSection: some View {
+            if !store.personalRules.isEmpty {
+            PersonalRulesCard(rules: store.personalRules)
+        }
+    }
+
 
     private func lessonRow(_ lesson: LessonCard) -> some View {
         DisclosureGroup {

@@ -1153,6 +1153,72 @@ enum HomeCardID: String, CaseIterable, Identifiable {
 
 /// Train's reorderable sections (Lucas 2026-10-05) — everything under
 /// the session hero. Same resolve rule as HomeCardID.
+/// A page section the user can reorder or hide — Discover and Learn
+/// share one editor (Lucas 2026-10-16).
+protocol LayoutCard: Identifiable, Hashable, CaseIterable, RawRepresentable where RawValue == String {
+    var title: String { get }
+    var detail: String { get }
+    static var defaultOrder: [Self] { get }
+}
+
+extension LayoutCard {
+    var id: String { rawValue }
+    /// Saved order first, then anything new appended in default order.
+    static func resolvedOrder(from raw: [String]) -> [Self] {
+        var order = raw.compactMap(Self.init(rawValue:))
+        for card in defaultOrder where !order.contains(card) { order.append(card) }
+        return order
+    }
+}
+
+enum DiscoverCardID: String, LayoutCard {
+    case coaches, newInLibrary, mostDone, families, technique
+
+    var title: String {
+        switch self {
+        case .coaches: return "From Coaches"
+        case .newInLibrary: return "New in the Library"
+        case .mostDone: return "Your Most Done"
+        case .families: return "Build · Condition · Sport · Recover"
+        case .technique: return "Technique Library"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .coaches: return "Workouts published by approved Creator Coaches"
+        case .newInLibrary: return "The newest categories, your level first"
+        case .mostDone: return "Ranked by your own completions"
+        case .families: return "Every category, grouped by what it's for"
+        case .technique: return "Every movement's setup, cue and fault"
+        }
+    }
+    static let defaultOrder: [DiscoverCardID] = [.coaches, .newInLibrary, .mostDone, .families, .technique]
+}
+
+enum LearnCardID: String, LayoutCard {
+    case quizzes, lessons, whyMorphe, rules, coachNotes
+
+    var title: String {
+        switch self {
+        case .quizzes: return "Quizzes"
+        case .lessons: return "Lessons"
+        case .whyMorphe: return "Why Morphe"
+        case .rules: return "Personal rules"
+        case .coachNotes: return "From Coaches"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .quizzes: return "One question a day, XP for a first-try answer"
+        case .lessons: return "Two-minute reads on training, recovery and effort"
+        case .whyMorphe: return "The four rules the app is built on"
+        case .rules: return "Habits Morphe has learned from you"
+        case .coachNotes: return "Notes from approved Creator Coaches"
+        }
+    }
+    static let defaultOrder: [LearnCardID] = [.quizzes, .lessons, .whyMorphe, .rules, .coachNotes]
+}
+
 enum TrainCardID: String, CaseIterable, Identifiable {
     case program
     /// Build Workout (Lucas 2026-10-10): your own build, or one built with
@@ -1532,6 +1598,12 @@ struct UserStyleProfile: Codable, Equatable {
     /// Train's section order and hidden sections (raw TrainCardID values).
     var trainCardOrder: [String] = []
     var trainHiddenCards: [String] = []
+    /// Discover's and Learn's section order / hidden sections (Lucas
+    /// 2026-10-16: an edit option on every page but Network).
+    var discoverCardOrder: [String] = []
+    var discoverHiddenCards: [String] = []
+    var learnCardOrder: [String] = []
+    var learnHiddenCards: [String] = []
     /// How often each Today card gets used (learned half — feeds the
     /// suggest-then-confirm layout proposal, never silent rearranging).
     var homeCardTaps: [String: Int] = [:]
@@ -1563,6 +1635,10 @@ struct UserStyleProfile: Codable, Equatable {
         homeHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .homeHiddenCards)) ?? nil) ?? []
         trainCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .trainCardOrder)) ?? nil) ?? []
         trainHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .trainHiddenCards)) ?? nil) ?? []
+        discoverCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .discoverCardOrder)) ?? nil) ?? []
+        discoverHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .discoverHiddenCards)) ?? nil) ?? []
+        learnCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .learnCardOrder)) ?? nil) ?? []
+        learnHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .learnHiddenCards)) ?? nil) ?? []
         homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
         declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []
         updatedAt = ((try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? nil) ?? .distantPast

@@ -5000,6 +5000,20 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertFalse(store.nutritionTargets.isStarter)
     }
 
+    func testDiscoverAndLearnLayoutsPersistAndResolve() {
+        let store = freshStore()
+        XCTAssertEqual(store.discoverCardLayout, DiscoverCardID.defaultOrder)
+        store.setDiscoverLayout(order: ["technique", "families"], hidden: ["coaches"])
+        XCTAssertEqual(store.discoverCardLayout.prefix(2), [.technique, .families], "saved order leads")
+        XCTAssertEqual(store.discoverCardLayout.count, DiscoverCardID.allCases.count, "the rest append")
+        XCTAssertFalse(store.visibleDiscoverCards.contains(.coaches))
+
+        XCTAssertEqual(store.learnCardLayout.first, .quizzes)
+        store.setLearnLayout(hidden: ["whyMorphe"])
+        XCTAssertFalse(store.visibleLearnCards.contains(.whyMorphe))
+        XCTAssertEqual(LearnCardID.resolvedOrder(from: ["bogus", "lessons"]).first, .lessons, "unknown ids are dropped")
+    }
+
     func testWorkWordsAndDoneUtterance() {
         XCTAssertEqual(WorkUnit.word(forLabels: ["", "", ""]), "sets")
         XCTAssertEqual(WorkUnit.word(forLabels: ["Round 3:00", "Round 3:00"]), "rounds")

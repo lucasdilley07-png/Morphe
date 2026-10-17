@@ -3348,3 +3348,94 @@ struct FinishSequenceOverlay: View {
         onDismiss()
     }
 }
+
+
+/// One layout editor for any page's sections (Lucas 2026-10-16): drag to
+/// reorder, eye to hide. Today and Train keep their own editors; Discover
+/// and Learn use this.
+struct LayoutEditorSheet<Card: LayoutCard>: View {
+    let title: String
+    let header: String
+    let layout: [Card]
+    let hidden: [String]
+    let onHidden: ([String]) -> Void
+    let onOrder: ([String]) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(layout) { card in
+                        let isHidden = hidden.contains(card.rawValue)
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text(card.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Spacer()
+                            Button {
+                                var set = hidden
+                                if isHidden { set.removeAll { $0 == card.rawValue } } else { set.append(card.rawValue) }
+                                onHidden(set)
+                                Haptics.selection()
+                            } label: {
+                                Image(systemName: isHidden ? "eye.slash" : "eye")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(isHidden ? MorpheTheme.textMuted : MorpheTheme.accentText)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(isHidden ? "Show \(card.title)" : "Hide \(card.title)")
+                        }
+                        .listRowBackground(MorpheTheme.inkAlt)
+                    }
+                    .onMove { from, to in
+                        var order = layout
+                        order.move(fromOffsets: from, toOffset: to)
+                        onOrder(order.map(\.rawValue))
+                        Haptics.selection()
+                    }
+                } header: {
+                    Text(header)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(MorpheTheme.ink)
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+            }
+        }
+    }
+}
+
+/// The quiet "Edit X's layout" footer every editable page ends with.
+struct EditLayoutButton: View {
+    let page: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Edit \(page)'s layout", systemImage: "slider.horizontal.3")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Edit \(page)'s layout — reorder or hide sections")
+    }
+}
