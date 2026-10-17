@@ -1677,10 +1677,7 @@ struct FuelLogCard: View {
             .foregroundStyle(prominent ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 58)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                    .fill(prominent ? MorpheTheme.accent : MorpheTheme.panelStrong)
-            )
+            .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous), tint: prominent ? MorpheTheme.accent.opacity(0.92) : nil)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -2997,7 +2994,7 @@ struct HistoryButton: View {
             .foregroundStyle(MorpheTheme.textMuted)
             .padding(.horizontal, 8)
             .frame(minHeight: 28)
-            .background(Capsule().fill(MorpheTheme.panelStrong))
+            .morpheGlass(Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

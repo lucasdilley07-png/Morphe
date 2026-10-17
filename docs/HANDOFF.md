@@ -1166,3 +1166,11 @@ Network is deliberately left alone.
   tagline only), on the intro right after [ TAP TO BEGIN ] (then the live
   `MorpheOrbView` takes over), and on the Hey Morphe stage when it
   arrives in voice mode (then `MorpheVoiceRingHost`).
+- Glass bubble buttons (Lucas 2026-10-17): `MorpheGlass` /
+  `.morpheGlass(shape, tint:)` in MorpheTheme — Liquid Glass
+  (`glassEffect`, interactive) on iOS 26, ultraThinMaterial + hairline on
+  17/18. Primary CTA = accent-tinted glass; Secondary = clear glass; filter
+  chips glass (tinted when selected); Quick Add pills, header buttons,
+  pop-up choices (tinted with their solid fill for legibility over the
+  scrim), the Train door, the Fuel doors and the history button all route
+  through it. `VoiceGlass` on the stage is the same idea, kept private.

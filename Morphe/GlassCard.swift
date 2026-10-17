@@ -2358,14 +2358,9 @@ struct FilterChipStyle: ButtonStyle {
             .foregroundStyle(isSelected ? selectedForeground : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
-            )
+            // Glass chip, tinted when selected (Lucas 2026-10-17).
+            .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous),
+                         tint: isSelected ? selectedColor.opacity(0.92) : nil)
             // Selection was color-only — invisible to VoiceOver and weak for
             // color-blind users. Every chip in the app gets the trait from here.
             .accessibilityAddTraits(isSelected ? .isSelected : [])

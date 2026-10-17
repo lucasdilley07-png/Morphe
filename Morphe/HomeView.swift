@@ -777,10 +777,7 @@ private struct HomeLinkTile: View {
                 if prominent {
                     tileBody
                         .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(MorpheTheme.accent)
-                        )
+                        .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous), tint: MorpheTheme.accent.opacity(0.92))
                 } else {
                     GlassCard(.quiet) { tileBody }
                 }
@@ -1531,13 +1528,12 @@ struct SolidChoiceButtonStyle: ButtonStyle {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(configuration.isPressed ? MorpheTheme.panelInteractive : fill)
-            )
+            // Glass bubble over the scrim (Lucas 2026-10-17), tinted with
+            // the solid fill so the words never see through.
+            .morpheGlass(Capsule(style: .continuous), tint: fill.opacity(configuration.isPressed ? 0.5 : 0.75))
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+                    .stroke(Color.clear, lineWidth: 0)
             )
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }

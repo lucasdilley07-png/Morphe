@@ -911,19 +911,9 @@ private struct HeaderCircleButton: View {
                 .font(.system(.subheadline).weight(.semibold))
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .frame(width: 44, height: 44)
-                // Solid fill: the button floats OVER scrolling content, so
-                // its face must be opaque — never text showing through.
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                        .fill(MorpheTheme.ink)
-                )
-                .overlay(
-                    // Same radius as the fill (audit 13, P2): a 16pt stroke
-                    // over an 8pt fill left the hairline floating off the
-                    // corners on every header button.
-                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                )
+                // Glass bubble (Lucas 2026-10-17): the header buttons float
+                // over scrolling content as frosted glass.
+                .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
@@ -4403,7 +4393,7 @@ private struct QuickAddPillStyle: ButtonStyle {
             .padding(.horizontal, filled ? 12 : 10)
             .frame(minHeight: 34)
             .foregroundStyle(filled ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textSecondary)
-            .background(Capsule().fill(filled ? MorpheTheme.accent : MorpheTheme.panelStrong))
+            .morpheGlass(Capsule(), tint: filled ? MorpheTheme.accent.opacity(0.92) : nil)
             .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }

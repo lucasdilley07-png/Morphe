@@ -941,6 +941,37 @@ struct PremiumBackground: View {
     }
 }
 
+/// The glass bubble (Lucas 2026-10-17): every button in the app wears
+/// Liquid Glass on iOS 26 — tinted for a primary, clear for a secondary —
+/// and a material with a hairline on iOS 17/18.
+struct MorpheGlass<S: InsettableShape>: ViewModifier {
+    let shape: S
+    var tint: Color? = nil
+    /// Interactive glass lifts and brightens on touch (iOS 26).
+    var interactive: Bool = true
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            let base: Glass = tint.map { Glass.regular.tint($0) } ?? Glass.regular
+            content.glassEffect(interactive ? base.interactive() : base, in: shape)
+        } else {
+            content.background(
+                shape.fill(.ultraThinMaterial)
+                    .overlay(shape.fill(tint ?? .clear))
+                    .overlay(shape.strokeBorder(MorpheTheme.stroke, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.10), radius: 3, y: 2)
+                    .shadow(color: .black.opacity(0.08), radius: 14, y: 8)
+            )
+        }
+    }
+}
+
+extension View {
+    func morpheGlass<S: InsettableShape>(_ shape: S, tint: Color? = nil, interactive: Bool = true) -> some View {
+        modifier(MorpheGlass(shape: shape, tint: tint, interactive: interactive))
+    }
+}
+
 struct PrimaryCTAButtonStyle: ButtonStyle {
     var accent: Color = MorpheTheme.accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -960,10 +991,8 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(accent.opacity(configuration.isPressed ? 0.78 : 1))
-            )
+            // Tinted glass bubble (Lucas 2026-10-17).
+            .morpheGlass(Capsule(style: .continuous), tint: accent.opacity(configuration.isPressed ? 0.7 : 0.92))
             // The finger expects give (feedback audit 2026-10-16, F1):
             // Apple's own buttons and both social apps scale on press.
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
@@ -985,14 +1014,8 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(configuration.isPressed ? MorpheTheme.panelStrong : Color.clear)
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(MorpheTheme.stroke, lineWidth: 1)
-            )
+            // Clear glass bubble (Lucas 2026-10-17).
+            .morpheGlass(Capsule(style: .continuous))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }
