@@ -1105,3 +1105,18 @@ Network is deliberately left alone.
   close-chat sequence and the 4 s "Voice active…" beat even when the voice
   engine is off (the stage otherwise unmounts the instant chat closes);
   with the engine off, "Chat inactive" is spoken by `PopupNarrator`.
+- Explore is a media grid (Lucas 2026-10-17): `ExploreGrid` — the search
+  and chips, then a three-column 4:5 grid of `ExploreItem`s
+  (`store.exploreItems`: photo posts as images, text posts and coach blogs
+  as threads; reels are a kind with no source yet). Empty state until the
+  community publishes. A tile opens `ExploreViewer` (fullScreenCover,
+  tab bar hidden): posts page vertically (rotated page TabView — up = next,
+  down = previous), a pull past the first refreshes the feed, back
+  chevron top-left, dots menu (report/block) top-right, `EngagementStack`
+  lower-right (like · replies · share · save on real posts; share on
+  blogs), caption bottom-left; carousels page sideways with dots; a right
+  swipe returns (from a carousel only on its first image). Threads show
+  the body, the replies and a reply field. The old sectioned `CreatorFeed`
+  stays in the file, unmounted. Library order is Saved → Exercise Library.
+- Library (Lucas 2026-10-17): the Skill Drill Spotlight and Stretching +
+  Mobility cards are gone; the page is Saved, then the Exercise Library.

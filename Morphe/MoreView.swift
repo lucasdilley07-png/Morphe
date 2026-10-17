@@ -160,36 +160,6 @@ struct MoreView: View {
                     .presentationCornerRadius(28)
             }
 
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Skill Drill Spotlight")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-
-                    ForEach(featuredDrills) { drill in
-                        LibraryDrillRow(drill: drill)
-                    }
-                }
-            }
-
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Stretching + Mobility")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-
-                    ForEach(mobilityLibrary, id: \.self) { item in
-                        HStack(spacing: 10) {
-                            Image(systemName: "figure.flexibility")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.accentText)
-                            Text(item)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Spacer()
-                        }
-                    }
-                }
-            }
         }
     }
 

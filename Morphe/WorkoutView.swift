@@ -2144,7 +2144,7 @@ struct DiscoverScreenView: View {
                         })
 
                     Text(store.selectedDiscoverSection == .feed
-                         ? "What the Creator Coaches published — under their names, every post reportable."
+                         ? "Reels, photos and threads from the community — tap one to open it."
                          : (store.discoverWorkouts.isEmpty
                              ? "A new workout library is on the way."
                              : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."))
@@ -2154,7 +2154,7 @@ struct DiscoverScreenView: View {
                         .frame(maxWidth: .infinity)
 
                     if store.selectedDiscoverSection == .feed {
-                        CreatorFeed()
+                        ExploreGrid()
                     } else {
                         DiscoverCatalogSection(
                             onStart: { template in

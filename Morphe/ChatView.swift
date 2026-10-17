@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import AVKit
 import Speech
 
 struct CommunityView: View {
@@ -5316,5 +5317,414 @@ struct RecordingEdgeGlowModifier: ViewModifier {
 extension View {
     func recordingEdgeGlow(_ recorder: VoiceMemoRecorder) -> some View {
         modifier(RecordingEdgeGlowModifier(recorder: recorder))
+    }
+}
+
+
+// MARK: - Explore grid + viewer (Lucas 2026-10-17)
+
+/// One tile in Explore: a reel, a set of images, or a thread (a post or a
+/// coach's blog with its replies).
+struct ExploreItem: Identifiable, Hashable {
+    enum Kind: Hashable {
+        case reel(URL)
+        case images([String])   // base64 JPEGs
+        case thread
+    }
+    let id: String
+    let kind: Kind
+    let title: String
+    let body: String
+    let authorName: String
+    let date: Date
+    /// The real feed post behind the tile (likes, saves, comments); nil
+    /// for a coach's blog note.
+    let post: FeedPost?
+    let note: CreatorNote?
+
+    var isCarousel: Bool { if case .images(let a) = kind { return a.count > 1 }; return false }
+}
+
+extension MorpheAppStore {
+    /// Explore's stream: photo posts as media, text posts and coach blogs
+    /// as threads, newest first. Empty until the community publishes.
+    var exploreItems: [ExploreItem] {
+        var items: [ExploreItem] = []
+        for post in feedPosts where !post.authorPrivate || followedUids.contains(post.authorUid) || post.authorUid == authUser?.id {
+            let kind: ExploreItem.Kind = post.hasImage ? .images([post.imageB64]) : .thread
+            items.append(ExploreItem(id: "p-" + post.id, kind: kind, title: post.workoutName, body: post.text,
+                                     authorName: post.authorName, date: post.createdAt, post: post, note: nil))
+        }
+        for note in creatorNotes {
+            items.append(ExploreItem(id: "n-" + note.id, kind: .thread, title: note.title, body: note.body,
+                                     authorName: note.authorName, date: note.createdAt, post: nil, note: note))
+        }
+        return items.sorted { $0.date > $1.date }
+    }
+}
+
+/// The three-column grid (4:5 tiles) under Explore's search and chips.
+struct ExploreGrid: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var opened: ExploreItem?
+
+    private var filtered: [ExploreItem] {
+        let q = store.exploreQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let chip = ExploreFilter(rawValue: store.exploreFilter) ?? .all
+        return store.exploreItems.filter { item in
+            let kindOK: Bool
+            switch chip {
+            case .all: kindOK = true
+            case .blogs: kindOK = item.kind == .thread
+            case .workouts: kindOK = item.post?.hasSessionStats == true || !(item.post?.workoutName.isEmpty ?? true)
+            case .challenges: kindOK = false
+            }
+            guard kindOK else { return false }
+            guard !q.isEmpty else { return true }
+            return [item.title, item.body, item.authorName].joined(separator: " ").lowercased().contains(q)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ExploreSearchBar()
+            if filtered.isEmpty {
+                GlassCard(.quiet) {
+                    Text(store.authUser == nil
+                         ? "Sign in to see what the community is sharing."
+                         : (store.exploreItems.isEmpty
+                            ? "Nothing here yet. Photos, reels and threads from the community land here."
+                            : "Nothing matches that search."))
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
+                    ForEach(filtered) { item in
+                        Button { opened = item } label: {
+                            ExploreTile(item: item)
+                                .aspectRatio(4 / 5, contentMode: .fit)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(item.authorName): \(item.title.isEmpty ? item.body : item.title)")
+                    }
+                }
+                .padding(.horizontal, -20)
+            }
+        }
+        .fullScreenCover(item: $opened) { item in
+            ExploreViewer(items: filtered, startAt: item) { opened = nil }
+                .environment(store)
+        }
+    }
+}
+
+/// A grid tile: the photo, or a type-set thread card.
+struct ExploreTile: View {
+    let item: ExploreItem
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            switch item.kind {
+            case .images(let b64s):
+                if let first = b64s.first, let data = Data(base64Encoded: first), let ui = UIImage(data: data) {
+                    Color.clear.overlay(Image(uiImage: ui).resizable().scaledToFill()).clipped()
+                } else {
+                    MorpheTheme.panelStrong
+                }
+            case .reel:
+                MorpheTheme.ink
+                Image(systemName: "play.fill").font(.title2).foregroundStyle(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .thread:
+                MorpheTheme.panelStrong
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.title.isEmpty ? item.body : item.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .lineLimit(5)
+                    Spacer(minLength: 0)
+                    Text(item.authorName)
+                        .font(MorpheTheme.microLabel(9))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .lineLimit(1)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            if item.isCarousel {
+                Image(systemName: "square.on.square")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .shadow(radius: 2)
+                    .padding(6)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+/// Full-screen: the posts page vertically (up = next, down = previous, a
+/// pull past the first refreshes); back top-left, dots top-right, the
+/// engagement stack lower-right; a right swipe returns (on a carousel,
+/// only from its first image). The tab bar is hidden by the cover.
+struct ExploreViewer: View {
+    @Environment(MorpheAppStore.self) private var store
+    let items: [ExploreItem]
+    let startAt: ExploreItem
+    let onClose: () -> Void
+    @State private var current: String = ""
+    @State private var carouselIndex: [String: Int] = [:]
+    @State private var refreshing = false
+    @State private var showReport = false
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            TabView(selection: $current) {
+                ForEach(items) { item in
+                    ExplorePostPage(item: item, carouselIndex: binding(for: item.id))
+                        .tag(item.id)
+                        .rotationEffect(.degrees(90))
+                        .frame(width: UIScreen.main.bounds.height, height: UIScreen.main.bounds.width)
+                }
+            }
+            .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+            .rotationEffect(.degrees(-90))
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
+            .sensoryFeedback(.selection, trigger: current)
+
+            // Chrome
+            VStack {
+                HStack {
+                    Button(action: onClose) {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(.black.opacity(0.35)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back to Explore")
+                    Spacer()
+                    Menu {
+                        if let post = currentItem?.post {
+                            Button("Report", systemImage: "flag") { showReport = true }
+                            if post.authorUid != store.authUser?.id {
+                                Button("Block \(post.authorName)", systemImage: "hand.raised", role: .destructive) {
+                                    store.blockAccount(uid: post.authorUid, name: post.authorName)
+                                    onClose()
+                                }
+                            }
+                        } else if currentItem?.note != nil {
+                            Button("Report", systemImage: "flag") { showReport = true }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(.black.opacity(0.35)))
+                    }
+                    .accessibilityLabel("Post options")
+                }
+                .padding(.horizontal, 12)
+                Spacer()
+                HStack(alignment: .bottom) {
+                    if let item = currentItem {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.authorName)
+                                .font(.subheadline.weight(.bold))
+                            if item.kind != .thread {
+                                Text(item.body)
+                                    .font(.subheadline)
+                                    .lineLimit(3)
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .shadow(radius: 4)
+                        .padding(.leading, 16)
+                        .padding(.trailing, 72)
+                    }
+                    Spacer()
+                }
+                .padding(.bottom, 28)
+            }
+            .allowsHitTesting(true)
+
+            if let item = currentItem {
+                EngagementStack(item: item)
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 110)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
+
+            if refreshing {
+                SwiftUI.ProgressView().tint(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 60)
+            }
+        }
+        .onAppear { current = startAt.id }
+        .preferredColorScheme(.dark)
+        .statusBarHidden(true)
+        // Right swipe returns — from a carousel only on its first image.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    let dx = value.translation.width, dy = value.translation.height
+                    guard dx > 80, dx > abs(dy) * 1.5 else { return }
+                    if let item = currentItem, item.isCarousel, (carouselIndex[item.id] ?? 0) > 0 { return }
+                    onClose()
+                }
+        )
+        // A pull down past the first post refreshes the feed.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    guard value.translation.height > 120, current == items.first?.id, !refreshing else { return }
+                    refreshing = true
+                    Task { await store.refreshFeed(force: true); await store.refreshCreatorContent(force: true); refreshing = false }
+                }
+        )
+        .confirmationDialog("Report this?", isPresented: $showReport, titleVisibility: .visible) {
+            ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                Button(reason) {
+                    if let post = currentItem?.post { store.reportPost(post, reason: reason) }
+                    else if let note = currentItem?.note {
+                        store.reportCreatorContent(kind: "creatorNote", id: note.id, authorUid: note.authorUid, excerpt: note.title + " — " + note.body, reason: reason)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("A person reviews every report.") }
+    }
+
+    private var currentItem: ExploreItem? { items.first { $0.id == current } ?? startAt }
+    private func binding(for id: String) -> Binding<Int> {
+        Binding(get: { carouselIndex[id] ?? 0 }, set: { carouselIndex[id] = $0 })
+    }
+}
+
+/// One post, full screen: the reel, the carousel, or the thread.
+struct ExplorePostPage: View {
+    @Environment(MorpheAppStore.self) private var store
+    let item: ExploreItem
+    @Binding var carouselIndex: Int
+    @State private var reply = ""
+
+    var body: some View {
+        switch item.kind {
+        case .reel(let url):
+            ReelPlayer(url: url)
+        case .images(let b64s):
+            TabView(selection: $carouselIndex) {
+                ForEach(Array(b64s.enumerated()), id: \.offset) { index, b64 in
+                    Group {
+                        if let data = Data(base64Encoded: b64), let ui = UIImage(data: data) {
+                            Image(uiImage: ui).resizable().scaledToFit()
+                        } else {
+                            Color.gray
+                        }
+                    }
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: b64s.count > 1 ? .automatic : .never))
+        case .thread:
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Spacer(minLength: 64)
+                    if !item.title.isEmpty {
+                        Text(item.title).font(.title2.weight(.bold)).foregroundStyle(.white)
+                    }
+                    Text(item.body).font(.body).foregroundStyle(.white.opacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(item.authorName) · \(item.date.formatted(.relative(presentation: .named)))")
+                        .font(.caption).foregroundStyle(.white.opacity(0.6))
+                    if let post = item.post {
+                        Divider().overlay(.white.opacity(0.2))
+                        let comments = store.postComments[post.id] ?? []
+                        Text(comments.isEmpty ? "No replies yet." : "\(comments.count) replies")
+                            .font(MorpheTheme.microLabel(10)).tracking(1.2).foregroundStyle(.white.opacity(0.6))
+                        ForEach(comments) { c in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(c.authorName).font(.caption.weight(.semibold)).foregroundStyle(.white)
+                                Text(c.text).font(.subheadline).foregroundStyle(.white.opacity(0.9))
+                            }
+                        }
+                        HStack(spacing: 8) {
+                            TextField("Reply…", text: $reply)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(.white)
+                                .submitLabel(.send)
+                                .onSubmit {
+                                    let t = reply; reply = ""
+                                    Task { _ = await store.addComment(to: post, text: t) }
+                                }
+                        }
+                        .padding(.horizontal, 14).frame(minHeight: 44)
+                        .background(Capsule().fill(.white.opacity(0.12)))
+                        .task { await store.loadComments(for: post) }
+                    }
+                    Spacer(minLength: 160)
+                }
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+}
+
+/// Like · reply · share · save, stacked lower-right.
+struct EngagementStack: View {
+    @Environment(MorpheAppStore.self) private var store
+    let item: ExploreItem
+
+    var body: some View {
+        VStack(spacing: 18) {
+            if let post = item.post {
+                button(store.myReactedPostIds.contains(post.id) ? "heart.fill" : "heart",
+                       label: "\(store.feedReactionCounts[post.id] ?? 0)",
+                       tint: store.myReactedPostIds.contains(post.id) ? .red : .white) { store.toggleReaction(post); Haptics.impact(.light) }
+                button("bubble.right", label: "\((store.postComments[post.id] ?? []).count)", tint: .white) {}
+                ShareLink(item: item.body) { glyph("square.and.arrow.up", label: "Share", tint: .white) }
+                button(store.savedPostIds.contains(post.id) ? "bookmark.fill" : "bookmark", label: "Save", tint: .white) { store.toggleSaved(post); Haptics.impact(.light) }
+            } else {
+                ShareLink(item: item.title + "\n" + item.body) { glyph("square.and.arrow.up", label: "Share", tint: .white) }
+            }
+        }
+    }
+
+    private func button(_ symbol: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) { glyph(symbol, label: label, tint: tint) }.buttonStyle(.plain)
+    }
+    private func glyph(_ symbol: String, label: String, tint: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol).font(.title2.weight(.semibold)).foregroundStyle(tint).shadow(radius: 3)
+            Text(label).font(.caption2.weight(.semibold)).foregroundStyle(.white).shadow(radius: 2)
+        }
+        .frame(width: 48)
+        .contentShape(Rectangle())
+    }
+}
+
+/// A looping reel.
+struct ReelPlayer: View {
+    let url: URL
+    @State private var player: AVPlayer?
+    var body: some View {
+        Group {
+            if let player { VideoPlayer(player: player).ignoresSafeArea() } else { Color.black }
+        }
+        .onAppear {
+            let p = AVPlayer(url: url); p.isMuted = false; p.play()
+            NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: p.currentItem, queue: .main) { _ in p.seek(to: .zero); p.play() }
+            player = p
+        }
+        .onDisappear { player?.pause(); player = nil }
     }
 }

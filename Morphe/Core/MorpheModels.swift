@@ -1295,7 +1295,8 @@ enum LibraryCardID: String, LayoutCard {
     case exercises, saved
     var title: String { self == .exercises ? "Exercise Library" : "Saved" }
     var detail: String { self == .exercises ? "Every movement by muscle group" : "Posts, workouts, exercises, plans, lessons" }
-    static let defaultOrder: [LibraryCardID] = [.exercises, .saved]
+    /// Saved first, the Exercise Library under it (Lucas 2026-10-17).
+    static let defaultOrder: [LibraryCardID] = [.saved, .exercises]
 }
 
 /// Explore's sections (Discover → Explore, Lucas 2026-10-16): the stream
