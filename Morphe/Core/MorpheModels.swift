@@ -1967,6 +1967,10 @@ struct NutritionTargets: Equatable {
     var proteinGrams: Int
     var waterCups: Int
     var sourceNote: String
+    /// True until a bodyweight is logged — the numbers are generic
+    /// starters, and every surface that shows them says so (evening audit
+    /// 2026-10-16, #4: "0 of 2,200" sat next to "log your weight for targets").
+    var isStarter = false
 }
 
 /// Lucas's whiteboard nutrition chart (2026-10-09, the photo lives at
@@ -4112,6 +4116,12 @@ enum WorkUnit: String {
         let name = exerciseName.lowercased()
         let cat = category.lowercased()
         guard isTimed else { return .set }
+        // Warm-ups, mobility and stretches are timed holds whatever the
+        // workout's category (evening audit 2026-10-16, #5: "Arm Swings &
+        // Circles" opened as "Round 1").
+        if ["arm swing", "arm circle", "leg swing", "hip circle", "stretch", "mobility", "warm-up", "warm up",
+            "foam roll", "cat-cow", "cat cow", "reset", "breathing", "shoulder circle", "ankle circle", "inchworm",
+            "world's greatest", "flow"].contains(where: name.contains) { return .hold }
         // Machines first: "Bike: Sprint" is an interval, not a run.
         if ["bike", "spin", "cycl", "row", "erg", "ski", "elliptical", "cross-trainer", "stair"].contains(where: name.contains)
             && !["dumbbell row", "barbell row", "cable row", "bent-over", "bent over", "inverted"].contains(where: name.contains) { return .interval }

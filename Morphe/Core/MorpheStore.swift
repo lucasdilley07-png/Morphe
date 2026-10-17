@@ -5939,7 +5939,8 @@ final class MorpheAppStore {
         guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) else {
             return NutritionTargets(
                 calories: 2200, proteinGrams: 160, waterCups: 8,
-                sourceNote: "Starter targets — log your weight in Profile to personalize"
+                sourceNote: "Starter targets — log your weight in Profile to personalize",
+                isStarter: true
             )
         }
         // The chart (NutritionGoalMode) owns the multipliers; the targets

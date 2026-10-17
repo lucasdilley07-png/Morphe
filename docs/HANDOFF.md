@@ -750,3 +750,8 @@ performance" was getting "Dumbbell Lean-Out Circuit":
   `sportMentioned(in:)` + `rankedPlanCandidates` for that sport at the
   athlete's level → `setCurrentWorkout` + "say start my workout". The
   technique matcher no longer answers with a form cue.
+- Then (4, 5, 7): nutrition targets carry `isStarter` and every surface
+  labels the generic 2,200 / 160 g as a starter until a weight is logged;
+  warm-up / mobility / stretch names infer the hold unit whatever the
+  workout's category; the review's "Readiness check-ins" bullet names the
+  evening check-in that exists.

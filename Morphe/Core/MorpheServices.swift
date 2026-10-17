@@ -4367,12 +4367,12 @@ enum MorpheDemoContent {
     static let goalTranslations: [GoalTranslation] = [
         GoalTranslation(goal: "Lose weight", weeklyActions: ["3 workouts per week", "7,000 steps per day", "Protein goal", "2 nutrition logs per day", "Weekly weigh-in", "1 recovery day"]),
         GoalTranslation(goal: "Gain muscle", weeklyActions: ["4 strength sessions", "Progressive overload on main lifts", "Daily protein goal", "2 mobility blocks", "Weekly progress check-in"]),
-        GoalTranslation(goal: "Improve sport performance", weeklyActions: ["2 sport-specific sessions", "1 strength session", "1 mobility session", "Readiness check-ins"]),
+        GoalTranslation(goal: "Improve sport performance", weeklyActions: ["2 sport-specific sessions", "1 strength session", "1 mobility session", "An evening check-in on training days"]),
         GoalTranslation(goal: "Build consistency", weeklyActions: ["3 short training sessions", "2 recovery check-ins", "1 simple nutrition habit", "Minimum Win backup plan"]),
         GoalTranslation(goal: "Improve conditioning", weeklyActions: ["2 conditioning sessions", "1 strength session", "1 recovery block", "Weekly effort review"]),
         GoalTranslation(goal: "Get stronger", weeklyActions: ["3 strength sessions", "Track one main lift", "Protein goal", "1 recovery day"]),
         GoalTranslation(goal: "Return after injury", weeklyActions: ["Pain-free movement check-in", "2 guided low-intensity sessions", "Mobility every training day", "Review pain trends before big intensity jumps"]),
-        GoalTranslation(goal: "Prepare for event/competition", weeklyActions: ["Event-specific training", "Readiness check-ins", "Taper planning", "Recovery priority"])
+        GoalTranslation(goal: "Prepare for event/competition", weeklyActions: ["Event-specific training", "An evening check-in on training days", "Taper planning", "Recovery priority"])
     ]
 
     static let roadmap: [RoadmapPhase] = [

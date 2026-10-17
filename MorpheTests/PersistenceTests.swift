@@ -4986,6 +4986,20 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertNil(MorpheAppStore.sportMentioned(in: "start my workout"))
     }
 
+    func testWarmUpsAreHoldsNotRounds() {
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Arm Swings & Circles", category: "Kettlebell & Dumbbell", isTimed: true, seconds: 30), .hold)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Hip Flexor Stretch", category: "Running & Cardio", isTimed: true, seconds: 45), .hold)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Kettlebell Swing", category: "Kettlebell & Dumbbell", isTimed: true, seconds: 60), .round, "a loaded swing is still round work")
+    }
+
+    func testStarterNutritionTargetsSaySo() {
+        let store = freshStore()
+        store.clientProfile.bodyWeight = ""
+        XCTAssertTrue(store.nutritionTargets.isStarter)
+        store.updateBodyMetrics(height: "", weight: "170 lb")
+        XCTAssertFalse(store.nutritionTargets.isStarter)
+    }
+
     func testWorkWordsAndDoneUtterance() {
         XCTAssertEqual(WorkUnit.word(forLabels: ["", "", ""]), "sets")
         XCTAssertEqual(WorkUnit.word(forLabels: ["Round 3:00", "Round 3:00"]), "rounds")

@@ -1534,15 +1534,15 @@ struct FuelLogCard: View {
                 // The day against the plan: calories and protein from the
                 // targets, carbs and fat from the chart's split.
                 VStack(spacing: 12) {
-                    FuelMeter(label: "Calories", value: day.caloriesConsumed, target: targets.calories, unit: "")
-                    FuelMeter(label: "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
+                    FuelMeter(label: targets.isStarter ? "Calories · starter target" : "Calories", value: day.caloriesConsumed, target: targets.calories, unit: "")
+                    FuelMeter(label: targets.isStarter ? "Protein · starter target" : "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
                     if let plan {
                         HStack(spacing: 12) {
                             FuelMeter(label: "Carbs", value: store.carbsConsumedToday, target: plan.carbGrams, unit: "g")
                             FuelMeter(label: "Fat", value: store.fatConsumedToday, target: plan.fatGrams, unit: "g")
                         }
                     } else {
-                        Text("Carbs \(store.carbsConsumedToday)g · Fat \(store.fatConsumedToday)g — log your weight in Profile for targets.")
+                        Text("Carbs \(store.carbsConsumedToday)g · Fat \(store.fatConsumedToday)g. The calorie and protein numbers are generic starters — log your weight in Profile and Morphe sets yours.")
                             .font(.caption)
                             .monospacedDigit()
                             .foregroundStyle(MorpheTheme.textMuted)

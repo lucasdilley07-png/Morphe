@@ -2575,7 +2575,7 @@ private struct TodayGlanceRow: View {
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text("of \(targets.calories.formatted()) cal")
+            Text(targets.isStarter ? "of \(targets.calories.formatted()) starter" : "of \(targets.calories.formatted()) cal")
                 .font(.caption2)
                 .foregroundStyle(MorpheTheme.textMuted)
             ProgressBarView(progress: Self.fraction(day.caloriesConsumed, targets.calories), color: MorpheTheme.accent)
