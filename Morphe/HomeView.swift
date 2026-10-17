@@ -94,6 +94,8 @@ struct HomeView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                // The gutter the streak sticker parks in.
+                .padding(.horizontal, store.dailyStreakDays >= 1 ? 56 : 0)
                 .accessibilityElement(children: .combine)
                 // The voice arrives, it doesn't just print (Jarvis wave) —
                 // and the prompt cross-fades when the day's state changes.
@@ -2963,9 +2965,11 @@ private struct StreakSticker: View {
 
     var body: some View {
         GeometryReader { geo in
-            // Right of the centered greeting, clear of the @handle kicker.
+            // Top-right, level with the greeting; the greeting block keeps
+            // a 56pt gutter on both sides so a long @handle never runs
+            // under it (user audit 2026-10-16 PM).
             let home = CGPoint(x: geo.size.width - size.width / 2 - 10,
-                               y: MorpheTheme.Spacing.pageTopToday + 10 + size.height / 2)
+                               y: MorpheTheme.Spacing.pageTopToday + size.height / 2 - 2)
             let point = position ?? home
             magnet
                 .scaleEffect(lifted && !reduceMotion ? 1.12 : 1)
