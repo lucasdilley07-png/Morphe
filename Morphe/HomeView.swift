@@ -53,12 +53,18 @@ struct HomeView: View {
                         .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .multilineTextAlignment(.center)
+                    // Morphe introduces the athlete to themselves (Lucas
+                    // 2026-10-16): readiness, score, energy, level — the
+                    // numbers roll up on arrival — then the question.
+                    TodayIdentityStrip(appeared: greetingAppeared)
+                        .padding(.top, 6)
                     Text(store.homePrompt)
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .contentTransition(.opacity)
                         .glimmer()
+                        .padding(.top, 4)
                     // The visible learning loop (phase 4): one line of what
                     // Morphe actually derived — absent until the honesty
                     // gates have real data.
@@ -249,13 +255,8 @@ struct HomeView: View {
                 // app was opened — its own number, not the training streak.
                 // Below the plan card so Start is the first thing on the
                 // page (Apple-UI audit 2026-10-16, #5).
-                if store.dailyStreakDays >= 1 {
-                    DailyStreakRow(
-                        days: store.dailyStreakDays,
-                        best: store.dailyStreakBest,
-                        freezeAvailable: store.dailyStreakFreezeAvailable,
-                        freezeJustUsed: store.dailyStreakFreezeJustUsed)
-                }
+                // The streak lives on the fridge-magnet sticker now (Lucas
+                // 2026-10-16) — see StreakSticker, overlaid on the page.
 
                 // The day-7 bridge: five derived checkmarks that walk a new
                 // user from first session to habit. Gone after week one.
@@ -409,6 +410,16 @@ struct HomeView: View {
             await store.refreshAppointments()
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
+        // The streak sticker (Lucas 2026-10-16): a fridge magnet the user
+        // can hold and drag anywhere on the page; opens the week's read.
+        // It floats over the scroll view, not in it, and parks in the
+        // top-right quarter on every launch — right of the centered
+        // greeting, under the icon row, over nothing.
+        .overlay(alignment: .topLeading) {
+            if store.dailyStreakDays >= 1 {
+                StreakSticker()
+            }
+        }
         .onAppear { store.recordAppOpen() }
         .sheet(isPresented: $showGoalsEditor) {
             TodayGoalsSheet()
@@ -2801,6 +2812,312 @@ struct ShareCardPreviewSheet: View {
                 if completed { onFinish(true); dismiss() }
             }
             .presentationDetents([.medium, .large])
+        }
+    }
+}
+
+
+/// The athlete's own numbers under the greeting (Lucas 2026-10-16): a
+/// MORPHE ONLINE kicker, then READINESS · SCORE · ENERGY · LEVEL as four
+/// mono tiles that count up from zero when the page arrives, staggered.
+/// Every number is derived — no check-in today means a dash, with the
+/// tile opening the check-in. HUD language: ink, mono, hairlines; the
+/// drama is the roll-up and the glow, not confetti.
+private struct TodayIdentityStrip: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let appeared: Bool
+    @State private var shown: [Int] = [0, 0, 0, 0]
+    @State private var rolled = false
+    @State private var glow = false
+    @State private var showCheckIn = false
+
+    private var checkIn: MorpheAppStore.DailyRecoveryEntry? { store.todayRecoveryEntry }
+    private var level: Int { store.currentLevelNumber }
+    private var rank: String { MorpheRank.rank(forLevel: level).title }
+    private var targets: [Int] {
+        [checkIn?.score ?? 0, store.clientProfile.health.score, checkIn.map { $0.energy * 10 } ?? 0, level]
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(MorpheTheme.accent)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: MorpheTheme.accent.opacity(glow ? 0.9 : 0.2), radius: glow ? 6 : 1)
+                Text("MORPHE ONLINE")
+                    .font(MorpheTheme.microLabel(10)).tracking(2.2)
+                    .foregroundStyle(MorpheTheme.accentText)
+                if !store.profileShowcase.username.isEmpty {
+                    Text("·  @\(store.profileShowcase.username)")
+                        .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            HStack(spacing: 8) {
+                tile("READINESS", value: checkIn == nil ? "—" : "\(shown[0])", unit: checkIn == nil ? "check in" : "/ 100",
+                     tint: checkIn.map { $0.score >= 80 ? MorpheTheme.accent : ($0.score >= 60 ? MorpheTheme.accentAlt : MorpheTheme.warning) } ?? MorpheTheme.textMuted,
+                     index: 0) { showCheckIn = true }
+                tile("SCORE", value: "\(shown[1])", unit: store.clientProfile.health.tier.rawValue.lowercased(), tint: MorpheTheme.accent, index: 1) { store.openProgress() }
+                tile("ENERGY", value: checkIn == nil ? "—" : "\(shown[2] / 10)", unit: checkIn == nil ? "check in" : "/ 10",
+                     tint: checkIn == nil ? MorpheTheme.textMuted : MorpheTheme.accentAlt, index: 2) { showCheckIn = true }
+                tile("LEVEL", value: "\(shown[3])", unit: rank.lowercased(), tint: MorpheTheme.accent, index: 3) { store.showClientProfile = true }
+            }
+        }
+        .onChange(of: appeared, initial: true) { _, now in
+            guard now, !rolled else { return }
+            rolled = true
+            roll()
+        }
+        .onChange(of: targets) { _, now in
+            // Live updates (a check-in, a logged session) settle in place.
+            if rolled { withAnimation(.snappy) { shown = now } }
+        }
+        .accessibilityElement(children: .contain)
+        .sheet(isPresented: $showCheckIn) {
+            RecoveryCheckInSheet(recovery: store.recovery)
+                .environment(store)
+                .presentationDetents([.medium, .large])
+                .presentationCornerRadius(28)
+        }
+    }
+
+    private func roll() {
+        let final = targets
+        guard !reduceMotion else { shown = final; return }
+        withAnimation(.easeInOut(duration: 0.6)) { glow = true }
+        Task { @MainActor in
+            for i in 0..<4 {
+                try? await Task.sleep(for: .milliseconds(90))
+                let steps = 12
+                for s in 1...steps {
+                    shown[i] = Int(Double(final[i]) * Double(s) / Double(steps))
+                    try? await Task.sleep(for: .milliseconds(28))
+                }
+                shown[i] = final[i]
+                Haptics.impact(.light)
+            }
+            try? await Task.sleep(for: .milliseconds(400))
+            withAnimation(.easeOut(duration: 0.8)) { glow = false }
+        }
+    }
+
+    private func tile(_ label: String, value: String, unit: String, tint: Color, index: Int, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Text(label)
+                    .font(MorpheTheme.microLabel(9)).tracking(1.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(value)
+                    .font(.system(size: 26, weight: .black, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(unit)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity, minHeight: 72)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panel)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(tint.opacity(glow ? 0.7 : 0.25), lineWidth: 1)
+            )
+            .shadow(color: tint.opacity(glow ? 0.35 : 0), radius: 10)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 8)
+            .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(Double(index) * 0.09), value: appeared)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label.capitalized) \(value) \(unit)")
+    }
+}
+
+
+// MARK: - Streak sticker (Lucas 2026-10-16)
+
+/// A small fridge magnet: calendar, flame, the days-in-a-row number. Hold
+/// and drag it anywhere on Today; it keeps its spot for the session and
+/// parks top-right on the next launch. Tap opens the week's read.
+private struct StreakSticker: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var position: CGPoint? = nil
+    @State private var dragStart: CGPoint? = nil
+    @State private var lifted = false
+    @State private var showSheet = false
+    private let size = CGSize(width: 64, height: 34)
+
+    var body: some View {
+        GeometryReader { geo in
+            // Right of the centered greeting, clear of the @handle kicker.
+            let home = CGPoint(x: geo.size.width - size.width / 2 - 10,
+                               y: MorpheTheme.Spacing.pageTopToday + 10 + size.height / 2)
+            let point = position ?? home
+            magnet
+                .scaleEffect(lifted && !reduceMotion ? 1.12 : 1)
+                .rotationEffect(.degrees(lifted && !reduceMotion ? -4 : 0))
+                .shadow(color: .black.opacity(lifted ? 0.3 : 0.16), radius: lifted ? 12 : 5, y: lifted ? 8 : 3)
+                .position(point)
+                .animation(.spring(response: 0.28, dampingFraction: 0.65), value: lifted)
+                .gesture(
+                    DragGesture(minimumDistance: 6)
+                        .onChanged { value in
+                            if dragStart == nil { dragStart = point; lifted = true; Haptics.impact(.light) }
+                            let origin = dragStart ?? point
+                            let x = min(max(origin.x + value.translation.width, size.width / 2 + 8), geo.size.width - size.width / 2 - 8)
+                            let y = min(max(origin.y + value.translation.height, size.height / 2 + 8), geo.size.height - size.height / 2 - 8)
+                            position = CGPoint(x: x, y: y)
+                        }
+                        .onEnded { _ in
+                            dragStart = nil; lifted = false
+                            Haptics.impact(.medium)
+                        }
+                )
+                .onTapGesture { showSheet = true; Haptics.selection() }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Streak sticker, \(store.dailyStreakDays) day\(store.dailyStreakDays == 1 ? "" : "s") in a row. Opens the week's read.")
+                .accessibilityAddTraits(.isButton)
+        }
+        .allowsHitTesting(true)
+        .sheet(isPresented: $showSheet) {
+            StreakStickerSheet()
+                .environment(store)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+        }
+    }
+
+    private var magnet: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "calendar")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Image(systemName: "flame.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(MorpheTheme.warning)
+                .symbolEffect(.bounce, value: store.dailyStreakDays)
+            Text("\(store.dailyStreakDays)")
+                .font(.system(size: 15, weight: .black, design: .rounded).monospacedDigit())
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .contentTransition(.numericText())
+        }
+        .padding(.horizontal, 8)
+        .frame(width: size.width, height: size.height)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(MorpheTheme.isLight ? Color.white : MorpheTheme.inkAlt)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(MorpheTheme.accent.opacity(0.55), lineWidth: 1.5)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+/// The week behind the number — good and bad on one card, every line
+/// from the log: sessions hit vs the target, days shown up, short days,
+/// missed training days, the best streak.
+private struct StreakStickerSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    private var done: Int { store.currentAthleteWorkoutSummary.workoutsThisWeek }
+    private var target: Int { max(store.clientProfile.trainingDaysPerWeek, 1) }
+    private var weekLogs: [WorkoutLog] {
+        let start = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        return store.currentAthleteWorkoutLogs.filter { $0.completedAt >= start }
+    }
+    private var shortDays: Int {
+        weekLogs.filter { log in
+            let planned = store.workoutTemplates.first { $0.id == log.workoutTemplateID }?.exercises.count ?? log.exercises.count
+            return log.exercises.count < planned
+        }.count
+    }
+    private var missedSoFar: Int {
+        // Training days already behind us this week with nothing logged.
+        // Nothing counts as missed before the first-ever session — a
+        // Thursday install is not three missed days.
+        guard !store.currentAthleteWorkoutLogs.isEmpty else { return 0 }
+        let weekday = Calendar.current.component(.weekday, from: .now)
+        let daysElapsed = max((weekday + 5) % 7, 0)   // Monday = 0
+        let expectedByNow = min(target, Int((Double(target) * Double(daysElapsed) / 7.0).rounded(.up)))
+        return max(expectedByNow - done, 0)
+    }
+    private var prsThisWeek: Int {
+        let start = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        return store.recentPersonalRecords(limit: 20).filter { $0.date >= start }.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "flame.fill")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.warning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(store.dailyStreakDays) day\(store.dailyStreakDays == 1 ? "" : "s") in a row")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(store.dailyStreakBest > store.dailyStreakDays
+                         ? "Days you opened Morphe · best \(store.dailyStreakBest)"
+                         : "Days you opened Morphe · your best")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Spacer()
+                Text("\(done)/\(target)")
+                    .font(.system(.title2, design: .monospaced).weight(.black))
+                    .foregroundStyle(done >= target ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                    .accessibilityLabel("\(done) of \(target) sessions this week")
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                // A zero is not a win (honest numbers): neutral until the
+                // first session of the week lands.
+                row(done > 0 ? .good : .neutral, "\(done) of \(target) session\(target == 1 ? "" : "s") logged this week")
+                if prsThisWeek > 0 { row(.good, "\(prsThisWeek) new record\(prsThisWeek == 1 ? "" : "s") this week") }
+                if store.dailyStreakDays >= 3 { row(.good, "Showed up \(store.dailyStreakDays) days straight") }
+                if missedSoFar > 0 { row(.bad, "\(missedSoFar) training day\(missedSoFar == 1 ? "" : "s") missed so far") }
+                if shortDays > 0 { row(.bad, "\(shortDays) short day\(shortDays == 1 ? "" : "s") — finished early") }
+                if done == 0 && missedSoFar == 0 { row(.neutral, "Nothing logged yet this week — the first session starts the count") }
+                if store.dailyStreakFreezeJustUsed { row(.neutral, "Yesterday was forgiven — the streak held") }
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panel))
+
+            Text("Every line comes from your log. Drag the sticker anywhere on Today.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+            Spacer(minLength: 0)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(PremiumBackground())
+    }
+
+    private enum Tone { case good, bad, neutral }
+    private func row(_ tone: Tone, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: tone == .good ? "checkmark.circle.fill" : (tone == .bad ? "xmark.circle.fill" : "minus.circle"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tone == .good ? MorpheTheme.accentText : (tone == .bad ? MorpheTheme.warning : MorpheTheme.textMuted))
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

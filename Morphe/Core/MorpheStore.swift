@@ -14920,6 +14920,13 @@ final class MorpheAppStore {
     }
 
     /// Time-aware personal greeting — the first line of Today.
+    /// Today's recovery check-in, if one was done (readiness 0–100 and the
+    /// 1–10 energy the user typed). Nil until they check in — the Today
+    /// strip shows a dash, never a guess.
+    var todayRecoveryEntry: DailyRecoveryEntry? {
+        recoverySeries.last { Calendar.current.isDateInToday($0.date) }
+    }
+
     var homeGreeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {

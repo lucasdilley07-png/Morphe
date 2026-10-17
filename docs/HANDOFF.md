@@ -798,3 +798,21 @@ Network is deliberately left alone.
   tighter "front view, same angle as the reference" line in the edit
   prompt. Frames bundled as `barbell-back-squat-{1,2,3}.heic`; the folder
   reference picks new HEICs up automatically.
+
+## Settings tabs, Today identity strip, streak sticker (2026-10-16)
+
+- **Profile settings**: Profile / Training / Privacy & data / Support are
+  drop-down tabs (`settingsGroup`), Profile open by default, one at a
+  time, all open while searching; closed tabs list their contents.
+- **Today identity strip** (`TodayIdentityStrip`): under the greeting, a
+  MORPHE ONLINE · @handle kicker and four mono tiles — READINESS /100,
+  SCORE (tier), ENERGY /10, LEVEL (rank) — that count up from zero on
+  arrival with a staggered glow and a light tap per tile; no check-in →
+  "—  check in" (tile opens the check-in). `store.todayRecoveryEntry`.
+- **Streak sticker** (`StreakSticker`, replaces the DAYS SHOWN UP row): a
+  74×40 magnet (calendar · flame · days) overlaid on Today, parked
+  top-right under the icon row each launch, hold-and-drag anywhere
+  (lifts, tilts, drops with a medium tap), tap → `StreakStickerSheet`:
+  days in a row + best, sessions done/target, and the week's good and bad
+  lines from the log (PRs, days shown up, missed training days so far,
+  short days, a forgiven day).

@@ -40,6 +40,10 @@ struct ProfileView: View {
     @State private var importPlan: MorpheAppStore.ImportPlan?
     @State private var importReading = false
     @State private var showPaywall = false
+    /// Which settings group is unfolded (Lucas 2026-10-16): Profile,
+    /// Training, Privacy & data, Support are drop-down tabs; one open at a
+    /// time, all open while searching.
+    @State private var openGroup: String? = "Profile"
     @State private var showingCode = false
 
 
@@ -1493,18 +1497,59 @@ struct ProfileView: View {
         }
     }
 
-    /// A thin label between groups of sections. Hidden while searching —
+    /// A drop-down tab for a group of sections (Lucas 2026-10-16). Closed
+    /// groups show their one-line contents; searching opens every group so
     /// the matches speak for themselves.
     @ViewBuilder
-    private func settingsGroupLabel(_ title: String) -> some View {
-        if settingsQuery.trimmingCharacters(in: .whitespaces).isEmpty {
-            Text(title.uppercased())
-                .font(MorpheTheme.microLabel(10))
-                .tracking(1.6)
-                .foregroundStyle(MorpheTheme.textMuted)
-                .padding(.top, 8)
+    private func settingsGroup<Content: View>(_ title: String, _ contents: String,
+                                              @ViewBuilder content: () -> Content) -> some View {
+        let searching = !settingsQuery.trimmingCharacters(in: .whitespaces).isEmpty
+        let open = searching || openGroup == title
+        VStack(alignment: .leading, spacing: 16) {
+            if !searching {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        openGroup = open ? nil : title
+                        openSection = nil
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(title.uppercased())
+                                .font(MorpheTheme.microLabel(11))
+                                .tracking(1.6)
+                                .foregroundStyle(open ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                            if !open {
+                                Text(contents)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: open ? "minus" : "plus")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                    }
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, 2)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title) settings")
+                .accessibilityValue(open ? "Open" : "Closed")
+                .accessibilityHint(open ? "Collapses the group" : "Opens the group")
+                .sensoryFeedback(.selection, trigger: openGroup)
+                if !open {
+                    Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
+                }
+            }
+            if open {
+                content()
+            }
         }
     }
+
 
     @ViewBuilder
     private func styleChip(title: String, detail: String, selected: Bool,
@@ -1606,683 +1651,688 @@ struct ProfileView: View {
                     .padding(.vertical, 8)
             }
 
-            settingsGroupLabel("Profile")
+            settingsGroup("Profile", "Account, make it yours, your app, what Morphe learned") {
 
-            // Your account leads the Profile group (Lucas 2026-10-10).
-            settingsSection("Your account", keywords: "account connections workouts referrals invite share joined details age weight goal diet equipment weakness milestones targets") {
-                // Your account at a glance (Lucas 2026-10-10): the numbers,
-                // not the editors — name, @username, photo, bio and
-                // verification live on the identity page (tap the box above).
-                let joined = store.authUser?.createdAt
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    accountStat("Connections", "\(store.connectedUids.count)", "people you're connected with")
-                    accountStat("Workouts", "\(store.currentAthleteWorkoutSummary.totalLogs)", "sessions logged")
-                    accountStat("Referrals", "\(store.referralCount)", "joined through you")
-                    accountStat("Joined", joined.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) } ?? "—", "member since")
-                }
-                // Referral loop, recruiter side: the server-backed count of
-                // athletes who joined through this user's invite. The empty
-                // state names its unlock, per the house rule.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Referrals")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(store.referralCount > 0
-                            ? "\(store.referralCount) athlete\(store.referralCount == 1 ? "" : "s") joined through you."
-                            : "Nobody has joined through you yet — share your invite to change that.")
-                            .font(.subheadline)
-                            .foregroundStyle(store.referralCount > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                        ShareLink(item: store.networkInviteMessage) {
-                            Text("Share Invite")
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .frame(width: 118)
+                // Your account leads the Profile group (Lucas 2026-10-10).
+                settingsSection("Your account", keywords: "account connections workouts referrals invite share joined details age weight goal diet equipment weakness milestones targets") {
+                    // Your account at a glance (Lucas 2026-10-10): the numbers,
+                    // not the editors — name, @username, photo, bio and
+                    // verification live on the identity page (tap the box above).
+                    let joined = store.authUser?.createdAt
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        accountStat("Connections", "\(store.connectedUids.count)", "people you're connected with")
+                        accountStat("Workouts", "\(store.currentAthleteWorkoutSummary.totalLogs)", "sessions logged")
+                        accountStat("Referrals", "\(store.referralCount)", "joined through you")
+                        accountStat("Joined", joined.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) } ?? "—", "member since")
                     }
-                    Text(store.referralCount >= 1
-                        ? "Recruiter accent unlocked."
-                        : "The first join unlocks the Recruiter accent.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                // Your Details + Your Milestones, one box (Lucas 2026-10-10).
-                detailsCard
-            }
-
-            // Identity customization (personalization phase 2): pick
-            // Morphe's persona and the app's sound voice. Writes go through
-            // setStyleChoice so recomputes never clobber them.
-            settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Sound voice")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(SoundPack.allCases) { pack in
-                            soundPackChoice(pack)
-                        }
-                    }
-                    Text("Same cues, different voice — the PR sound still means a PR.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    Text("Morphe's voice")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(MorpheVoiceOption.all) { option in
-                            styleChip(
-                                title: option.title, detail: option.detail,
-                                selected: MorpheVoiceOption.spec(for: store.styleProfile.voiceStyle).id == option.id,
-                                accessibility: "\(option.title) voice — \(option.detail)"
-                            ) {
-                                store.setStyleChoice(voiceStyle: option.id)
-                                Haptics.selection()
-                            }
-                        }
-                    }
-                    Text("The accent Morphe answers in — applies from the next spoken reply.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    Text("Communication style")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(MorpheCommunicationStyle.all) { style in
-                            styleChip(
-                                title: style.title, detail: style.detail,
-                                selected: MorpheCommunicationStyle.spec(for: store.styleProfile.communicationStyle).id == style.id,
-                                accessibility: "\(style.title) style — \(style.detail)"
-                            ) {
-                                store.setStyleChoice(communicationStyle: style.id)
-                                Haptics.selection()
-                            }
-                        }
-                    }
-                    Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Hey Morphe lives here now (Lucas 2026-10-10): the
-                    // voice is part of making it yours, not a training setting.
-                    preferenceToggleRow(
-                        title: "\u{201C}Hey Morphe\u{201D}",
-                        caption: "Hands-free: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud \u{2014} in the app and in the background while Morphe is running (iOS shows the microphone indicator the whole time). Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery.",
-                        glimmer: true,
-                        isOn: Binding(
-                            get: { store.heyMorpheEnabled },
-                            set: { store.setHeyMorphe(enabled: $0) }
-                        )
-                    )
-                    if store.heyMorpheEnabled {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
-                        preferenceToggleRow(
-                            title: "Listen through headphones",
-                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone when nothing else is playing. While music or other audio plays, it listens through the phone instead, so your music keeps its full quality.",
-                            isOn: Binding(
-                                get: { store.heyMorpheHeadsetMic },
-                                set: { store.setHeyMorpheHeadsetMic($0) }
-                            )
-                        )
-                    }
-                }
-            }
-
-            // The learning loop, visible (personalization spine 2026-09):
-            // Morphe says exactly what it has derived from real logs — and
-            // says "still learning" instead of inventing patterns.
-            // Your app (the accent picker) sits under Make it yours (Lucas 2026-10-10).
-            settingsSection("Your app", keywords: "theme accent color") {
-                // Accent color — picked once in onboarding, now editable
-                // anytime. Gold is the brand default; the others personalize
-                // the whole app's accent pair.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Accent")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    // Wrapped: nine 44pt targets don't fit one row on a
-                    // 393pt device — crushed dots overlapped their rings.
-                    WrapStack(spacing: 8) {
-                        ForEach(AccentPalette.allCases.filter { $0 != .custom }) { palette in
-                            accentDot(for: palette)
-                        }
-                    }
-                    // Locks were mute until tapped (UX test 2026-09-30):
-                    // a first-timer saw five padlocks with no path.
-                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank. Burgundy is for recruiters; Champion comes with your first finished challenge.")
-                        .font(.caption2)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-
-            }
-
-            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt memory remembers forget") {
-                MorpheRemembersSettings()
-                Divider().overlay(MorpheTheme.strokeSubtle)
-                if store.styleProfile.hasLearnedAnything {
+                    // Referral loop, recruiter side: the server-backed count of
+                    // athletes who joined through this user's invite. The empty
+                    // state names its unlock, per the house rule.
                     VStack(alignment: .leading, spacing: 8) {
-                        if let intensity = store.styleProfile.preferredIntensity {
-                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D}")
+                        Text("Referrals")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        HStack(alignment: .center, spacing: 12) {
+                            Text(store.referralCount > 0
+                                ? "\(store.referralCount) athlete\(store.referralCount == 1 ? "" : "s") joined through you."
+                                : "Nobody has joined through you yet — share your invite to change that.")
+                                .font(.subheadline)
+                                .foregroundStyle(store.referralCount > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            ShareLink(item: store.networkInviteMessage) {
+                                Text("Share Invite")
+                            }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 118)
                         }
-                        if let rating = store.styleProfile.averageRating {
-                            learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
-                        }
-                        if !store.styleProfile.favoriteExercises.isEmpty {
-                            learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
-                        }
-                        if let hour = store.styleProfile.preferredTrainingHour {
-                            learnedRow("clock.fill", "You usually train around \(MorpheAppStore.formattedHour(hour))")
-                        }
-                        if let cadence = store.styleProfile.weeklyCadence, cadence > 0 {
-                            learnedRow("calendar", "About \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week lately")
-                        }
-                        Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
+                        Text(store.referralCount >= 1
+                            ? "Recruiter accent unlocked."
+                            : "The first join unlocks the Recruiter accent.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
-                            .padding(.top, 2)
                     }
-                } else {
-                    Text("Still learning you. Log a few sessions and answer the post-workout debriefs — patterns show up here as they become real.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    // Your Details + Your Milestones, one box (Lucas 2026-10-10).
+                    detailsCard
                 }
-            }
 
-            settingsGroupLabel("Training")
-
-            settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
-                // Weekly target — drives the consistency denominator on
-                // Progress; was user-set in onboarding then locked forever.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Training days per week")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    WrapStack(spacing: 8) {
-                        ForEach(1...7, id: \.self) { count in
-                            Button("\(count)") {
-                                store.updateTrainingDaysPerWeek(count)
+                // Identity customization (personalization phase 2): pick
+                // Morphe's persona and the app's sound voice. Writes go through
+                // setStyleChoice so recomputes never clobber them.
+                settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Sound voice")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 10) {
+                            ForEach(SoundPack.allCases) { pack in
+                                soundPackChoice(pack)
                             }
-                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
-                            .accessibilityLabel("\(count) days per week")
                         }
-                    }
-                }
-
-                // WHICH days (rest-day model): pick them and Today shows
-                // an honest rest card on off days + the daily reminder
-                // skips them. None picked = every day is a training day.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Training days")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    HStack(spacing: 6) {
-                        ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
-                            Button(label) {
-                                if store.trainingDays.contains(weekday) {
-                                    store.trainingDays.remove(weekday)
-                                } else {
-                                    store.trainingDays.insert(weekday)
-                                }
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
-                            .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
-                        }
-                    }
-                    Text(store.trainingDays.isEmpty
-                        ? "No days picked — every day shows your workout."
-                        : "Off days show a rest card and skip the reminder.")
-                        .font(.caption2)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                // Injuries are safety data — collected in onboarding and
-                // previously never editable again.
-                if isEditingInjuries {
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
-                            .textFieldStyle(MorpheFieldStyle())
-                            .lineLimit(2...4)
-                        HStack(spacing: 12) {
-                            Button("Save") {
-                                store.updateInjuryNote(injuriesDraft)
-                                isEditingInjuries = false
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accentText)
-                            .accessibilityLabel("Save injury note")
-                            Button("Cancel") {
-                                isEditingInjuries = false
-                            }
-                            .buttonStyle(.plain)
+                        Text("Same cues, different voice — the PR sound still means a PR.")
+                            .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
-                            .accessibilityLabel("Cancel injury note edit")
-                        }
-                    }
-                } else {
-                    settingsRow(
-                        "Injuries & limits",
-                        value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
-                    ) {
-                        injuriesDraft = store.clientProfile.limitations
-                        isEditingInjuries = true
-                    }
-                }
 
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                // Live-session preferences for BOTH roles (audit 6, P1-4):
-                // coaches train in the same console, so the rest timer and
-                // effort scale can't be athlete-only.
-                preferenceToggleRow(
-                    title: "Auto rest timer",
-                    caption: "Starts the rest countdown each time you log a set, using the exercise's own rest length.",
-                    isOn: $store.autoRestTimerEnabled
-                )
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                preferenceToggleRow(
-                    title: "Effort scale: RIR",
-                    caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
-                    isOn: $store.effortScaleRIR
-                )
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                HStack {
-                    Text("Weight unit")
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Picker("Weight unit", selection: $store.weightUnit) {
-                        ForEach(WeightUnit.allCases) { unit in
-                            Text(unit.label).tag(unit)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 110)
-                }
-
-            }
-
-            settingsSection("Connections", keywords: Self.connectionsKeywords) {
-                ConnectionsSettings()
-            }
-
-            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio online free improve feedback") {
-                    OnlineAISettings()
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-                    IntelligenceKeyEditor()
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-                    NeuralVoiceKeyEditor()
-            }
-
-            settingsSection("Notifications", keywords: "reminders nudge streak recap board updates") {
-                    // The audit found five reminder kinds and no off switch.
-                    // One master toggle — off cancels everything pending.
-                    preferenceToggleRow(
-                        title: "Reminders",
-                        caption: "Scheduled workouts at 5pm, appointments an hour before and at the start, a heads-up the evening a streak is about to end, the weekly recap, a Spartan saying each Wednesday morning, and board updates. Off silences all of them.",
-                        isOn: $store.remindersEnabled
-                    )
-
-            }
-
-            settingsGroupLabel("Privacy, data and support")
-
-            settingsSection("Who can see you", keywords: Self.whoCanSeeYouKeywords) {
-                    // Private / public (Lucas 2026-10-10). Nothing is deleted
-                    // or recomputed — logs, boards, ranks and placings stay;
-                    // the switch only changes who can see them.
-                    preferenceToggleRow(
-                        // Fixed title so VoiceOver reads "Private account,
-                        // on/off" — a state-flipping title read backwards.
-                        title: "Private account",
-                        caption: store.isPrivateAccount
-                            ? "On. In Morphe, your posts show only to your connections, and only connections can start a chat with you. On boards and challenges you keep your place and score as \u{201C}Private athlete\u{201D} \u{2014} your name isn't sent. Quick Add and search leave you out. Comments you leave on public posts stay visible."
-                            : "Off. Members can find you in Quick Add and search, see your posts and see your name on boards. Turn it on any time \u{2014} your data and placings stay exactly as they are.",
-                        isOn: Binding(
-                            get: { store.isPrivateAccount },
-                            set: { store.setPrivateAccount($0) }
-                        )
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // The board publishes your real name — and scores post on
-                    // every log in EITHER role, so the off-switch renders for
-                    // both (audit 5, P1-4: a coach could never leave).
-                    // Boards are groups with codes now (2026-10-10): join and
-                    // leave them in Network → Board; nothing posts anywhere
-                    // without a code you entered.
-                    Text("Boards: your logged sets post only to boards you joined with a code (Network → Board). Leave a board there to stop.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-
-                // Athlete-only network identity, dark with the feed. The
-                // block carries its own LEADING divider so an empty block
-                // can't leave doubles behind (audit 6, P2-5/P2-6).
-                if FeatureFlags.socialFeedEnabled {
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    preferenceToggleRow(
-                        title: "Auto-share workouts",
-                        caption: "Posts a real recap to the feed when you log a session. Each session shows a toggle to keep it private.",
-                        isOn: $store.autoShareWorkoutsEnabled
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Network identity: what rides YOUR posts. Subtractive
-                    // only — off shares less, never invents more.
-                    preferenceToggleRow(
-                        title: "Streak in byline",
-                        caption: "New posts carry \"\(store.clientProfile.sportMode.rawValue) · N-day streak\" under your name. Off keeps just the sport.",
-                        isOn: $store.postStreakByline
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    preferenceToggleRow(
-                        title: "Accent on posts",
-                        caption: "Your accent color tints your name and story bubble for others. Off posts in the default Spartan blue.",
-                        isOn: $store.postAccentIdentity
-                    )
-                }
-
-
-                    // Blocked accounts — only renders when there's someone
-                    // to manage; blocking happens from posts/comments.
-                    if !store.blockedAccounts.isEmpty {
                         Divider().overlay(MorpheTheme.strokeSubtle)
 
+                        Text("Morphe's voice")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 10) {
+                            ForEach(MorpheVoiceOption.all) { option in
+                                styleChip(
+                                    title: option.title, detail: option.detail,
+                                    selected: MorpheVoiceOption.spec(for: store.styleProfile.voiceStyle).id == option.id,
+                                    accessibility: "\(option.title) voice — \(option.detail)"
+                                ) {
+                                    store.setStyleChoice(voiceStyle: option.id)
+                                    Haptics.selection()
+                                }
+                            }
+                        }
+                        Text("The accent Morphe answers in — applies from the next spoken reply.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        Text("Communication style")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 10) {
+                            ForEach(MorpheCommunicationStyle.all) { style in
+                                styleChip(
+                                    title: style.title, detail: style.detail,
+                                    selected: MorpheCommunicationStyle.spec(for: store.styleProfile.communicationStyle).id == style.id,
+                                    accessibility: "\(style.title) style — \(style.detail)"
+                                ) {
+                                    store.setStyleChoice(communicationStyle: style.id)
+                                    Haptics.selection()
+                                }
+                            }
+                        }
+                        Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        // Hey Morphe lives here now (Lucas 2026-10-10): the
+                        // voice is part of making it yours, not a training setting.
+                        preferenceToggleRow(
+                            title: "\u{201C}Hey Morphe\u{201D}",
+                            caption: "Hands-free: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud \u{2014} in the app and in the background while Morphe is running (iOS shows the microphone indicator the whole time). Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery.",
+                            glimmer: true,
+                            isOn: Binding(
+                                get: { store.heyMorpheEnabled },
+                                set: { store.setHeyMorphe(enabled: $0) }
+                            )
+                        )
+                        if store.heyMorpheEnabled {
+                            Divider().overlay(MorpheTheme.strokeSubtle)
+                            preferenceToggleRow(
+                                title: "Listen through headphones",
+                                caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone when nothing else is playing. While music or other audio plays, it listens through the phone instead, so your music keeps its full quality.",
+                                isOn: Binding(
+                                    get: { store.heyMorpheHeadsetMic },
+                                    set: { store.setHeyMorpheHeadsetMic($0) }
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // The learning loop, visible (personalization spine 2026-09):
+                // Morphe says exactly what it has derived from real logs — and
+                // says "still learning" instead of inventing patterns.
+                // Your app (the accent picker) sits under Make it yours (Lucas 2026-10-10).
+                settingsSection("Your app", keywords: "theme accent color") {
+                    // Accent color — picked once in onboarding, now editable
+                    // anytime. Gold is the brand default; the others personalize
+                    // the whole app's accent pair.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Accent")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        // Wrapped: nine 44pt targets don't fit one row on a
+                        // 393pt device — crushed dots overlapped their rings.
+                        WrapStack(spacing: 8) {
+                            ForEach(AccentPalette.allCases.filter { $0 != .custom }) { palette in
+                                accentDot(for: palette)
+                            }
+                        }
+                        // Locks were mute until tapped (UX test 2026-09-30):
+                        // a first-timer saw five padlocks with no path.
+                        Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank. Burgundy is for recruiters; Champion comes with your first finished challenge.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                }
+
+                settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt memory remembers forget") {
+                    MorpheRemembersSettings()
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+                    if store.styleProfile.hasLearnedAnything {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Blocked accounts")
-                                .font(.caption.weight(.semibold))
+                            if let intensity = store.styleProfile.preferredIntensity {
+                                learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D}")
+                            }
+                            if let rating = store.styleProfile.averageRating {
+                                learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
+                            }
+                            if !store.styleProfile.favoriteExercises.isEmpty {
+                                learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
+                            }
+                            if let hour = store.styleProfile.preferredTrainingHour {
+                                learnedRow("clock.fill", "You usually train around \(MorpheAppStore.formattedHour(hour))")
+                            }
+                            if let cadence = store.styleProfile.weeklyCadence, cadence > 0 {
+                                learnedRow("calendar", "About \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week lately")
+                            }
+                            Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
+                                .font(.caption)
                                 .foregroundStyle(MorpheTheme.textMuted)
-                            ForEach(store.blockedAccounts.sorted(by: { $0.value < $1.value }), id: \.key) { uid, name in
-                                HStack(spacing: 10) {
-                                    Text(name)
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                        .lineLimit(1)
-                                    Spacer(minLength: 0)
-                                    Button("Unblock") {
-                                        store.unblockAccount(uid: uid)
+                                .padding(.top, 2)
+                        }
+                    } else {
+                        Text("Still learning you. Log a few sessions and answer the post-workout debriefs — patterns show up here as they become real.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+            }
+
+            settingsGroup("Training", "How you train, connections, Morphe Intelligence, notifications") {
+
+                settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
+                    // Weekly target — drives the consistency denominator on
+                    // Progress; was user-set in onboarding then locked forever.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days per week")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        WrapStack(spacing: 8) {
+                            ForEach(1...7, id: \.self) { count in
+                                Button("\(count)") {
+                                    store.updateTrainingDaysPerWeek(count)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(count) days per week")
+                            }
+                        }
+                    }
+
+                    // WHICH days (rest-day model): pick them and Today shows
+                    // an honest rest card on off days + the daily reminder
+                    // skips them. None picked = every day is a training day.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        HStack(spacing: 6) {
+                            ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
+                                Button(label) {
+                                    if store.trainingDays.contains(weekday) {
+                                        store.trainingDays.remove(weekday)
+                                    } else {
+                                        store.trainingDays.insert(weekday)
                                     }
-                                    .buttonStyle(FilterChipStyle(isSelected: false))
-                                    .accessibilityLabel("Unblock \(name)")
                                 }
+                                .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
                             }
                         }
+                        Text(store.trainingDays.isEmpty
+                            ? "No days picked — every day shows your workout."
+                            : "Off days show a rest card and skip the reminder.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
                     }
 
-            }
-
-
-            settingsSection("Health", keywords: "apple health activity rings sleep sync workouts prefill check-in") {
-                    // Enabling walks through the system Health prompt; the
-                    // store refuses the flip when access isn't granted.
-                    preferenceToggleRow(
-                        title: "Sync to Health",
-                        caption: "Saves each logged workout to Apple Health so it counts toward your Activity rings.",
-                        isOn: Binding(
-                            get: { store.healthSyncEnabled },
-                            set: { newValue in Task { await store.setHealthSync(enabled: newValue) } }
-                        )
-                    )
-
-                    // Athlete-only; moved here from "Who can see you"
-                    // (audit 15, P1: it's a Health feature and the search
-                    // has to find it under "sleep"/"health").
-                    // Read-only and honest about its limits: Apple never
-                    // reveals whether a sleep READ was granted, so this just
-                    // pre-fills when data comes back and stays quiet when not.
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    preferenceToggleRow(
-                        title: "Sleep from Health",
-                        caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
-                        isOn: Binding(
-                            get: { store.healthSleepEnabled },
-                            set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
-                        )
-                    )
-            }
-
-            // Light and dark follow the iPhone's own setting (Lucas
-            // 2026-10-06) — no appearance switch here.
-            settingsSection("Your data", keywords: "export json download backup cloud morphe pro subscription plans") {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Your data")
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("One JSON file: every logged workout, set by set, plus your weight history.")
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                        }
-                        Spacer(minLength: 0)
-                        Button("Export Data") {
-                            if let url = store.exportDataFile() {
-                                exportFile = ExportFile(url: url)
-                            } else {
-                                store.showToast("Couldn't build the export — try again.")
-                            }
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .frame(width: 120)
-                        .accessibilityLabel("Export your data as JSON")
-                    }
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Bring your history")
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("Import the workout CSV that Hevy or Strong exports. You see what will be added before anything is saved.")
-                                .font(.caption)
+                    // Injuries are safety data — collected in onboarding and
+                    // previously never editable again.
+                    if isEditingInjuries {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .lineLimit(2...4)
+                            HStack(spacing: 12) {
+                                Button("Save") {
+                                    store.updateInjuryNote(injuriesDraft)
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .accessibilityLabel("Save injury note")
+                                Button("Cancel") {
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.textMuted)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        Spacer(minLength: 0)
-                        Button(importReading ? "Reading…" : "Import") { showImportPicker = true }
-                            .disabled(importReading)
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                            .frame(width: 120)
-                            .accessibilityLabel("Import workout history from a CSV file")
-                    }
-                    .fileImporter(isPresented: $showImportPicker,
-                                  allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
-                        guard case .success(let url) = result else { return }
-                        importReading = true
-                        // Read and parse off the main thread — a long
-                        // history is tens of thousands of rows (audit 32).
-                        Task {
-                            let parsed = await Task.detached(priority: .userInitiated) { () -> WorkoutImport.Parsed? in
-                                let scoped = url.startAccessingSecurityScopedResource()
-                                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                                guard let data = try? Data(contentsOf: url), data.count <= 20_000_000,
-                                      let text = String(data: data, encoding: .utf8)
-                                        ?? String(data: data, encoding: .isoLatin1) else { return nil }
-                                return WorkoutImport.parse(text)
-                            }.value
-                            importReading = false
-                            guard let parsed else {
-                                store.showToast("That file doesn't read as a Hevy or Strong workout export.")
-                                return
+                                .accessibilityLabel("Cancel injury note edit")
                             }
-                            importPlan = store.planImport(parsed)
+                        }
+                    } else {
+                        settingsRow(
+                            "Injuries & limits",
+                            value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
+                        ) {
+                            injuriesDraft = store.clientProfile.limitations
+                            isEditingInjuries = true
                         }
                     }
-                    .sheet(item: $importPlan) { plan in
-                        ImportReviewSheet(plan: plan)
-                            .environment(store)
-                            .presentationDetents([.medium, .large])
-                            .presentationCornerRadius(28)
+
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    // Live-session preferences for BOTH roles (audit 6, P1-4):
+                    // coaches train in the same console, so the rest timer and
+                    // effort scale can't be athlete-only.
+                    preferenceToggleRow(
+                        title: "Auto rest timer",
+                        caption: "Starts the rest countdown each time you log a set, using the exercise's own rest length.",
+                        isOn: $store.autoRestTimerEnabled
+                    )
+
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    preferenceToggleRow(
+                        title: "Effort scale: RIR",
+                        caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
+                        isOn: $store.effortScaleRIR
+                    )
+
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    HStack {
+                        Text("Weight unit")
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Spacer()
+                        Picker("Weight unit", selection: $store.weightUnit) {
+                            ForEach(WeightUnit.allCases) { unit in
+                                Text(unit.label).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 110)
                     }
 
+                }
 
-                    // Backup health — failures used to be invisible (the
-                    // upload was fire-and-forget). Only rendered when a real
-                    // signed-in backup target exists.
-                    if store.cloudBackupActive {
+                settingsSection("Connections", keywords: Self.connectionsKeywords) {
+                    ConnectionsSettings()
+                }
+
+                settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio online free improve feedback") {
+                        OnlineAISettings()
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                        IntelligenceKeyEditor()
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                        NeuralVoiceKeyEditor()
+                }
+
+                settingsSection("Notifications", keywords: "reminders nudge streak recap board updates") {
+                        // The audit found five reminder kinds and no off switch.
+                        // One master toggle — off cancels everything pending.
+                        preferenceToggleRow(
+                            title: "Reminders",
+                            caption: "Scheduled workouts at 5pm, appointments an hour before and at the start, a heads-up the evening a streak is about to end, the weekly recap, a Spartan saying each Wednesday morning, and board updates. Off silences all of them.",
+                            isOn: $store.remindersEnabled
+                        )
+
+                }
+            }
+
+            settingsGroup("Privacy & data", "Who can see you, Health, your data") {
+
+                settingsSection("Who can see you", keywords: Self.whoCanSeeYouKeywords) {
+                        // Private / public (Lucas 2026-10-10). Nothing is deleted
+                        // or recomputed — logs, boards, ranks and placings stay;
+                        // the switch only changes who can see them.
+                        preferenceToggleRow(
+                            // Fixed title so VoiceOver reads "Private account,
+                            // on/off" — a state-flipping title read backwards.
+                            title: "Private account",
+                            caption: store.isPrivateAccount
+                                ? "On. In Morphe, your posts show only to your connections, and only connections can start a chat with you. On boards and challenges you keep your place and score as \u{201C}Private athlete\u{201D} \u{2014} your name isn't sent. Quick Add and search leave you out. Comments you leave on public posts stay visible."
+                                : "Off. Members can find you in Quick Add and search, see your posts and see your name on boards. Turn it on any time \u{2014} your data and placings stay exactly as they are.",
+                            isOn: Binding(
+                                get: { store.isPrivateAccount },
+                                set: { store.setPrivateAccount($0) }
+                            )
+                        )
+
                         Divider().overlay(MorpheTheme.strokeSubtle)
 
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                switch store.logBackupState {
-                                case .idle:
-                                    Text("Cloud backup")
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text("Your history uploads after each change.")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                case .current(let at):
-                                    Text("Cloud backup ✓")
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text("History backed up \(at.formatted(.relative(presentation: .named))).")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                case .behind:
-                                    Text("Backup behind")
-                                        .foregroundStyle(MorpheTheme.warning)
-                                    Text("The last upload didn't land — retrying. Your data is safe on this phone.")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                }
-                                if store.logBackupNearLimit {
-                                    Text("Heads up: your history is approaching the backup size limit.")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.warning)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            if store.logBackupState == .behind {
-                                Button("Back Up Now") {
-                                    store.requestImmediateLogBackup()
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
-                                .frame(width: 120)
-                                .accessibilityLabel("Retry the cloud backup now")
-                            }
-                        }
+                        // The board publishes your real name — and scores post on
+                        // every log in EITHER role, so the off-switch renders for
+                        // both (audit 5, P1-4: a coach could never leave).
+                        // Boards are groups with codes now (2026-10-10): join and
+                        // leave them in Network → Board; nothing posts anywhere
+                        // without a code you entered.
+                        Text("Boards: your logged sets post only to boards you joined with a code (Network → Board). Leave a board there to stop.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+
+                    // Athlete-only network identity, dark with the feed. The
+                    // block carries its own LEADING divider so an empty block
+                    // can't leave doubles behind (audit 6, P2-5/P2-6).
+                    if FeatureFlags.socialFeedEnabled {
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        preferenceToggleRow(
+                            title: "Auto-share workouts",
+                            caption: "Posts a real recap to the feed when you log a session. Each session shows a toggle to keep it private.",
+                            isOn: $store.autoShareWorkoutsEnabled
+                        )
+
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        // Network identity: what rides YOUR posts. Subtractive
+                        // only — off shares less, never invents more.
+                        preferenceToggleRow(
+                            title: "Streak in byline",
+                            caption: "New posts carry \"\(store.clientProfile.sportMode.rawValue) · N-day streak\" under your name. Off keeps just the sport.",
+                            isOn: $store.postStreakByline
+                        )
+
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        preferenceToggleRow(
+                            title: "Accent on posts",
+                            caption: "Your accent color tints your name and story bubble for others. Off posts in the default Spartan blue.",
+                            isOn: $store.postAccentIdentity
+                        )
                     }
 
 
-                    // Morphe Pro — DORMANT until App Store Connect products
-                    // exist; while the storefront flag is off nothing here
-                    // renders and everything stays free.
-                    if PremiumGate.storefrontEnabled {
+                        // Blocked accounts — only renders when there's someone
+                        // to manage; blocking happens from posts/comments.
+                        if !store.blockedAccounts.isEmpty {
+                            Divider().overlay(MorpheTheme.strokeSubtle)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Blocked accounts")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                ForEach(store.blockedAccounts.sorted(by: { $0.value < $1.value }), id: \.key) { uid, name in
+                                    HStack(spacing: 10) {
+                                        Text(name)
+                                            .font(.subheadline)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                            .lineLimit(1)
+                                        Spacer(minLength: 0)
+                                        Button("Unblock") {
+                                            store.unblockAccount(uid: uid)
+                                        }
+                                        .buttonStyle(FilterChipStyle(isSelected: false))
+                                        .accessibilityLabel("Unblock \(name)")
+                                    }
+                                }
+                            }
+                        }
+
+                }
+
+
+                settingsSection("Health", keywords: "apple health activity rings sleep sync workouts prefill check-in") {
+                        // Enabling walks through the system Health prompt; the
+                        // store refuses the flip when access isn't granted.
+                        preferenceToggleRow(
+                            title: "Sync to Health",
+                            caption: "Saves each logged workout to Apple Health so it counts toward your Activity rings.",
+                            isOn: Binding(
+                                get: { store.healthSyncEnabled },
+                                set: { newValue in Task { await store.setHealthSync(enabled: newValue) } }
+                            )
+                        )
+
+                        // Athlete-only; moved here from "Who can see you"
+                        // (audit 15, P1: it's a Health feature and the search
+                        // has to find it under "sleep"/"health").
+                        // Read-only and honest about its limits: Apple never
+                        // reveals whether a sleep READ was granted, so this just
+                        // pre-fills when data comes back and stays quiet when not.
                         Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        preferenceToggleRow(
+                            title: "Sleep from Health",
+                            caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
+                            isOn: Binding(
+                                get: { store.healthSleepEnabled },
+                                set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
+                            )
+                        )
+                }
+
+                // Light and dark follow the iPhone's own setting (Lucas
+                // 2026-10-06) — no appearance switch here.
+                settingsSection("Your data", keywords: "export json download backup cloud morphe pro subscription plans") {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Morphe Pro")
+                                Text("Your data")
                                     .foregroundStyle(MorpheTheme.textPrimary)
-                                Text("Programs, advanced analytics, and more. Your data stays free forever.")
+                                Text("One JSON file: every logged workout, set by set, plus your weight history.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
                             }
                             Spacer(minLength: 0)
-                            Button("View Plans") {
-                                showPaywall = true
+                            Button("Export Data") {
+                                if let url = store.exportDataFile() {
+                                    exportFile = ExportFile(url: url)
+                                } else {
+                                    store.showToast("Couldn't build the export — try again.")
+                                }
                             }
                             .buttonStyle(SecondaryCTAButtonStyle())
-                            .frame(width: 110)
-                            .accessibilityLabel("View Morphe Pro plans")
-                        }
-                    }
-
-            }
-
-            settingsSection("More info and support", keywords: "about terms privacy policy contact support email version", emphasis: .quiet) {
-                // About: the terms the user agreed to, the privacy policy,
-                // a human to email, and which build they're on — table
-                // stakes the audit found missing entirely.
-                VStack(alignment: .leading, spacing: 10) {
-                    Button("Terms of Use") { showTermsSheet = true }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .frame(minHeight: 32)
-                        .sheet(isPresented: $showTermsSheet) {
-                            TermsGateView(readOnly: true)
+                            .frame(width: 120)
+                            .accessibilityLabel("Export your data as JSON")
                         }
 
-                    Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/privacy.html")!)
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .frame(minHeight: 32)
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
-                    Link("Contact Support", destination: URL(string: "mailto:lucasdilley.07@gmail.com")!)
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .frame(minHeight: 32)
-
-                    Text("Morphe \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-
-            }
-
-            if FeatureFlags.accountsEnabled {
-                settingsSection("Sign out", keywords: "sign out log out login delete account remove", emphasis: .quiet) {
-                    Button("Sign Out") {
-                        showSignOutConfirm = true
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
-                        Button("Sign Out", role: .destructive) {
-                            // Close the profile sheet first so the account
-                            // screen is immediately visible underneath.
-                            store.closeClientProfile()
-                            store.signOut()
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Bring your history")
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text("Import the workout CSV that Hevy or Strong exports. You see what will be added before anything is saved.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            Button(importReading ? "Reading…" : "Import") { showImportPicker = true }
+                                .disabled(importReading)
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .frame(width: 120)
+                                .accessibilityLabel("Import workout history from a CSV file")
                         }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text("Your data stays backed up to your account — signing back in restores everything.")
-                    }
-
-                    // App Store 5.1.1(v): account deletion lives IN the app.
-                    Button(isDeletingAccount ? "Deleting…" : "Delete Account") {
-                        showDeleteAccountConfirm = true
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .foregroundStyle(MorpheTheme.danger)
-                    .disabled(isDeletingAccount)
-                    .accessibilityLabel("Permanently delete your account")
-                    .confirmationDialog("Delete your account forever?", isPresented: $showDeleteAccountConfirm, titleVisibility: .visible) {
-                        Button("Delete Forever", role: .destructive) {
-                            isDeletingAccount = true
+                        .fileImporter(isPresented: $showImportPicker,
+                                      allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+                            guard case .success(let url) = result else { return }
+                            importReading = true
+                            // Read and parse off the main thread — a long
+                            // history is tens of thousands of rows (audit 32).
                             Task {
-                                defer { isDeletingAccount = false }
-                                if await store.deleteAccount() {
-                                    store.closeClientProfile()
+                                let parsed = await Task.detached(priority: .userInitiated) { () -> WorkoutImport.Parsed? in
+                                    let scoped = url.startAccessingSecurityScopedResource()
+                                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                                    guard let data = try? Data(contentsOf: url), data.count <= 20_000_000,
+                                          let text = String(data: data, encoding: .utf8)
+                                            ?? String(data: data, encoding: .isoLatin1) else { return nil }
+                                    return WorkoutImport.parse(text)
+                                }.value
+                                importReading = false
+                                guard let parsed else {
+                                    store.showToast("That file doesn't read as a Hevy or Strong workout export.")
+                                    return
+                                }
+                                importPlan = store.planImport(parsed)
+                            }
+                        }
+                        .sheet(item: $importPlan) { plan in
+                            ImportReviewSheet(plan: plan)
+                                .environment(store)
+                                .presentationDetents([.medium, .large])
+                                .presentationCornerRadius(28)
+                        }
+
+
+                        // Backup health — failures used to be invisible (the
+                        // upload was fire-and-forget). Only rendered when a real
+                        // signed-in backup target exists.
+                        if store.cloudBackupActive {
+                            Divider().overlay(MorpheTheme.strokeSubtle)
+
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    switch store.logBackupState {
+                                    case .idle:
+                                        Text("Cloud backup")
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                        Text("Your history uploads after each change.")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    case .current(let at):
+                                        Text("Cloud backup ✓")
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                        Text("History backed up \(at.formatted(.relative(presentation: .named))).")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    case .behind:
+                                        Text("Backup behind")
+                                            .foregroundStyle(MorpheTheme.warning)
+                                        Text("The last upload didn't land — retrying. Your data is safe on this phone.")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    }
+                                    if store.logBackupNearLimit {
+                                        Text("Heads up: your history is approaching the backup size limit.")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.warning)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                                if store.logBackupState == .behind {
+                                    Button("Back Up Now") {
+                                        store.requestImmediateLogBackup()
+                                    }
+                                    .buttonStyle(SecondaryCTAButtonStyle())
+                                    .frame(width: 120)
+                                    .accessibilityLabel("Retry the cloud backup now")
                                 }
                             }
                         }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text(FeatureFlags.socialFeedEnabled
-                             ? "This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours)."
-                             : "This permanently deletes your sign-in, cloud backup, weight history, @username, verification selfie, coach application, posts, connect requests, and your rows on boards and challenges — there is no undo. Messages you sent stay in the other person's chat, and comments you left on other people's posts stay until you delete them.")
+
+
+                        // Morphe Pro — DORMANT until App Store Connect products
+                        // exist; while the storefront flag is off nothing here
+                        // renders and everything stays free.
+                        if PremiumGate.storefrontEnabled {
+                            Divider().overlay(MorpheTheme.strokeSubtle)
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Morphe Pro")
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    Text("Programs, advanced analytics, and more. Your data stays free forever.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                Spacer(minLength: 0)
+                                Button("View Plans") {
+                                    showPaywall = true
+                                }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .frame(width: 110)
+                                .accessibilityLabel("View Morphe Pro plans")
+                            }
+                        }
+
+                }
+            }
+
+            settingsGroup("Support", "About, privacy policy, contact, sign out") {
+                settingsSection("More info and support", keywords: "about terms privacy policy contact support email version", emphasis: .quiet) {
+                    // About: the terms the user agreed to, the privacy policy,
+                    // a human to email, and which build they're on — table
+                    // stakes the audit found missing entirely.
+                    VStack(alignment: .leading, spacing: 10) {
+                        Button("Terms of Use") { showTermsSheet = true }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(minHeight: 32)
+                            .sheet(isPresented: $showTermsSheet) {
+                                TermsGateView(readOnly: true)
+                            }
+
+                        Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/privacy.html")!)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(minHeight: 32)
+
+                        Link("Contact Support", destination: URL(string: "mailto:lucasdilley.07@gmail.com")!)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(minHeight: 32)
+
+                        Text("Morphe \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                }
+
+                if FeatureFlags.accountsEnabled {
+                    settingsSection("Sign out", keywords: "sign out log out login delete account remove", emphasis: .quiet) {
+                        Button("Sign Out") {
+                            showSignOutConfirm = true
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
+                            Button("Sign Out", role: .destructive) {
+                                // Close the profile sheet first so the account
+                                // screen is immediately visible underneath.
+                                store.closeClientProfile()
+                                store.signOut()
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text("Your data stays backed up to your account — signing back in restores everything.")
+                        }
+
+                        // App Store 5.1.1(v): account deletion lives IN the app.
+                        Button(isDeletingAccount ? "Deleting…" : "Delete Account") {
+                            showDeleteAccountConfirm = true
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .foregroundStyle(MorpheTheme.danger)
+                        .disabled(isDeletingAccount)
+                        .accessibilityLabel("Permanently delete your account")
+                        .confirmationDialog("Delete your account forever?", isPresented: $showDeleteAccountConfirm, titleVisibility: .visible) {
+                            Button("Delete Forever", role: .destructive) {
+                                isDeletingAccount = true
+                                Task {
+                                    defer { isDeletingAccount = false }
+                                    if await store.deleteAccount() {
+                                        store.closeClientProfile()
+                                    }
+                                }
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text(FeatureFlags.socialFeedEnabled
+                                 ? "This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours)."
+                                 : "This permanently deletes your sign-in, cloud backup, weight history, @username, verification selfie, coach application, posts, connect requests, and your rows on boards and challenges — there is no undo. Messages you sent stay in the other person's chat, and comments you left on other people's posts stay until you delete them.")
+                        }
                     }
                 }
             }
