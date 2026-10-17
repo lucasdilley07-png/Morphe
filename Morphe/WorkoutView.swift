@@ -5683,11 +5683,7 @@ private struct DiscoverWorkoutDetailSheet: View {
     nonisolated private static func loadDiagrams(for libraryIDs: [String]) async -> [String: UIImage] {
         var result: [String: UIImage] = [:]
         for id in Set(libraryIDs) {
-            guard let url = Bundle.main.url(
-                forResource: id,
-                withExtension: "heic",
-                subdirectory: "FormDiagrams"
-            ), let image = UIImage(contentsOfFile: url.path) else { continue }
+            guard let image = FormDiagrams.thumbnail(for: id) else { continue }
             result[id] = image
         }
         return result

@@ -767,3 +767,24 @@ in MorpheModels; order/hidden persist in `StyleProfile`
 `LayoutEditorSheet` + `EditLayoutButton` in GlassCard.swift. Coach notes
 still lead Learn once there are some unless the user ordered the page.
 Network is deliberately left alone.
+
+## Exercise page redesign + step-diagram pipeline (2026-10-16)
+
+- **ExerciseDetailView** reads name → one meta line → the diagram → numbered
+  steps with the cue as one accent line → Do (was "Beginner modification")
+  / Don't (was "Common mistake") → Also try chips → a REFERENCE dropdown at
+  the bottom holding "why this matters" + the source. Text is the library's
+  own; the simplicity comes from the layout, not rewritten copy.
+- **Step frames**: `FormDiagrams.frames(for:)` loads `<id>-1.heic …
+  <id>-N.heic` (one per instruction) and pages them under the name; tapping
+  a step pages to its frame; a single `<id>.heic` still shows alone;
+  Discover thumbnails use frame 1. Only 140 of 595 exercises have any
+  diagram today (the v1 built-ins); the 401 catalog exercises have none.
+- **Pipeline (no spend yet)**: `Tools/build_form_diagram_prompts.py` writes
+  `Content/DiscoverLibrary/FormDiagrams/prompts-steps.json` — 595
+  exercises, 2,308 frames, each prompt = house style wrapper + the step's
+  own instruction text. `Tools/make_form_diagrams.py --dry-run` prices it
+  (nano-banana-2 ≈ $138, nano-banana-pro ≈ $346 at fal list price);
+  with `FAL_KEY` set it generates resumably, saves PNGs under
+  `…/FormDiagrams/steps/`, and bundles 640px HEICs. Waiting on Lucas's
+  go + key.

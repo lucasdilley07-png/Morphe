@@ -5,6 +5,9 @@ struct ExerciseDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MorpheAppStore.self) private var store
     let exercise: ExerciseReference
+    @State private var showReference = false
+    @State private var frames: [UIImage] = []
+    @State private var frameIndex = 0
 
     /// Only alternatives that actually exist in the library — several listed
     /// names have no page, and dead text teaches nothing.
@@ -14,200 +17,296 @@ struct ExerciseDetailView: View {
         }
     }
 
-    /// The exercise's form diagram from the bundled FormDiagrams folder.
-    /// Nil (and the card simply doesn't render) for exercises without one —
-    /// custom user-created exercises have no diagram.
-    private var formDiagram: UIImage? {
-        guard let url = Bundle.main.url(
-            forResource: exercise.id,
-            withExtension: "heic",
-            subdirectory: "FormDiagrams"
-        ) else { return nil }
-        return UIImage(contentsOfFile: url.path)
-    }
-
+    /// The page reads top-down the way a lifter uses it (Lucas 2026-10-16):
+    /// name → the picture → the steps → one cue → Do / Don't → alternatives,
+    /// with the reference folded away at the bottom. Nothing text-heavy
+    /// above the fold.
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(exercise.name)
-                                    .font(.title2.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Spacer(minLength: 8)
-                                // Saved exercises live in Learn → Library (Lucas 2026-10-10).
-                                Button {
-                                    store.toggleSavedExercise(exercise)
-                                    Haptics.impact(.light)
-                                } label: {
-                                    Image(systemName: store.savedExerciseIDs.contains(exercise.id) ? "bookmark.fill" : "bookmark")
-                                        .font(.headline)
-                                        .foregroundStyle(MorpheTheme.accentText)
-                                        .frame(width: 44, height: 44)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(store.savedExerciseIDs.contains(exercise.id) ? "Remove from saved exercises" : "Save exercise")
-                            }
-
-                            HStack(spacing: 8) {
-                                MetricPill(label: "Muscles", value: exercise.musclesWorked)
-                                MetricPill(label: "Gear", value: exercise.equipment)
-                            }
-
-                            MetricPill(label: "Difficulty", value: exercise.difficulty.rawValue)
-
-                            if let baseID = exercise.variationOf,
-                               let base = store.exerciseDatabase.first(where: { $0.id == baseID }) {
-                                Button {
-                                    store.selectedExercise = base
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Text("Variation of \(base.name)")
-                                            .font(.subheadline.weight(.semibold))
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption.weight(.bold))
-                                    }
-                                    .foregroundStyle(MorpheTheme.accentText)
-                                    .frame(minHeight: 44, alignment: .leading)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityHint("Opens the base movement's form guide")
-                            }
-
-                            if !exercise.whyThisMatters.isEmpty {
-                                Text(exercise.whyThisMatters)
-                                    .font(.subheadline)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-
-                    if let formDiagram {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Form Diagram")
-                                    .font(.headline)
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                                Image(uiImage: formDiagram)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .accessibilityLabel("Form diagram for \(exercise.name)")
-                            }
-                        }
-                    }
-
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Step-by-step form instructions")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-
-                            ForEach(exercise.instructions, id: \.self) { step in
-                                Text("- \(step)")
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                            }
-                        }
-                    }
-
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Coach Cue")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text(exercise.formCue)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-
-                            Text("Common Mistake")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text(exercise.commonMistakes)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-
-                            Text("Beginner Modification")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text(exercise.beginnerModification)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                        }
-                    }
-
-                    // Where the technique was checked (Technique Library,
-                    // 2026-10-04). The words are Morphe's; the source is
-                    // the reference they were held against.
-                    if !exercise.sourceName.isEmpty {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Reference")
-                                    .font(.headline)
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                if let url = URL(string: exercise.sourceURL) {
-                                    Link(destination: url) {
-                                        HStack(spacing: 6) {
-                                            Text(exercise.sourceName)
-                                                .font(.subheadline.weight(.semibold))
-                                                .multilineTextAlignment(.leading)
-                                            Image(systemName: "arrow.up.right")
-                                                .font(.caption.weight(.bold))
-                                        }
-                                        .foregroundStyle(MorpheTheme.accentText)
-                                        .frame(minHeight: 44, alignment: .leading)
-                                    }
-                                    .accessibilityHint("Opens the source in your browser")
-                                } else {
-                                    Text(exercise.sourceName)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                }
-                                Text("Morphe's own wording, written with this coaching reference. A training aid, not medical advice.")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-
-                    if !realAlternatives.isEmpty {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Alternative Exercises")
-                                    .font(.headline)
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Text("Tap one to open its form guide.")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-
-                                WrapStack(spacing: 8) {
-                                    ForEach(realAlternatives) { alternative in
-                                        Button(alternative.name) {
-                                            // Swaps the sheet's content in place.
-                                            store.selectedExercise = alternative
-                                        }
-                                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
-                                    }
-                                }
-                            }
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+                    if !frames.isEmpty { diagramCard }
+                    stepsCard
+                    doDontCard
+                    if !realAlternatives.isEmpty { alternativesCard }
+                    referenceDropdown
                 }
                 .padding(20)
             }
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
+            }
+            .task(id: exercise.id) {
+                frameIndex = 0
+                frames = await FormDiagrams.frames(for: exercise.id)
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(exercise.name)
+                    .font(.title2.weight(.bold))
                     .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer(minLength: 8)
+                // Saved exercises live in Learn → Library (Lucas 2026-10-10).
+                Button {
+                    store.toggleSavedExercise(exercise)
+                    Haptics.impact(.light)
+                } label: {
+                    Image(systemName: store.savedExerciseIDs.contains(exercise.id) ? "bookmark.fill" : "bookmark")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(store.savedExerciseIDs.contains(exercise.id) ? "Remove from saved exercises" : "Save exercise")
+            }
+            // One quiet line, not three pills.
+            Text([exercise.musclesWorked, exercise.equipment, exercise.difficulty.rawValue]
+                    .filter { !$0.isEmpty }.joined(separator: " · "))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textSecondary)
+            if let baseID = exercise.variationOf,
+               let base = store.exerciseDatabase.first(where: { $0.id == baseID }) {
+                Button {
+                    store.selectedExercise = base
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Variation of \(base.name)")
+                            .font(.caption.weight(.semibold))
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 32, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the base movement's form guide")
+            }
+        }
+    }
+
+    /// The step frames (`id-1.heic`, `id-2.heic`, …) page with the steps;
+    /// a single `id.heic` shows alone.
+    private var diagramCard: some View {
+        VStack(spacing: 8) {
+            TabView(selection: $frameIndex) {
+                ForEach(Array(frames.enumerated()), id: \.offset) { index, image in
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .tag(index)
+                        .accessibilityLabel(frames.count > 1
+                            ? "Step \(index + 1) of \(frames.count), \(exercise.name)"
+                            : "Form diagram for \(exercise.name)")
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .aspectRatio(1, contentMode: .fit)
+            if frames.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(0..<frames.count, id: \.self) { index in
+                        Capsule()
+                            .fill(index == frameIndex ? MorpheTheme.accent : MorpheTheme.stroke)
+                            .frame(width: index == frameIndex ? 18 : 6, height: 6)
+                    }
+                    Spacer(minLength: 0)
+                    Text("STEP \(frameIndex + 1) OF \(frames.count)")
+                        .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .animation(.easeOut(duration: 0.2), value: frameIndex)
+            }
+        }
+    }
+
+    private var stepsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(exercise.instructions.enumerated()), id: \.offset) { index, step in
+                    Button {
+                        // Tapping a step pages the diagram to its frame.
+                        if frames.count > index { withAnimation { frameIndex = index } }
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text("\(index + 1)")
+                                .font(.caption.weight(.bold).monospacedDigit())
+                                .foregroundStyle(frames.count > 1 && frameIndex == index ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.accentText)
+                                .frame(width: 22, height: 22)
+                                .background(Circle().fill(frames.count > 1 && frameIndex == index ? MorpheTheme.accent : MorpheTheme.accent.opacity(0.12)))
+                            Text(step)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !exercise.formCue.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "quote.opening")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        Text(exercise.formCue)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 4)
+                    .accessibilityLabel("Cue: \(exercise.formCue)")
                 }
             }
         }
+    }
+
+    private var doDontCard: some View {
+        GlassCard(.quiet) {
+            VStack(alignment: .leading, spacing: 10) {
+                if !exercise.beginnerModification.isEmpty {
+                    row("checkmark.circle.fill", "Do", exercise.beginnerModification, MorpheTheme.accentText)
+                }
+                if !exercise.commonMistakes.isEmpty {
+                    row("xmark.circle.fill", "Don't", exercise.commonMistakes, MorpheTheme.warning)
+                }
+            }
+        }
+    }
+
+    private func row(_ symbol: String, _ label: String, _ text: String, _ color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(color)
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(text)")
+    }
+
+    private var alternativesCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ALSO TRY")
+                .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                .foregroundStyle(MorpheTheme.textMuted)
+            WrapStack(spacing: 8) {
+                ForEach(realAlternatives) { alternative in
+                    Button(alternative.name) {
+                        // Swaps the sheet's content in place.
+                        store.selectedExercise = alternative
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                }
+            }
+        }
+    }
+
+    /// Where the technique was checked, folded away at the bottom with the
+    /// "why" (Lucas 2026-10-16). The words are Morphe's; the source is the
+    /// reference they were held against.
+    private var referenceDropdown: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showReference.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Text("REFERENCE")
+                        .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
+                    Image(systemName: showReference ? "minus" : "plus")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+                .frame(minHeight: 36)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(showReference ? "Hide the reference" : "Show the reference")
+            if showReference {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !exercise.whyThisMatters.isEmpty {
+                        Text(exercise.whyThisMatters)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !exercise.sourceName.isEmpty {
+                        if let url = URL(string: exercise.sourceURL) {
+                            Link(destination: url) {
+                                HStack(spacing: 6) {
+                                    Text(exercise.sourceName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .multilineTextAlignment(.leading)
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.caption.weight(.bold))
+                                }
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .frame(minHeight: 44, alignment: .leading)
+                            }
+                            .accessibilityHint("Opens the source in your browser")
+                        } else {
+                            Text(exercise.sourceName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
+                    }
+                    Text("Morphe's own wording, written with this coaching reference. A training aid, not medical advice.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+}
+
+/// The bundled form diagrams: step frames `<id>-1.heic … <id>-N.heic`
+/// (one per instruction, Lucas 2026-10-16) or the single `<id>.heic`.
+enum FormDiagrams {
+    nonisolated static func url(forFrame id: String, step: Int) -> URL? {
+        Bundle.main.url(forResource: "\(id)-\(step)", withExtension: "heic", subdirectory: "FormDiagrams")
+    }
+
+    nonisolated static func frames(for id: String) async -> [UIImage] {
+        var result: [UIImage] = []
+        var step = 1
+        while let url = url(forFrame: id, step: step), let image = UIImage(contentsOfFile: url.path), step <= 12 {
+            result.append(image); step += 1
+        }
+        if result.isEmpty,
+           let url = Bundle.main.url(forResource: id, withExtension: "heic", subdirectory: "FormDiagrams"),
+           let image = UIImage(contentsOfFile: url.path) {
+            result = [image]
+        }
+        return result
+    }
+
+    /// The thumbnail: the first step frame, else the single diagram.
+    nonisolated static func thumbnail(for id: String) -> UIImage? {
+        if let url = url(forFrame: id, step: 1), let image = UIImage(contentsOfFile: url.path) { return image }
+        guard let url = Bundle.main.url(forResource: id, withExtension: "heic", subdirectory: "FormDiagrams") else { return nil }
+        return UIImage(contentsOfFile: url.path)
     }
 }
 
