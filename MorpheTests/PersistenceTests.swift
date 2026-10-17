@@ -9790,10 +9790,10 @@ final class MorpheRemembersTests: XCTestCase {
         store.selectedDiscoverSection = .workouts
         XCTAssertEqual(store.editablePage(for: .discover), .discover)
         store.selectedDiscoverSection = .feed
-        XCTAssertEqual(store.editablePage(for: .discover), .explore)
+        XCTAssertNil(store.editablePage(for: .discover), "Explore has no editor (Lucas 2026-10-17)")
         store.beginEditing(.discover)
         store.followEditingDiscoverSection()
-        XCTAssertEqual(store.editingPage, .explore)
+        XCTAssertNil(store.editingPage, "landing on Explore ends editor mode")
     }
 
     /// Late audit 2026-10-16 fixes: the Discover door avoids an empty

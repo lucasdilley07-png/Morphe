@@ -1226,3 +1226,8 @@ Network is deliberately left alone.
   its own box in `SectionEditorList` — hide one, keep the others; hold to
   drag the groups up and down. Saved orders carrying the old "families"
   id drop it and append the three in default order.
+- Explore has no editor (Lucas 2026-10-17): its edit option is gone and
+  `editablePage(for: .discover)` is nil on the Explore section; a swipe or
+  tab tap that lands on Explore while editing calls `endEditing()` (banner,
+  eyes, outlines and the tab strip all leave; layout changes were already
+  saved on each drop/hide).

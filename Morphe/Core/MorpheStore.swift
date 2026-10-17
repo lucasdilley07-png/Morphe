@@ -577,7 +577,9 @@ final class MorpheAppStore {
         switch tab {
         case .today: return .today
         case .train: return .train
-        case .discover: return selectedDiscoverSection == .feed ? .explore : .discover
+        // Explore has no editor (Lucas 2026-10-17): landing there ends
+        // editor mode (layout changes are already saved on every drop).
+        case .discover: return selectedDiscoverSection == .feed ? nil : .discover
         case .more:
             switch selectedHubFeature {
             case .nutrition: return .nutrition
@@ -598,22 +600,31 @@ final class MorpheAppStore {
     /// A section switch mid-edit (Board → Chats, Nutrition → Library)
     /// moves the mode with it (Lucas 2026-10-17).
     func followEditingSection() {
-        guard editingPage != nil, let page = editablePage(for: selectedClientTab) else { return }
+        guard editingPage != nil else { return }
+        guard let page = editablePage(for: selectedClientTab) else {
+            if selectedClientTab == .discover { endEditing() }
+            return
+        }
         editingPage = page
     }
 
     /// Discover's two sections edit separately (Fitness / Explore): a
     /// section switch mid-edit moves the mode with it.
     func followEditingDiscoverSection() {
-        guard editingPage == .discover || editingPage == .explore else { return }
-        editingPage = selectedDiscoverSection == .feed ? .explore : .discover
+        guard editingPage != nil else { return }
+        if selectedDiscoverSection == .feed { endEditing() } else if editingPage == .explore { editingPage = .discover }
     }
 
     /// Editor mode follows the user across tabs until they tap Done
     /// (Lucas 2026-10-16): switching pages mid-edit keeps editing, on the
     /// new page when it has one.
     func followEditing(to tab: ClientTab) {
-        guard editingPage != nil, let page = editablePage(for: tab) else { return }
+        guard editingPage != nil else { return }
+        guard let page = editablePage(for: tab) else {
+            // Explore (and any page with no editor) ends the mode outright.
+            if tab == .discover { endEditing() }
+            return
+        }
         editingPage = page
     }
 

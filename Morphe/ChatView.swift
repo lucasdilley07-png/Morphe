@@ -4530,7 +4530,7 @@ struct CreatorFeed: View {
                 // All: the sections in the user's order (Lucas 2026-10-16),
                 // each hideable and holdable in editor mode.
                 SectionEditorList(
-                    editing: store.editingPage == .explore,
+                    editing: false,
                     cards: store.visibleExploreCards,
                     hidden: store.exploreCardLayout.filter { store.styleProfile.exploreHiddenCards.contains($0.rawValue) },
                     title: \.title,
@@ -4547,9 +4547,7 @@ struct CreatorFeed: View {
                 ) { card in
                     sectionBlock(card)
                 }
-                if store.editingPage != .explore {
-                    EditLayoutButton(page: "Explore") { store.beginEditing(.explore) }
-                }
+
             }
         }
         // No .task here (audit 2026-10-10): panes stay mounted, so it
