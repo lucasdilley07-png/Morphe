@@ -1231,3 +1231,7 @@ Network is deliberately left alone.
   tab tap that lands on Explore while editing calls `endEditing()` (banner,
   eyes, outlines and the tab strip all leave; layout changes were already
   saved on each drop/hide).
+- Explore viewer (2026-10-17): the vertical pager is a native paging
+  `ScrollView` (`scrollTargetBehavior(.paging)` + `containerRelativeFrame`
+  + `scrollPosition(id:)`); the rotated TabView clipped and shifted every
+  page's content.

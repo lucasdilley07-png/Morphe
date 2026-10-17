@@ -5486,17 +5486,21 @@ struct ExploreViewer: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            TabView(selection: $current) {
-                ForEach(items) { item in
-                    ExplorePostPage(item: item, carouselIndex: binding(for: item.id))
-                        .tag(item.id)
-                        .rotationEffect(.degrees(90))
-                        .frame(width: UIScreen.main.bounds.height, height: UIScreen.main.bounds.width)
+            // Native vertical paging (the rotated TabView clipped and
+            // shifted every page, 2026-10-17): one post per screen, up =
+            // next, down = previous.
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: 0) {
+                    ForEach(items) { item in
+                        ExplorePostPage(item: item, carouselIndex: binding(for: item.id))
+                            .containerRelativeFrame([.horizontal, .vertical])
+                            .id(item.id)
+                    }
                 }
+                .scrollTargetLayout()
             }
-            .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-            .rotationEffect(.degrees(-90))
-            .tabViewStyle(.page(indexDisplayMode: .never))
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: Binding(get: { Optional(current) }, set: { if let id = $0 { current = id } }))
             .ignoresSafeArea()
             .sensoryFeedback(.selection, trigger: current)
 
