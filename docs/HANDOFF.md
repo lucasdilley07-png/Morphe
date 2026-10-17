@@ -962,3 +962,6 @@ Network is deliberately left alone.
   a material backing; #12 the GUARDIAN tag is gone. #3 is the local-mode
   fetch failure (prod shows the Morphe row alone when there are no
   chats); #8 (the AI pill over the Progress tile) is left as is.
+- The orb (`MorpheOrbView`) fades on over 0.35 s wherever it mounts live
+  (Hey Morphe stage, welcome pop-up) instead of appearing (Lucas
+  2026-10-16); still frames (`animates: false`) are untouched.

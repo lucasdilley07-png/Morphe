@@ -230,6 +230,9 @@ struct MorpheOrbView: View {
     /// False draws one still frame (buttons, list rows).
     var animates: Bool = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The orb fades on (Lucas 2026-10-16) wherever it is mounted live —
+    /// the Hey Morphe stage, the welcome pop-up — instead of appearing.
+    @State private var faded = false
 
     private final class PhaseBox {
         var phase: Double = 0
@@ -278,6 +281,12 @@ struct MorpheOrbView: View {
             .compositingGroup()
             .frame(width: size, height: size)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // A quick fade-on (a fade is also the Reduce Motion-safe entrance).
+        .opacity(animates && !faded ? 0 : 1)
+        .onAppear {
+            guard animates, !faded else { return }
+            withAnimation(.easeOut(duration: 0.35)) { faded = true }
         }
         .accessibilityHidden(true)
     }
