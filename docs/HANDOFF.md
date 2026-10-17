@@ -788,3 +788,13 @@ Network is deliberately left alone.
   with `FAL_KEY` set it generates resumably, saves PNGs under
   `…/FormDiagrams/steps/`, and bundles 640px HEICs. Waiting on Lucas's
   go + key.
+- **Proof run through the media-gen skill (2026-10-16)**: barbell-back-squat
+  steps 1–3 via `~/.claude/skills/media-gen/scripts/generate.py` —
+  step 1 on `fal-ai/nano-banana-pro`, steps 2–3 on `…/edit` with step 1 as
+  the reference. $0.45 (3 × $0.15 at fal list price; the skill's
+  `models.json` carries no image price field — worth adding). Style held
+  across all three; step 2 drifted to a rear view and a hinge rather than
+  the described squat, so a full run needs a regen budget (~20%) and a
+  tighter "front view, same angle as the reference" line in the edit
+  prompt. Frames bundled as `barbell-back-squat-{1,2,3}.heic`; the folder
+  reference picks new HEICs up automatically.
