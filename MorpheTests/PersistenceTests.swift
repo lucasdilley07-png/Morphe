@@ -4965,6 +4965,27 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(WorkUnit.round.rewriteSetsText("5 sets"), "5 rounds"); XCTAssertEqual(WorkUnit.round.rewriteSetsText("1 sets"), "1 round")
     }
 
+    func testFirstRealSportReplacesTheGeneralFitnessPlaceholder() {
+        let store = freshStore()
+        store.onboardingDraft.selectedSports = [.generalFitness]
+        store.toggleOnboardingSport(.boxing)
+        XCTAssertEqual(store.onboardingDraft.selectedSports, [.boxing], "the placeholder gives way to the first real pick")
+        XCTAssertEqual(store.onboardingDraft.sport, .boxing, "boxing is the primary mode")
+        store.toggleOnboardingSport(.generalFitness)
+        XCTAssertEqual(store.onboardingDraft.selectedSports, [.boxing, .generalFitness], "General Fitness can come back as a second choice")
+    }
+
+    func testPerformanceGoalNeverRanksLeanOut() {
+        XCTAssertEqual(MorpheAppStore.catalogGoals(for: ["Improve sport performance"]), ["Strength Building"])
+        XCTAssertEqual(MorpheAppStore.catalogGoals(for: ["Improve conditioning"]), ["Lean Out", "Strength Building"])
+    }
+
+    func testSportMentionedInASentence() {
+        XCTAssertEqual(MorpheAppStore.sportMentioned(in: "give me a boxing workout for today"), .boxing)
+        XCTAssertEqual(MorpheAppStore.sportMentioned(in: "find me a swim session"), .swimming)
+        XCTAssertNil(MorpheAppStore.sportMentioned(in: "start my workout"))
+    }
+
     func testWorkWordsAndDoneUtterance() {
         XCTAssertEqual(WorkUnit.word(forLabels: ["", "", ""]), "sets")
         XCTAssertEqual(WorkUnit.word(forLabels: ["Round 3:00", "Round 3:00"]), "rounds")

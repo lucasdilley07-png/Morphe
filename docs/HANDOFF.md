@@ -736,3 +736,17 @@ migration, selection-haptic pruning, button press scale. Nothing changed.
   the nutrition goal picker. Steppers already use it (F1).
 - Button press scale shipped in F1. Haptic sites now: selection ~30 (value
   changes only), impact/success/error unchanged.
+
+## Evening user audit fixes 1–3 (2026-10-16)
+
+`docs/AUDIT-USER-2026-10-16-PM.md`. A boxer picking "Improve sport
+performance" was getting "Dumbbell Lean-Out Circuit":
+- `toggleOnboardingSport`: the General Fitness placeholder is replaced by
+  the first real pick (it used to queue behind it and stay primary).
+- `catalogGoals`: performance / event → Strength Building only (Lean Out
+  came from the conditioning branch); sport-specific work comes from the
+  sport affinity.
+- Morphe AI: "give / find / want / suggest a <sport> workout" →
+  `sportMentioned(in:)` + `rankedPlanCandidates` for that sport at the
+  athlete's level → `setCurrentWorkout` + "say start my workout". The
+  technique matcher no longer answers with a form cue.

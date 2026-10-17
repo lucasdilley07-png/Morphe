@@ -7363,6 +7363,25 @@ final class MorpheAppStore {
         return (specific, sports)
     }
 
+    /// The sport a sentence names ("boxing", "a run", "mma"); nil when none.
+    nonisolated static func sportMentioned(in lower: String) -> SportFocus? {
+        let aliases: [(String, SportFocus)] = [
+            ("boxing", .boxing), ("boxer", .boxing), ("box ", .boxing),
+            ("mma", .mma), ("martial", .mma), ("kickbox", .mma), ("muay", .mma),
+            ("wrestl", .wrestling), ("grappl", .wrestling), ("jiu", .wrestling),
+            ("soccer", .soccer), ("football", .football), ("basketball", .basketball), ("hoops", .basketball),
+            ("baseball", .baseball), ("tennis", .tennis), ("volleyball", .volleyball),
+            ("swim", .swimming), ("pool", .swimming),
+            ("running", .running), ("run ", .running), ("jog", .running),
+            ("track", .track), ("sprint", .track),
+            ("bodybuilding", .bodybuilding), ("hypertrophy", .bodybuilding),
+            ("strength", .strength), ("powerlifting", .strength), ("lifting", .strength),
+            ("hybrid", .hybridAthlete), ("general fitness", .generalFitness), ("full body", .generalFitness)
+        ]
+        let padded = lower + " "
+        return aliases.first { padded.contains($0.0) }?.1
+    }
+
     /// The athlete's goal choices → the catalog's goal values.
     static func catalogGoals(for goals: [String]) -> Set<String> {
         var wanted: Set<String> = []
@@ -7373,8 +7392,14 @@ final class MorpheAppStore {
             if goal.contains("lose") || goal.contains("weight") || goal.contains("lean") || goal.contains("fat") {
                 wanted.formUnion(["Weight Loss", "Lean Out"])
             }
-            if goal.contains("conditioning") || goal.contains("performance") || goal.contains("event") {
+            if goal.contains("conditioning") {
                 wanted.formUnion(["Lean Out", "Strength Building"])
+            }
+            // Performance / an event is the sport's own work plus strength
+            // (evening audit 2026-10-16, #2) — Lean Out circuits ranked
+            // first for a boxer asking to perform.
+            if goal.contains("performance") || goal.contains("event") {
+                wanted.insert("Strength Building")
             }
             if goal.contains("injury") { wanted.insert("Recovery") }
         }
@@ -11685,6 +11710,31 @@ final class MorpheAppStore {
         // 30-minute push day, dumbbells only" — one sentence in, a staged
         // template out. Works identically from chat and Hey Morphe because
         // this layer IS the voice router's first stop.
+        // "Give me a boxing workout" / "find me a yoga session" (evening
+        // audit 2026-10-16, #3): a sport or style word plus a workout word
+        // picks the best library workout for it and stages it. The
+        // technique matcher used to win and answer with a form cue.
+        if !asksToBuild, has("workout", "session", "routine"),
+           has("give", "find", "want", "suggest", "show", "need", "pick", "recommend", "got", "any"),
+           let sport = Self.sportMentioned(in: lower) {
+            let level = planDifficulty
+            let pool = catalogWorkouts.filter { $0.durationMinutes >= 20 && $0.focusTag != "Recovery" }
+            let ranked = Self.rankedPlanCandidates(
+                pool, sport: sport, equipmentOrder: equipmentPreferenceOrder(),
+                flaggedAreas: Self.flaggedAreas(from: clientProfile.limitations),
+                goals: clientProfile.selectedGoals)
+            let own = ranked.filter { Self.templateSportAffinity($0).sports.contains(sport) }
+            let atLevel = own.first { $0.difficulty == level }
+            guard let pick = atLevel ?? own.first ?? ranked.first(where: { $0.difficulty == level }) ?? ranked.first else {
+                return "I couldn't find a \(sport.rawValue.lowercased()) workout in the library — try Discover's \(sport.rawValue) shelf."
+            }
+            if hasUnsavedSessionWork {
+                return "\(pick.name) — \(pick.durationMinutes) min, \(pick.categoryTag.isEmpty ? pick.type : pick.categoryTag). You've got an unlogged session to settle in Train first; then say \"start \(pick.name)\"."
+            }
+            setCurrentWorkout(pick)
+            return "Up: \(pick.name) — \(pick.durationMinutes) min, \(pick.categoryTag.isEmpty ? pick.type : pick.categoryTag), \(pick.difficulty.rawValue.lowercased()). It's staged as your current plan — say \"start my workout\" when you're ready."
+        }
+
         if asksToBuild {
             guard let request = Self.parseWorkoutBuildRequest(lower) else {
                 return "Tell me the focus and I'll build it — like \"build me a 30-minute push day, dumbbells only\". I know push, pull, legs, upper, full body, chest, back, shoulders, arms, core, and conditioning."
@@ -12919,6 +12969,16 @@ final class MorpheAppStore {
     }
 
     func toggleOnboardingSport(_ sport: SportFocus) {
+        // General Fitness is only the placeholder (evening audit
+        // 2026-10-16, #1): the first real sport replaces it instead of
+        // queueing behind it — "the first one is your primary mode" was
+        // handing every boxer a General Fitness plan. Tapping General
+        // Fitness again afterwards adds it back as a second choice.
+        if onboardingDraft.selectedSports == [.generalFitness], sport != .generalFitness {
+            onboardingDraft.selectedSports = [sport]
+            Haptics.impact(.light)
+            return
+        }
         switch toggleSelection(sport, in: &onboardingDraft.selectedSports) {
         case .added, .removed:
             Haptics.impact(.light)
