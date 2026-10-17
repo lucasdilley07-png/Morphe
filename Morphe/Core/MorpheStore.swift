@@ -12264,7 +12264,6 @@ final class MorpheAppStore {
         voiceExchangeClearTask = nil
         lastVoiceExchange = nil
         heyMorphe.cancelExchange()
-        Haptics.selection()
     }
 
     private func requestIntelligenceVoiceReply(for raw: String) {
@@ -13746,7 +13745,6 @@ final class MorpheAppStore {
         dayPopupSessionDismissed = false
         morpheAskRefresh += 1
         startVoiceIfEnabled()
-        Haptics.selection()
     }
 
     struct MonthlyChallenge {
@@ -13775,7 +13773,6 @@ final class MorpheAppStore {
     func dismissMonthlyChallenge() {
         UserDefaults.standard.set(true, forKey: monthlyChallengeDismissKey)
         morpheAskRefresh += 1
-        Haptics.selection()
     }
 
     /// A2: the honest version of Apple's Monthly Challenges — pure
@@ -15347,7 +15344,6 @@ final class MorpheAppStore {
     func dismissDayPopupForSession() {
         dayPopupSessionDismissed = true
         morpheAskRefresh += 1
-        Haptics.selection()
     }
 
     private func persistDayReply(_ reply: String) {
@@ -15404,7 +15400,6 @@ final class MorpheAppStore {
     }
 
     private func morpheAskFellThrough() -> String {
-        Haptics.selection()
         return "I couldn't line that up just now — your current plan stands."
     }
 

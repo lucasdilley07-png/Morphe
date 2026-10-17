@@ -1200,7 +1200,6 @@ private struct ProfileReviewStep: View {
                 // bare switch were missed, leaving Create Plan dead).
                 Button {
                     store.onboardingDraft.agreedToTerms.toggle()
-                    Haptics.selection()
                 } label: {
                     HStack(spacing: 12) {
                         Text("I agree to Morphe's Terms of Use")
@@ -1216,6 +1215,7 @@ private struct ProfileReviewStep: View {
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
+                .sensoryFeedback(.selection, trigger: store.onboardingDraft.agreedToTerms)
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("I agree to Morphe's Terms of Use")

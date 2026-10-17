@@ -718,3 +718,21 @@ migration, selection-haptic pruning, button press scale. Nothing changed.
   end; Continue dismisses. The record stamp (PR / program) waits behind
   it and takes the stage when it's dismissed, so the PR chord plays once.
   The "In the books" banner still fires underneath (tests assert it).
+
+## Feedback wave F3 (2026-10-16)
+
+- **Pruned** the selection tick where no value changed: the
+  `FilterChipStyle` press-down tick (it fired on every chip, list filters
+  included, and doubled chips whose action already ticked), the quiz
+  pager, the feed filter chips, the search submit, the back swipe, Profile
+  section expand, and the store's cancel/dismiss paths (voice cancel,
+  leave away mode, dismiss monthly challenge, dismiss day popup, the
+  Morphe-ask fall-through). A feed reaction and a memory-item delete are
+  light impacts now, not ticks.
+- **Migrated to `sensoryFeedback(.selection, trigger:)`** at the owner so
+  the tick is bound to the state it reports (and respects the user's
+  haptics setting): Discover's section switch, the debrief intensity row,
+  the warm-up toggle, Form Check's RPE row, the onboarding terms row, and
+  the nutrition goal picker. Steppers already use it (F1).
+- Button press scale shipped in F1. Haptic sites now: selection ~30 (value
+  changes only), impact/success/error unchanged.

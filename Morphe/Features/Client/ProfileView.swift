@@ -1451,7 +1451,6 @@ struct ProfileView: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             openSection = open ? nil : title
                         }
-                        Haptics.selection()
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: meta?.icon ?? "circle")
@@ -3299,7 +3298,7 @@ private struct MorpheRemembersSettings: View {
                             Spacer(minLength: 0)
                             Button {
                                 store.deleteMemoryItem(item)
-                                Haptics.selection()
+                                Haptics.impact(.light)
                             } label: {
                                 Image(systemName: "minus.circle")
                                     .foregroundStyle(MorpheTheme.textMuted)

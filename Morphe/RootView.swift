@@ -3672,7 +3672,6 @@ private struct UniversalSearchSheet: View {
                     .onSubmit {
                         guard !normalizedQuery.isEmpty else { return }
                         withAnimation(.easeInOut(duration: 0.2)) { hasSearched = true }
-                        Haptics.selection()
                     }
 
                 if hasSearched {

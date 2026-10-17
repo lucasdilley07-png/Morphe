@@ -2163,7 +2163,6 @@ private struct DiscoverSectionTabs: View {
                 let isActive = store.selectedDiscoverSection == section
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { store.selectedDiscoverSection = section }
-                    Haptics.selection()
                 } label: {
                     VStack(alignment: .center, spacing: 5) {
                         Text(section.rawValue.uppercased())
@@ -2182,6 +2181,8 @@ private struct DiscoverSectionTabs: View {
                 .accessibilityAddTraits(isActive ? .isSelected : [])
             }
         }
+        // The tick rides the value (F3): one per change, not per button.
+        .sensoryFeedback(.selection, trigger: store.selectedDiscoverSection)
         .frame(maxWidth: .infinity)
     }
 }
@@ -2288,7 +2289,6 @@ private struct WorkoutDebriefSheet: View {
                             ForEach(WorkoutIntensity.allCases) { option in
                                 Button {
                                     intensity = option
-                                    Haptics.selection()
                                 } label: {
                                     Text(option.label)
                                         .font(.caption.weight(.semibold))
@@ -2307,6 +2307,7 @@ private struct WorkoutDebriefSheet: View {
                                 .accessibilityAddTraits(intensity == option ? .isSelected : [])
                             }
                         }
+                        .sensoryFeedback(.selection, trigger: intensity)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -7381,8 +7382,8 @@ private struct SetRepLoggingSheet: View {
                         HStack(spacing: 6) {
                             Button("Warm-up") {
                                 isWarmupSet.toggle()
-                                Haptics.selection()
                             }
+                            .sensoryFeedback(.selection, trigger: isWarmupSet)
                             .buttonStyle(FilterChipStyle(isSelected: isWarmupSet, selectedColor: MorpheTheme.accentAlt))
                             .accessibilityLabel(isWarmupSet ? "Logging as warm-up set" : "Mark as warm-up set")
                             .accessibilityAddTraits(isWarmupSet ? .isSelected : [])

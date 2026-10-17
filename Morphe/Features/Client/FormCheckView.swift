@@ -2506,13 +2506,13 @@ private struct FormSummarySheet: View {
                                         ForEach(5...10, id: \.self) { level in
                                             Button("\(level)") {
                                                 rpe = rpe == level ? nil : level
-                                                Haptics.selection()
                                             }
                                             .buttonStyle(FilterChipStyle(isSelected: rpe == level, selectedColor: MorpheTheme.accent))
                                             .frame(minHeight: 44)
                                             .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
                                         }
                                     }
+                                    .sensoryFeedback(.selection, trigger: rpe)
                                 }
                                 Text(canLog
                                      ? (rpe == nil ? "Optional — skip it and the set still logs." : "Logs with the set.")

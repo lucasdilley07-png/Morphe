@@ -2281,11 +2281,11 @@ struct FilterChipStyle: ButtonStyle {
             // Selection was color-only — invisible to VoiceOver and weak for
             // color-blind users. Every chip in the app gets the trait from here.
             .accessibilityAddTraits(isSelected ? .isSelected : [])
-            // The most common tap in the app gets the standard selection
-            // tick — fired on press-down so it lands with the touch.
-            .onChange(of: configuration.isPressed) { _, pressed in
-                if pressed { Haptics.selection() }
-            }
+            // No press-down tick here (feedback audit 2026-10-16, F3): it
+            // fired on every chip, list filters included, and doubled the
+            // tick on chips whose action already reported a value change.
+            // The tick belongs to the value change — `sensoryFeedback` at
+            // the owner, or the action's own Haptics.selection().
     }
 }
 
@@ -3041,7 +3041,6 @@ struct SwipeBack: ViewModifier {
                     .onEnded { value in
                         guard Self.isBackSwipe(value),
                               value.translation.width > 90 || value.predictedEndTranslation.width > 260 else { return }
-                        Haptics.selection()
                         action()
                     }
             )

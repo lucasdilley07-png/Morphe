@@ -446,7 +446,6 @@ struct MoreView: View {
                             let last = min((index + 1) * Self.quizPageSize, store.quizzes.count)
                             Button("\(first)–\(last)") {
                                 withAnimation(.easeInOut(duration: 0.2)) { quizPage = index }
-                                Haptics.selection()
                             }
                             .buttonStyle(FilterChipStyle(isSelected: page == index))
                             .accessibilityLabel("Quizzes \(first) to \(last)")
@@ -2308,12 +2307,13 @@ struct NutritionChartCard: View {
 
                 Picker("Goal", selection: Binding(
                     get: { shownGoal },
-                    set: { goal = $0; Haptics.selection() }
+                    set: { goal = $0 }
                 )) {
                     ForEach(NutritionGoalMode.allCases) { mode in
                         Text(mode.rawValue).tag(mode)
                     }
                 }
+                .sensoryFeedback(.selection, trigger: goal)
                 .pickerStyle(.segmented)
 
                 if let plan = store.nutritionPlan(for: shownGoal) {

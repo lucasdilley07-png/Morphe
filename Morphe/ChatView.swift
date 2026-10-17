@@ -3084,7 +3084,7 @@ private struct FeedPostCard: View {
                         .feedActionChrome(isActive: hasReacted, activeColor: MorpheTheme.accent)
                         .frame(maxWidth: .infinity)
                     } primaryAction: {
-                        Haptics.selection()
+                        Haptics.impact(.light)
                         store.toggleReaction(post)
                     }
                     .accessibilityLabel(hasReacted ? "Remove reaction" : "React")
@@ -4491,7 +4491,7 @@ struct CreatorFeed: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Filter.allCases) { f in
-                        Button(f.rawValue) { filter = f; Haptics.selection() }
+                        Button(f.rawValue) { filter = f }
                             .buttonStyle(FilterChipStyle(isSelected: filter == f))
                     }
                 }

@@ -154,7 +154,7 @@ TikTok rule at once.
   one (each `pr`) → done card settles. Hit-stop between beats, 80 ms.
   One sequence, not a banner.
 
-### Wave F3 — migrate to the system (half a day)
+### Wave F3 — migrate to the system (half a day) — ✔ shipped 2026-10-16
 - Replace `Haptics.*` call sites that reflect a state change with
   `sensoryFeedback(_:trigger:)` so the haptic is bound to the change it
   reports and respects the user's haptics settings.
