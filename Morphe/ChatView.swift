@@ -5644,7 +5644,9 @@ struct ExplorePostPage: View {
         case .thread:
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Spacer(minLength: 64)
+                    // Clear the back / dots chrome (the pager ignores the
+                    // safe area; the status bar is hidden here).
+                    Spacer(minLength: 128)
                     if !item.title.isEmpty {
                         Text(item.title).font(.title2.weight(.bold)).foregroundStyle(.white)
                     }
