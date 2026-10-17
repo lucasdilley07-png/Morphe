@@ -9855,5 +9855,25 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertFalse(store.voiceChatOpen)
         XCTAssertTrue(store.voiceChatUserTurns.isEmpty)
     }
+
+    /// Network and Learn reset to their middles (Chats, Nutrition) when the
+    /// welcome pop-up finishes; between opens they remember where the user
+    /// left them (Lucas 2026-10-17).
+    func testSectionsResetToMiddlesWhenThePopupFinishes() {
+        let store = freshStore()
+        XCTAssertEqual(store.selectedHubFeature, .nutrition, "Learn opens on Nutrition")
+        store.selectedCommunitySection = .board
+        store.selectedHubFeature = .library
+        store.dismissDayPopupForSession()
+        XCTAssertEqual(store.selectedCommunitySection, FeatureFlags.socialFeedEnabled ? .forYou : .contact)
+        XCTAssertEqual(store.selectedHubFeature, .nutrition)
+        // Mid-session the sections stick; a re-tap of the icon only
+        // bumps the reset key (the page rebuilds at its top).
+        store.selectedCommunitySection = .board
+        let before = store.tabResetKey(ClientTab.community.rawValue)
+        store.popTabToRoot(ClientTab.community.rawValue)
+        XCTAssertNotEqual(store.tabResetKey(ClientTab.community.rawValue), before)
+        XCTAssertEqual(store.selectedCommunitySection, .board, "still on Board, just at the top")
+    }
 }
 

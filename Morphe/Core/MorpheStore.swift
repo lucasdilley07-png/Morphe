@@ -178,7 +178,8 @@ final class MorpheAppStore {
     /// after a failed one — loading and failure now render honestly.
     var threadsFetchState: FetchState = .idle
     // A tab named "Learn" opens to learning, not to a scoreboard.
-    var selectedHubFeature: ClientHubFeature? = .learn
+    /// Learn opens on Nutrition, the middle chip (Lucas 2026-10-17).
+    var selectedHubFeature: ClientHubFeature? = .nutrition
     var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
     var selectedDiscoverSection: DiscoverSection = .workouts {
         didSet { if selectedDiscoverSection != oldValue { noteEngagement("Discover tab: \(selectedDiscoverSection.rawValue)") } }
@@ -7169,6 +7170,9 @@ final class MorpheAppStore {
     func finishLaunchSequence() {
         armResumeWorkoutPromptIfNeeded(coldLaunch: true)
         armDayPopupForThisOpen()
+        // A cold open lands Network on Chats and Learn on Nutrition (Lucas
+        // 2026-10-17) even when the pop-up sits this open out.
+        resetSectionDefaults()
         refreshMorpheInbox()
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLaunchSequence = false
@@ -15761,11 +15765,22 @@ final class MorpheAppStore {
         return choices
     }
 
+    /// Network sits on Chats and Learn on Nutrition — the middles — every
+    /// time the welcome pop-up finishes (Lucas 2026-10-17); from then on
+    /// each page remembers where the user left it.
+    func resetSectionDefaults() {
+        selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
+        selectedHubFeature = .nutrition
+        popTabToRoot(ClientTab.community.rawValue)
+        popTabToRoot(ClientTab.more.rawValue)
+    }
+
     func answerDayPopup(_ kind: DayPopupChoiceKind) {
         // Any answer parks the popup for this app open (Lucas 2026-08-18:
         // it re-offers on the next foreground return).
         dayPopupSessionDismissed = true
         morpheAskRefresh += 1
+        resetSectionDefaults()
         // Any answer settles the activation welcome — it shows once.
         activationWelcomePending = false
         switch kind {
@@ -15835,6 +15850,7 @@ final class MorpheAppStore {
         dayPopupSessionDismissed = true
         activationWelcomePending = false
         morpheAskRefresh += 1
+        resetSectionDefaults()
     }
 
     private func persistDayReply(_ reply: String) {

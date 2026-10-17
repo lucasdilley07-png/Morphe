@@ -1016,3 +1016,11 @@ Network is deliberately left alone.
 - Today's Fuel (Lucas 2026-10-17): three equal log doors — Search (accent),
   Photo, Enter — sit above the meters; the old Search/Log-a-plate pair and
   the "Enter a label by hand" link are gone.
+- Network header is Board · Chats · Calendar (chats in the middle); Learn
+  opens on Nutrition (`selectedHubFeature` default). `resetSectionDefaults()`
+  puts Network on Chats and Learn on Nutrition and pops both pages to the
+  top when the welcome pop-up is answered or dismissed and on a cold open
+  (`finishLaunchSequence`); between those, each page keeps the section the
+  user left. The main TabView's selection binding treats a re-tap of the
+  selected icon as `popTabToRoot` — the section stays (Board, Library…),
+  the page rebuilds at its top (Lucas 2026-10-17).

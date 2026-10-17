@@ -550,6 +550,10 @@ struct RootView: View {
         // still land, they just don't travel.
         .animation(shellAnimation, value: store.selectedClientTab)
         .animation(shellAnimation, value: store.toastMessage)
+        // The floating AI button slides off for the chats and back on
+        // for every other page, Board and Calendar included (Lucas
+        // 2026-10-17).
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.85), value: store.chatsHaveTheStage)
         // Out fast, back a touch slower — exits beat entrances.
         .animation(reduceMotion ? .easeInOut(duration: 0.2)
                    : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
@@ -693,7 +697,14 @@ private struct ClientExperienceShell: View {
         // nothing sits behind the icons but the page.
         return GeometryReader { geo in
         let topInset = geo.safeAreaInsets.top
-        TabView(selection: $store.selectedClientTab) {
+        // Tapping the selected tab's icon again pops that page to its top
+        // (Lucas 2026-10-17): the section the user is on (Board, Library…)
+        // stays, only the scroll resets — the setter fires on a re-tap.
+        TabView(selection: Binding(
+            get: { store.selectedClientTab },
+            set: { tab in
+                if tab == store.selectedClientTab { store.popTabToRoot(tab.rawValue) } else { store.selectedClientTab = tab }
+            })) {
             // Tabs render in the user's order (Lucas 2026-10-16); each
             // screen's identity is keyed off tabResetKey so tapping the tab
             // icon rebuilds it at its root. Train is deliberately NOT keyed —

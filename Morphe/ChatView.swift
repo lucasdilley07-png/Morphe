@@ -49,7 +49,7 @@ struct CommunityView: View {
         // Chats ↔ Board ↔ Calendar by swipe (Lucas 2026-10-13).
         .inTabPageSwipe(pages: FeatureFlags.socialFeedEnabled
                             ? [ClientCommunitySection.contact, .forYou]
-                            : [ClientCommunitySection.contact, .board, .calendar],
+                            : [ClientCommunitySection.board, .contact, .calendar],
                         selection: Binding(get: { store.selectedCommunitySection },
                                            set: { store.selectedCommunitySection = $0 }))
         // The paged panes stay mounted, so .task never re-fires on a
@@ -97,13 +97,14 @@ struct CommunityView: View {
         // Equal columns, each label centered (Lucas 2026-10-10: more
         // separated, symmetrical — same as Discover's).
         HStack(alignment: .bottom, spacing: 0) {
-            sectionTab("CHATS", .contact, badgeCount: store.networkBadgeCount)
             if FeatureFlags.socialFeedEnabled {
+                sectionTab("CHATS", .contact, badgeCount: store.networkBadgeCount)
                 sectionTab("FEED", .forYou)
             } else {
-                // Launch shape: people, standings, schedule. The Feed is in
-                // Discover (Lucas 2026-10-10).
+                // Board · Chats · Calendar (Lucas 2026-10-17): chats in the
+                // middle, the page's default. The Feed is in Discover.
                 sectionTab("BOARD", .board)
+                sectionTab("CHATS", .contact, badgeCount: store.networkBadgeCount)
                 sectionTab("CALENDAR", .calendar)
             }
         }
@@ -3796,10 +3797,9 @@ struct AthleteInboxView: View {
                 threadList
             }
         }
-        // The chats have the stage while this is on screen (Lucas
-        // 2026-10-16): the floating Morphe AI button slides off.
-        .onAppear { store.chatSurfaceDepth += 1 }
-        .onDisappear { store.chatSurfaceDepth = max(0, store.chatSurfaceDepth - 1) }
+        // (The Network panes stay mounted, so the list is counted by its
+        // section — `chatsHaveTheStage` — not by onAppear; Board and
+        // Calendar get the floating button back. Lucas 2026-10-17.)
         .task {
             await store.refreshThreads()
             consumePendingThreadOpen()
@@ -3862,6 +3862,8 @@ struct AthleteInboxView: View {
                 .sheet(isPresented: $showNewConversation) {
                     NewConversationSheet()
                         .environment(store)
+                        .onAppear { store.chatSurfaceDepth += 1 }
+                        .onDisappear { store.chatSurfaceDepth = max(0, store.chatSurfaceDepth - 1) }
                         .presentationDetents([.large])
                         .presentationDragIndicator(.visible)
                         .presentationCornerRadius(28)
@@ -3889,6 +3891,8 @@ struct AthleteInboxView: View {
                     .sheet(isPresented: $showMorpheThread, onDismiss: { store.markMorpheInboxRead() }) {
                         MorpheThreadView()
                             .environment(store)
+                            .onAppear { store.chatSurfaceDepth += 1 }
+                            .onDisappear { store.chatSurfaceDepth = max(0, store.chatSurfaceDepth - 1) }
                             .presentationDetents([.large])
                             .presentationDragIndicator(.visible)
                             .presentationCornerRadius(28)
