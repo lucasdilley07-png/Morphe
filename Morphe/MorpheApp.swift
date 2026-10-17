@@ -69,6 +69,13 @@ struct MorpheApp: App {
                 // `-MorpheLocalOnboarded`: a fixed test athlete, so the
                 // main pages can be walked without retyping onboarding.
                 if skipOnboarding { local.markIntroSeen() }
+                // `-MorpheAwayPreview`: the idle away screen, for the simulator.
+                if ProcessInfo.processInfo.arguments.contains("-MorpheAwayPreview") {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(4))
+                        local.enterAwayMode()
+                    }
+                }
                 // `-MorpheVoiceChatPreview`: opens the stage in chat mode
                 // after launch (no mic in the simulator).
                 if ProcessInfo.processInfo.arguments.contains("-MorpheVoiceChatPreview") {

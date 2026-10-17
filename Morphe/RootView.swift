@@ -503,7 +503,7 @@ struct RootView: View {
             // Never over the "hello, name" beat either (audit 2026-10-15).
             // And it slides off while the chats have the stage (Lucas
             // 2026-10-16): the list, an open thread, the search board.
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage {
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage && !store.isAway {
                 if store.aiButtonParked {
                     // Swiped off (Lucas 2026-10-17): a small accent chevron
                     // marks its place; a tap or a swipe left brings it back.

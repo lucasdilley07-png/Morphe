@@ -2437,26 +2437,43 @@ final class PopupNarrator: NSObject {
 struct AwayOverlay: View {
     @Environment(MorpheAppStore.self) private var store
 
+    /// The trailing dots: 1, 2, 3, then back to 1 while idle.
+    @State private var dots = 1
+
     var body: some View {
         ZStack {
             MorpheTheme.ink.ignoresSafeArea()
-            VStack(spacing: 22) {
-                MorpheOrbView(level: 0.05)
+            VStack(spacing: 0) {
+                // The activated Spartan with a soft accent glow behind it
+                // (Lucas 2026-10-17).
+                MorpheOrbView(level: 0.05, frame: .activated)
                     .frame(width: 150, height: 150)
-                Text("AWAY")
-                    .font(MorpheTheme.microLabel(12))
-                    .tracking(2.4)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                Text("Nobody touched the screen, so Morphe stopped listening.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                Text("Tap anywhere to come back")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .background(
+                        Circle().fill(MorpheTheme.accent.opacity(0.28))
+                            .blur(radius: 36)
+                            .frame(width: 230, height: 230)
+                    )
+                    .shadow(color: MorpheTheme.accent.opacity(0.45), radius: 30)
+                // The words in Morphe's bubble, the instruction in the
+                // user's accent with the dots walking.
+                MorpheSpeechBubble {
+                    (Text("Nobody touched the screen, so Morphe stopped listening. ")
+                        .foregroundColor(MorpheTheme.textPrimary)
+                     + Text("Tap anywhere to come back" + String(repeating: ".", count: dots))
+                        .foregroundColor(MorpheTheme.accent))
+                        .font(.subheadline.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, -6)
             }
             .padding(.bottom, 40)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(550))
+                dots = dots % 3 + 1
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { store.leaveAwayMode() } }
