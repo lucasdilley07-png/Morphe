@@ -943,8 +943,12 @@ struct MorpheNewsPage: View {
     private var items: [MorpheInboxItem] { store.morpheNewsItems }
 
     var body: some View {
+        // Its own geometry (integration audit 2026-10-17): the cover sits
+        // in an overlay, so it reads the safe area itself — the header
+        // clears the Dynamic Island and the ink reaches the bottom edge.
+        GeometryReader { geo in
         ZStack(alignment: .top) {
-            MorpheTheme.ink.ignoresSafeArea()
+            MorpheTheme.ink
             VStack(spacing: 0) {
                 header
                 if items.isEmpty {
@@ -962,23 +966,47 @@ struct MorpheNewsPage: View {
                     }
                     .scrollIndicators(.hidden)
                 }
+                // The bottom strip (Lucas 2026-10-17): the only place a
+                // swipe up sends the page away — hold the very bottom and
+                // swipe up. Everywhere above, scrolling belongs to the list.
+                VStack(spacing: 6) {
+                    Capsule()
+                        .fill(MorpheTheme.textMuted.opacity(0.5))
+                        .frame(width: 44, height: 5)
+                    Text("SWIPE UP TO CLOSE")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 64)
+                .contentShape(Rectangle())
+                .onTapGesture { store.closeMorpheNews() }
+                .gesture(closeDrag)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel(Text("Close Morphe news"))
+                .padding(.bottom, geo.safeAreaInsets.bottom)
             }
-            .safeAreaPadding(.top, 8)
+            .padding(.top, geo.safeAreaInsets.top + 6)
+        }
+        .frame(width: geo.size.width, height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom)
+        .offset(y: -geo.safeAreaInsets.top)
         }
         .offset(y: min(0, dragY))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 16)
-                .onChanged { value in
-                    if value.translation.height < 0 { dragY = value.translation.height }
-                }
-                .onEnded { value in
-                    if value.translation.height < -90 || value.predictedEndTranslation.height < -240 {
-                        store.closeMorpheNews()
-                    }
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { dragY = 0 }
-                }
-        )
         .accessibilityAddTraits(.isModal)
+    }
+
+    private var closeDrag: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                if value.translation.height < 0 { dragY = value.translation.height }
+            }
+            .onEnded { value in
+                if value.translation.height < -40 || value.predictedEndTranslation.height < -120 {
+                    store.closeMorpheNews()
+                }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { dragY = 0 }
+            }
     }
 
     private var header: some View {

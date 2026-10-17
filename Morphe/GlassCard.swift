@@ -162,10 +162,13 @@ struct MonoSectionTabs<ID: Hashable>: View {
 enum SpartanFrame: Hashable {
     /// `superActivated` (Lucas 2026-10-17): the electrified helmet, saved
     /// as an asset and ready; not wired to any state yet.
-    case activated, still, sleeping, superActivated
+    /// `noPower` (Lucas 2026-10-17): the plain lit helmet in a clear
+    /// glass, no ribbons — the intro's resting state before activation.
+    case activated, still, sleeping, superActivated, noPower
     var imageName: String {
         switch self {
         case .activated: return "MorpheAIOrbActivated"
+        case .noPower: return "MorpheAIOrbNoPower"
         case .superActivated: return "MorpheAIOrbSuperActivated"
         case .still: return "MorpheAIOrbStill"
         case .sleeping: return "MorpheAIOrbSleeping"
@@ -3210,6 +3213,7 @@ struct AppSwipeHost: ViewModifier {
             .onPreferenceChange(PageSwipeExemptKey.self) { exemptFrames = $0 }
             .overlay(
                 PageSwipeRecognizer { start, dx, dy in
+                    guard !store.appSwipeBlocked else { return }
                     guard !exemptFrames.contains(where: { $0.contains(start) }) else { return }
                     guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6 else { return }
                     store.moveStop(by: dx < 0 ? 1 : -1)
@@ -3286,7 +3290,11 @@ struct PageSwipeRecognizer: UIViewRepresentable {
                 let point = gesture.location(in: self)
                 // Only touches that landed on this page while it is showing
                 // (the window is shared with every tab and sheet).
-                tracking = bounds.contains(point) && isShowing
+                // Never under a sheet or a full-screen cover: they share the
+                // window, so a drag inside Quick Add or Search would flip
+                // the page beneath (integration audit 2026-10-17).
+                let presented = window?.rootViewController?.presentedViewController != nil
+                tracking = bounds.contains(point) && isShowing && !presented
                 start = point
             case .ended:
                 guard tracking else { return }

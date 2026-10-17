@@ -9794,6 +9794,7 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertEqual(store.appBadgeCount, 2)
         store.openMorpheNews()
         XCTAssertTrue(store.showMorpheNews)
+        XCTAssertTrue(store.appSwipeBlocked, "a sideways drag on the news page never flips the page beneath")
         store.closeMorpheNews()
         XCTAssertFalse(store.showMorpheNews)
         XCTAssertEqual(store.morpheInboxUnreadCount, 0, "closing the page marks it read")

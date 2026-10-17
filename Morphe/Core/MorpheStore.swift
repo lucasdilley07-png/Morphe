@@ -10674,6 +10674,17 @@ final class MorpheAppStore {
         morpheInbox.filter { $0.kind == .news || $0.kind == .weeklyReport }.sorted { $0.date > $1.date }
     }
 
+    /// True while something covers the tab pages — the news page, the
+    /// away screen, the pop-up, the hello beat, the Hey Morphe stage. The
+    /// app-wide swipe stands down so a sideways drag there never flips the
+    /// page underneath (integration audit 2026-10-17).
+    var appSwipeBlocked: Bool {
+        let voice = heyMorphe.state
+        return showMorpheNews || isAway || shouldShowDayPopup || showHelloBeat
+            || voiceChatOpen || voiceStageHold
+            || voice == .active || voice == .thinking || voice == .speaking
+    }
+
     func openMorpheNews() {
         guard !showMorpheNews else { return }
         showMorpheNews = true

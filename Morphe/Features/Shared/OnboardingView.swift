@@ -1640,10 +1640,17 @@ struct IntroView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Phase { case tap, light, morphe }
+    /// tap → the light comes up on the Still Spartan ([ INACTIVE ]
+    /// flickering under it) → a second tap anywhere: [ ACTIVE ], one
+    /// second → morphe (the wake). Lucas 2026-10-17.
+    private enum Phase { case tap, light, active, morphe }
 
     @State private var phase: Phase = .tap
     @State private var flash = false
+    /// The dark over the Spartan in the light phase: 1 → 0 as the screen
+    /// comes up, so it reads as lit, not as appearing.
+    @State private var dark: Double = 1
+    @State private var inactiveGlow = false
     @State private var lightScale: CGFloat = 0.01
     @State private var orbIn = false
     @State private var awake = false
@@ -1679,6 +1686,11 @@ struct IntroView: View {
                     .ignoresSafeArea()
             }
 
+            if phase == .light || phase == .active {
+                revealed
+                    .transition(.opacity)
+            }
+
             if phase == .tap {
                 Text("[ TAP TO BEGIN ]")
                     .font(MorpheTheme.microLabel(15))
@@ -1696,13 +1708,21 @@ struct IntroView: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { if phase == .tap { begin() } }
-        // `-MorpheIntroPreview`: the tap happens on its own after a second,
-        // so the simulator can capture the wake (Lucas 2026-10-17).
+        .onTapGesture {
+            switch phase {
+            case .tap: begin()
+            case .light: activate()
+            default: break
+            }
+        }
+        // `-MorpheIntroPreview`: both taps happen on their own, so the
+        // simulator can capture the reveal and the wake (Lucas 2026-10-17).
         .task {
             guard ProcessInfo.processInfo.arguments.contains("-MorpheIntroPreview") else { return }
             try? await Task.sleep(for: .seconds(1))
             if phase == .tap { begin() }
+            try? await Task.sleep(for: .milliseconds(2600))
+            if phase == .light { activate() }
         }
         .onAppear {
             guard !reduceMotion else { flash = true; return }
@@ -1719,11 +1739,21 @@ struct IntroView: View {
         withAnimation(.easeOut(duration: 0.25)) { phase = .light }
         // The light: fast at first, then it fills (an easeOut over 0.8 s).
         withAnimation(reduceMotion ? .easeInOut(duration: 0.3) : .easeOut(duration: 0.8)) { lightScale = 12 }
+        // The Spartan was there in the dark: the shade over it lifts with
+        // the light, a touch behind it.
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.3) : .easeOut(duration: 1.1).delay(0.15)) { dark = 0 }
+        guard !reduceMotion else { inactiveGlow = true; return }
+        withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(0.6)) { inactiveGlow = true }
+    }
+
+    /// The second tap: [ ACTIVE ], one second, then the wake.
+    private func activate() {
+        Haptics.impact(.light)
+        withAnimation(.easeOut(duration: 0.2)) { phase = .active }
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 350 : 700))
+            try? await Task.sleep(for: .seconds(1))
+            orbIn = true
             withAnimation(.easeOut(duration: 0.3)) { phase = .morphe }
-            try? await Task.sleep(for: .milliseconds(150))
-            withAnimation(.easeOut(duration: 0.5)) { orbIn = true }
             try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 1500))
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { bubbleIn = true }
             try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 450))
@@ -1737,6 +1767,36 @@ struct IntroView: View {
         Haptics.impact(.light)
         SoundEffects.play(.star)
         store.completeIntro(username: normalizedUsername, birthYear: birthYear, choice: choice)
+    }
+
+    // MARK: The reveal
+
+    /// The No Power Spartan where the live orb will sit, under a shade
+    /// that lifts with the light, and the state label beneath it. It holds
+    /// until [ ACTIVE ]; one second later the wake we had before runs.
+    private var revealed: some View {
+        VStack(spacing: 18) {
+            Image(SpartanFrame.noPower.imageName)
+                .resizable().interpolation(.high).scaledToFit()
+                .frame(width: 170, height: 170)
+                .overlay(Color.black.opacity(dark))
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+            let lit = inactiveGlow || phase != .light
+            // The word swaps in one frame (no crossfade — two labels
+            // overlapping read as a glitch).
+            Text(phase == .light ? "[ INACTIVE ]" : "[ ACTIVE ]")
+                .transaction { $0.animation = nil }
+                .foregroundStyle(lit ? MorpheTheme.brandBlue : MorpheTheme.brandBlueDeep)
+                .shadow(color: MorpheTheme.brandBlue.opacity(lit ? 0.9 : 0), radius: lit ? 10 : 0)
+            .font(MorpheTheme.microLabel(15))
+            .tracking(3)
+            .opacity(1 - dark)
+            .accessibilityLabel(phase == .light ? "Inactive. Tap anywhere to activate Morphe." : "Active")
+            .accessibilityAddTraits(phase == .light ? .isButton : [])
+        }
+        .padding(.top, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: Morphe

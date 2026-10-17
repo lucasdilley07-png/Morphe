@@ -1312,3 +1312,16 @@ Network is deliberately left alone.
 - `Haptics.superActivated()` (Lucas 2026-10-17): two rigid full-intensity
   hits 60 ms apart, fired by `SuperActivatedSpartan` whenever it goes
   live — every showing of the super activated design vibrates in sync.
+- Intro reveal (Lucas 2026-10-17): after TAP TO BEGIN the light comes up
+  and a black shade over the NO POWER Spartan (`MorpheAIOrbNoPower`,
+  `SpartanFrame.noPower`: plain lit helmet in clear glass) lifts with it
+  (`dark` 1 → 0), so the helmet reads as having been there in the dark.
+  Under it "[ INACTIVE ]" flickers deep blue ↔ glowing brand blue. A
+  second tap anywhere flips it to "[ ACTIVE ]" (glowing); one second
+  later the wake we had before runs: sleeping fades on → still → super
+  activated 2 s → sleeping → activated. No scroll or swipe on this page.
+- News page close (Lucas 2026-10-17): the chevron, or hold the very
+  bottom strip (handle + "SWIPE UP TO CLOSE", 64 pt) and swipe up / tap
+  it. Everywhere else the scroll belongs to the list. `appSwipeBlocked` stands the app-wide swipe down under
+  the news page, away screen, pop-up, hello beat and Hey Morphe stage;
+  the window pan also ignores touches while a sheet is presented.
