@@ -1490,7 +1490,7 @@ struct ProfileView: View {
                     .accessibilityHint(open ? "Collapses the section" : "Opens the section")
 
                     if open {
-                        content()
+                        AnyView(content())
                     }
                 }
             }
@@ -1545,7 +1545,11 @@ struct ProfileView: View {
                 }
             }
             if open {
-                content()
+                // Type-erased on purpose (device crash 2026-10-17: the
+                // whole settings tree as one generic type overflowed the
+                // main thread's stack in a Debug build; the simulator's
+                // larger stack hid it). Each group builds on its own.
+                AnyView(content())
             }
         }
     }

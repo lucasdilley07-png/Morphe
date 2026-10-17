@@ -694,6 +694,73 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: One swipe through the whole app (Lucas 2026-10-17)
+
+    /// Every page the user can land on, in swipe order: the tabs in the
+    /// user's own order, each tab's sections expanded left to right as its
+    /// header shows them. Swiping wraps at both ends.
+    enum AppStop: Hashable {
+        case today, train, fitness, explore, board, chats, calendar, lessons, nutrition, library
+    }
+
+    var appStops: [AppStop] {
+        tabLayout.flatMap { tab -> [AppStop] in
+            switch tab {
+            case .today: return [.today]
+            case .train: return [.train]
+            case .discover: return [.fitness, .explore]
+            case .community: return FeatureFlags.socialFeedEnabled ? [.chats] : [.board, .chats, .calendar]
+            case .more: return [.lessons, .nutrition, .library]
+            case .hub: return []
+            }
+        }
+    }
+
+    var currentStop: AppStop {
+        switch selectedClientTab {
+        case .today: return .today
+        case .train: return .train
+        case .discover: return selectedDiscoverSection == .feed ? .explore : .fitness
+        case .community:
+            switch selectedCommunitySection {
+            case .board: return .board
+            case .calendar: return .calendar
+            default: return .chats
+            }
+        case .more:
+            switch selectedHubFeature {
+            case .nutrition: return .nutrition
+            case .library: return .library
+            default: return .lessons
+            }
+        case .hub: return .today
+        }
+    }
+
+    /// Moves one stop forward (+1) or back (−1), wrapping.
+    func moveStop(by delta: Int) {
+        let stops = appStops
+        guard let index = stops.firstIndex(of: currentStop), !stops.isEmpty else { return }
+        let next = stops[((index + delta) % stops.count + stops.count) % stops.count]
+        Haptics.selection()
+        withAnimation(.easeInOut(duration: 0.22)) { go(to: next) }
+    }
+
+    func go(to stop: AppStop) {
+        switch stop {
+        case .today: selectedClientTab = .today
+        case .train: selectedClientTab = .train
+        case .fitness: selectedDiscoverSection = .workouts; selectedClientTab = .discover
+        case .explore: selectedDiscoverSection = .feed; selectedClientTab = .discover
+        case .board: selectedCommunitySection = .board; selectedClientTab = .community
+        case .chats: selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact; selectedClientTab = .community
+        case .calendar: selectedCommunitySection = .calendar; selectedClientTab = .community
+        case .lessons: selectedHubFeature = .learn; selectedClientTab = .more
+        case .nutrition: selectedHubFeature = .nutrition; selectedClientTab = .more
+        case .library: selectedHubFeature = .library; selectedClientTab = .more
+        }
+    }
+
     // MARK: Generic page layouts (Lucas 2026-10-17)
 
     func pageLayout<C: LayoutCard>(_ type: C.Type, page: EditablePage) -> [C] {

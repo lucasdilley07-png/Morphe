@@ -9954,5 +9954,20 @@ final class MorpheRemembersTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: MorpheAppStore.directiveFeedbackKey)
         UserDefaults.standard.removeObject(forKey: MorpheAppStore.voiceLevelKey)
     }
+
+    /// One swipe sequence through the app, wrapping (Lucas 2026-10-17).
+    func testAppSwipeSequenceWraps() {
+        let store = freshStore()
+        store.go(to: .today)
+        XCTAssertEqual(store.currentStop, .today)
+        store.moveStop(by: -1)
+        XCTAssertEqual(store.currentStop, store.appStops.last, "back from the first stop wraps to the last")
+        store.moveStop(by: 1)
+        XCTAssertEqual(store.currentStop, .today, "and forward wraps home")
+        store.go(to: .fitness); store.moveStop(by: 1)
+        XCTAssertEqual(store.currentStop, .explore)
+        store.go(to: .library); store.moveStop(by: -1)
+        XCTAssertEqual(store.currentStop, .nutrition)
+    }
 }
 

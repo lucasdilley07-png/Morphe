@@ -1235,3 +1235,33 @@ Network is deliberately left alone.
   `ScrollView` (`scrollTargetBehavior(.paging)` + `containerRelativeFrame`
   + `scrollPosition(id:)`); the rotated TabView clipped and shifted every
   page's content.
+- One swipe through the app (Lucas 2026-10-17): `AppStop` /
+  `appStops` (the user's tab order, each tab's sections expanded as its
+  header shows them: Today · Train · Fitness · Explore · Board · Chats ·
+  Calendar · Lessons · Nutrition · Library) / `currentStop` /
+  `moveStop(by:)` (wraps) / `go(to:)`. `AppSwipeHost` on the shell TabView
+  owns the pan (`PageSwipeRecognizer`); `inTabPageSwipe` is a pass-through
+  now and the `pageSwipeExempt` frames post up to the shell. The pan never
+  cancels the touch beneath it, so a swipe or scroll cannot fire a button
+  (SwiftUI buttons fire on a clean tap only; holds need 2 s with ≤ 12 pt
+  movement). Within-tab order follows the header's visual order (Board ·
+  Chats · Calendar; Lessons · Nutrition · Library) so swipe direction
+  matches the underline moving.
+- Profile crash on device (2026-10-17): tapping the avatar overflowed the
+  main thread's stack while building ProfileView's settings tree (one
+  generic type for every group and section; Debug frames; the simulator's
+  larger stack hid it — the crash log says "Thread stack size exceeded due
+  to excessive recursion" under `settingsSection`). `settingsGroup` and
+  `settingsSection` now wrap their content in `AnyView` so each piece
+  builds on its own. Rule going forward: any new settings section goes
+  behind `AnyView` too, and every header-button change is tapped on the
+  phone before it ships (`xcrun devicectl device copy from --domain-type
+  systemCrashLogs` pulls the .ips files).
+- One swipe through the app (Lucas 2026-10-17): `AppStop` / `appStops`
+  (the user's tab order, each tab's sections expanded as its header shows
+  them: Today · Train · Fitness · Explore · Board · Chats · Calendar ·
+  Lessons · Nutrition · Library) / `currentStop` / `moveStop(by:)` (wraps)
+  / `go(to:)`. `AppSwipeHost` on the shell TabView owns the pan
+  (`PageSwipeRecognizer`); `inTabPageSwipe` is a pass-through and the
+  `pageSwipeExempt` frames post up to the shell. The pan never cancels the
+  touch beneath it, so a swipe or scroll cannot fire a button.

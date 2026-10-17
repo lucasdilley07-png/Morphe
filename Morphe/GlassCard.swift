@@ -3097,26 +3097,39 @@ struct InTabPageSwipe<Page: Hashable>: ViewModifier {
     @State private var exemptFrames: [CGRect] = []
 
     func body(content: Content) -> some View {
+        // The shell owns the swipe now (Lucas 2026-10-17: one sequence
+        // through every page, wrapping) — see AppSwipeHost. The exempt
+        // frames (rails, chip rows) still post up to it.
+        content
+    }
+}
+
+/// The one horizontal swipe for the whole app: a UIKit pan over the tab
+/// shell. Left = next stop, right = previous, wrapping. Drags that start
+/// on a sideways-scrolling area (rails, chip rows) are left alone, and the
+/// pan never cancels the touch under it, so a swipe can't trigger a button
+/// — buttons fire on a clean tap only, scroll views keep their scroll.
+struct AppSwipeHost: ViewModifier {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var exemptFrames: [CGRect] = []
+
+    func body(content: Content) -> some View {
         content
             .coordinateSpace(name: PageSwipeSpace.name)
             .onPreferenceChange(PageSwipeExemptKey.self) { exemptFrames = $0 }
-            // A UIKit pan that recognizes alongside the page's own scroll
-            // views (Lucas 2026-10-17: the chats list swallowed the SwiftUI
-            // drag) — a swipe anywhere on the page flips it.
             .overlay(
                 PageSwipeRecognizer { start, dx, dy in
                     guard !exemptFrames.contains(where: { $0.contains(start) }) else { return }
-                    guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
-                          let index = pages.firstIndex(of: selection) else { return }
-                    var next = dx < 0 ? index + 1 : index - 1
-                    if wraps, !pages.indices.contains(next) { next = (next + pages.count) % pages.count }
-                    guard pages.indices.contains(next), next != index else { return }
-                    Haptics.selection()
-                    withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
+                    guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6 else { return }
+                    store.moveStop(by: dx < 0 ? 1 : -1)
                 }
                 .allowsHitTesting(false)
             )
     }
+}
+
+extension View {
+    func appSwipeHost() -> some View { modifier(AppSwipeHost()) }
 }
 
 /// A pan recognizer attached to the page's host view so it sees every

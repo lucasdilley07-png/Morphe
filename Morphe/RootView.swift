@@ -739,8 +739,10 @@ private struct ClientExperienceShell: View {
                     .tag(tab)
             }
         }
-        // The main tabs no longer page (Lucas 2026-10-13): the swipe belongs to
-        // the pages inside each tab; the dock switches tabs.
+        // One swipe through every page (Lucas 2026-10-17): Today → Train →
+        // Fitness → Explore → Board → Chats → Calendar → Lessons →
+        // Nutrition → Library, in the user's tab order, wrapping.
+        .appSwipeHost()
         .ignoresSafeArea(edges: .top)
         // The icons FLOAT over the page (Lucas 2026-10-05): no inset, no
         // band, nothing behind them but the page itself. The pager's own
