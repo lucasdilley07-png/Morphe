@@ -309,10 +309,14 @@ struct SuperActivatedSpartan: View {
 
 struct MorpheDirectiveLine: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let text: String
     /// page.bucket — long-press offers More / Less of this (persona
     /// audit #13); nil for fixed lines.
     var feedbackKey: String? = nil
+    /// The star's pop (Lucas 2026-10-17): grows in with a bounce, then
+    /// the line types in quickly beside it. Re-runs when the line changes.
+    @State private var popped = false
 
     var body: some View {
         if !text.isEmpty {
@@ -320,13 +324,28 @@ struct MorpheDirectiveLine: View {
                 Image(systemName: "sparkle")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(MorpheTheme.accentText)
+                    .scaleEffect(popped || reduceMotion ? 1 : 0.01)
+                    .rotationEffect(.degrees(popped || reduceMotion ? 0 : -90))
+                    .animation(.spring(response: 0.38, dampingFraction: 0.45), value: popped)
+                // The full line lays out invisibly so the star never shifts
+                // while the words type in over it.
                 Text(text)
                     .multilineTextAlignment(.center)
+                    .opacity(0)
+                    .overlay(alignment: .topLeading) {
+                        TypewriterText(text: text, charactersPerSecond: 48, startDelay: 0.22, showsCaret: false)
+                            .multilineTextAlignment(.center)
+                    }
+                    .accessibilityHidden(true)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
-            .contentTransition(.opacity)
+            .task(id: text) {
+                popped = false
+                try? await Task.sleep(for: .milliseconds(40))
+                popped = true
+            }
             .contextMenu {
                 if let feedbackKey {
                     Button("More like this", systemImage: "hand.thumbsup") { store.rateDirective(feedbackKey, more: true) }

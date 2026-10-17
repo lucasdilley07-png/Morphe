@@ -1362,3 +1362,9 @@ Network is deliberately left alone.
   Morphe speaks (scale × 0.045 on a 0.3 s ease, plus a slow ±1.8° sway
   and a bob). Applies to every Spartan frame on the voice stage. Holding
   the orb fires `Haptics.wake()` (heavy + system vibrate).
+- Directive line animation (Lucas 2026-10-17): `MorpheDirectiveLine`
+  pops the sparkle in (spring, damping 0.45, from 1% with a quarter
+  turn) and types the words at 48 cps after 220 ms, over an invisible
+  copy of the full line so nothing shifts. Re-runs when the line
+  changes (`task(id: text)`); Reduce Motion shows it at once. Today
+  now uses the same view.

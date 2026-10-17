@@ -58,18 +58,10 @@ struct HomeView: View {
                     // Morphe's directive (Lucas 2026-10-16): one short
                     // command from the user's own state, rotating hourly.
                     if let directive = store.morpheDirective() {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Image(systemName: "sparkle")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(MorpheTheme.accentText)
-                            Text(directive)
-                                .multilineTextAlignment(.center)
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                        .padding(.top, 4)
-                        .contentTransition(.opacity)
-                        .accessibilityLabel("Morphe: \(directive)")
+                        // The same animated line as every other page
+                        // (Lucas 2026-10-17): star pops, words type in.
+                        MorpheDirectiveLine(text: directive)
+                            .padding(.top, 4)
                     }
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
