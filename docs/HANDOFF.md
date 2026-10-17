@@ -1215,3 +1215,9 @@ Network is deliberately left alone.
   The old plate/mark/orb layers and the LOADING… label are gone from the
   view; the `LoadingFinalPlate` / `LoadingFinalMark` imagesets and the
   `orbBox`/`markBox` constants remain unused. Only the loading screen changed here.
+- Orb framing (Lucas 2026-10-17): every orb asset (Activated / Still /
+  Sleeping orbs, the side-view button mark, the chat avatar) is cropped
+  tight to its glass rim (radial-luminance edge, ~91–93% of the source
+  square) with a 3 px feathered alpha edge, so the orb fills its circle in
+  the pop-up, the stage, the floating button and the chat row with no
+  margin or ring.
