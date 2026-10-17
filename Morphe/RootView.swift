@@ -491,7 +491,9 @@ struct RootView: View {
             // stage (Lucas 2026-10-04): the voice is already the door, so
             // the button gets out of the way and returns when it's done.
             // Never over the "hello, name" beat either (audit 2026-10-15).
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil {
+            // And it slides off while the chats have the stage (Lucas
+            // 2026-10-16): the list, an open thread, the search board.
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
@@ -743,7 +745,7 @@ private struct ClientExperienceShell: View {
             // mode turns on and back up when Done is tapped. It follows
             // the user across tabs.
             if store.editingPage != nil {
-                EditorModeBar(tab: store.selectedClientTab, editable: store.editablePage(for: store.selectedClientTab) != nil) {
+                EditorModeBar(tab: store.selectedClientTab, page: store.editingPage, editable: store.editablePage(for: store.selectedClientTab) != nil) {
                     store.endEditing()
                 }
                 .padding(.horizontal, 16)
@@ -1064,8 +1066,10 @@ private struct MorpheAIAgentSheet: View {
     @State private var dictation = DictationEngine()
     @FocusState private var inputFocused: Bool
 
+    /// The one Morphe conversation (Lucas 2026-10-16): the same turns the
+    /// Network chat shows — reports, news and every ask.
     private var messages: [ThreadMessage] {
-        store.athleteAIAgentConversation
+        store.morpheConversation
     }
 
     private var trimmedPrompt: String {
@@ -1090,7 +1094,7 @@ private struct MorpheAIAgentSheet: View {
                     // tappable cards while the chat is empty, gone the
                     // moment a conversation exists. Every starter is a
                     // prompt the action/answer layers actually handle.
-                    if messages.count <= 1 {
+                    if !messages.contains(where: { $0.sender == .user }) {
                         VStack(spacing: 10) {
                             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { starter in
                                 Button {
@@ -1293,7 +1297,7 @@ private struct MorpheAIAgentSheet: View {
     }
 }
 
-private struct AIAgentMessageRow: View {
+struct AIAgentMessageRow: View {
     @Environment(MorpheAppStore.self) private var store
     let message: ThreadMessage
     /// True when this message starts a run from its sender. Only run leaders

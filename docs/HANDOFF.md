@@ -921,3 +921,27 @@ Network is deliberately left alone.
   centered on the icon row of every page (`ClientPinnedHeader` overlay).
 - Today kicker order: `@handle · ● ONLINE · N DAYS LOGGED`; the dot is a
   `FlickerDot` (random dips / double-blinks; still under Reduce Motion).
+- Network chats (Lucas 2026-10-16): the Morphe row is always at the top
+  (a search still finds it by name) with the app icon's Spartan art as its
+  avatar (`MorpheAppIconArt` imageset, a copy of AppIcon-1024). The
+  Network Morphe chat and the floating Morphe AI chat are ONE
+  conversation: `morpheConversation` merges `morpheInbox` (reports, news)
+  with `athleteAIAgentConversation` by date (`ThreadMessage.sentAt`,
+  optional so older saved turns decode; undated turns take the date of the
+  turn before them); both surfaces render it with `AIAgentMessageRow`, and
+  the thread composer routes through `sendAIAgentPrompt`. `chatSurfaceDepth`
+  counts chat surfaces on screen (AthleteInboxView onAppear/onDisappear,
+  which covers the list, an open thread and the search board);
+  `chatsHaveTheStage` also covers the Contact section of the Network tab;
+  the floating AI button slides off while it is true and back after.
+- Discover (Lucas 2026-10-16): the sections are **Fitness** (was
+  Workouts; `DiscoverSection.workouts` keeps its case name) and **Explore**
+  (was Feed). Both have an edit option at the bottom: Fitness edits the
+  Discover cards (`EditablePage.discover`, titled "Fitness"); Explore has
+  its own layout (`ExploreCardID` workouts / blogs / challenges,
+  `exploreCardOrder` / `exploreHiddenCards` on StyleProfile,
+  `setExploreLayout`, `EditablePage.explore`). With the All chip the
+  stream renders as sections in the user's order through
+  `SectionEditorList` (hold to move, eye to hide, min 1); a hidden section
+  also loses its chip. A section switch mid-edit moves the mode with it
+  (`followEditingDiscoverSection`).

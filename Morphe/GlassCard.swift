@@ -3449,8 +3449,9 @@ struct EditLayoutButton: View {
 // sections wait in a HIDDEN row at the bottom with a Show button, and the
 // last visible section can't be hidden.
 
-enum EditablePage: String { case today, train, discover, learn
-    var title: String { rawValue.capitalized }
+enum EditablePage: String { case today, train, discover, explore, learn
+    /// Discover's sections are Fitness and Explore (Lucas 2026-10-16).
+    var title: String { self == .discover ? "Fitness" : rawValue.capitalized }
 }
 
 /// Frames of every section in the editor's coordinate space.
@@ -3464,6 +3465,8 @@ struct EditorFrameKey: PreferenceKey {
 /// The banner at the top of a page in editor mode.
 struct EditorModeBar: View {
     let tab: ClientTab
+    /// The page in edit (nil on a tab with nothing to arrange).
+    var page: EditablePage? = nil
     /// False on a page with no layout to arrange (Network).
     let editable: Bool
     let onDone: () -> Void
@@ -3474,7 +3477,7 @@ struct EditorModeBar: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
             VStack(alignment: .leading, spacing: 1) {
-                Text("EDITING \(tab.title.uppercased())")
+                Text("EDITING \((page?.title ?? tab.title).uppercased())")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
                     .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                 Text(editable ? "Hold a box to lift it, then slide · tap the eye to hide it · hold a tab to move it" : "Nothing to arrange here · hold a tab below to move it")

@@ -490,10 +490,17 @@ final class MorpheAppStore {
         switch tab {
         case .today: return .today
         case .train: return .train
-        case .discover: return .discover
+        case .discover: return selectedDiscoverSection == .feed ? .explore : .discover
         case .more: return .learn
         case .community, .hub: return nil
         }
+    }
+
+    /// Discover's two sections edit separately (Fitness / Explore): a
+    /// section switch mid-edit moves the mode with it.
+    func followEditingDiscoverSection() {
+        guard editingPage == .discover || editingPage == .explore else { return }
+        editingPage = selectedDiscoverSection == .feed ? .explore : .discover
     }
 
     /// Editor mode follows the user across tabs until they tap Done
@@ -566,6 +573,18 @@ final class MorpheAppStore {
     func setLearnLayout(order: [String]? = nil, hidden: [String]? = nil) {
         if let order { styleProfile.learnCardOrder = order }
         if let hidden { styleProfile.learnHiddenCards = hidden }
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    /// Explore's sections (Lucas 2026-10-16).
+    var exploreCardLayout: [ExploreCardID] { ExploreCardID.resolvedOrder(from: styleProfile.exploreCardOrder) }
+    var visibleExploreCards: [ExploreCardID] {
+        exploreCardLayout.filter { !styleProfile.exploreHiddenCards.contains($0.rawValue) }
+    }
+    func setExploreLayout(order: [String]? = nil, hidden: [String]? = nil) {
+        if let order { styleProfile.exploreCardOrder = order }
+        if let hidden { styleProfile.exploreHiddenCards = hidden }
         styleProfile.updatedAt = .now
         persistLocalProfile()
     }
@@ -10214,7 +10233,6 @@ final class MorpheAppStore {
     /// News ids ever delivered — survives the inbox cap so nothing re-sends.
     private var deliveredNewsIDs: Set<String> = []
     private var deliveredNewsKey: String { "morphe.inbox.news.\(clientProfile.id.uuidString)" }
-    var morpheReplyInFlight = false
 
     func loadMorpheInbox() {
         morpheInbox = loadSeries(morpheInboxKey)
@@ -10332,37 +10350,67 @@ final class MorpheAppStore {
         return lines.joined(separator: " ")
     }
 
-    /// A question to Morphe from this chat: the same brain as the
-    /// floating chat, answered into the thread (Claude with the user's
-    /// key, the built-in brain without one).
+    /// A question to Morphe from the Network chat (Lucas 2026-10-16: one
+    /// conversation): it goes through the same path as the floating
+    /// Morphe AI chat, so both surfaces show the same turns.
     func askMorpheInThread(_ text: String) async {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty, !morpheReplyInFlight else { return }
+        guard !clean.isEmpty else { return }
         // No human reads this — a question is never "spam". Only the
         // abuse list applies.
         if ContentModeration.containsBlockedTerm(clean) {
             showToast(ContentModeration.refusalMessage, isError: true); return
         }
-        morpheInbox.append(MorpheInboxItem(id: UUID().uuidString, kind: .question, date: .now, title: "", body: String(clean.prefix(1000))))
-        saveMorpheInbox()
-        morpheReplyInFlight = true
-        defer { morpheReplyInFlight = false }
-        var answer: String
-        if let credential = await MorpheIntelligence.credential() {
-            let turns = morpheInbox.filter { ($0.kind == .question || $0.kind == .answer) && !MorpheIntelligence.isFailureNote($0.body) }.suffix(12)
-                .map { MorpheIntelligence.Turn(isUser: $0.kind == .question, text: $0.body) }
-            do {
-                answer = try await MorpheIntelligence.reply(system: intelligenceSystemBlocks(spoken: false, userText: clean), turns: turns, credential: credential, timeout: 30)
-            } catch {
-                answer = onlineFallbackAnswer(for: error, prompt: clean)
-            }
-        } else {
-            answer = athleteAgentReply(to: clean)
-        }
-        morpheInbox.append(MorpheInboxItem(id: UUID().uuidString, kind: .answer, date: .now, title: "", body: answer))
-        saveMorpheInbox()
+        sendAIAgentPrompt(clean)
         markMorpheInboxRead()
         Haptics.impact(.light)
+    }
+
+    /// Stable ids for inbox items rendered as chat turns.
+    private var inboxTurnIDs: [String: UUID] = [:]
+
+    /// The ONE Morphe conversation (Lucas 2026-10-16): weekly reports and
+    /// news from the inbox plus every turn of the Morphe AI chat, in time
+    /// order. The Network chat and the floating chat both render this.
+    var morpheConversation: [ThreadMessage] {
+        var turns: [(Date, Int, ThreadMessage)] = []
+        for (index, item) in morpheInbox.enumerated() {
+            let id: UUID
+            if let known = inboxTurnIDs[item.id] { id = known } else {
+                id = UUID(uuidString: item.id) ?? UUID()
+                inboxTurnIDs[item.id] = id
+            }
+            let text = item.title.isEmpty ? item.body : "\(item.title)\n\(item.body)"
+            let message = ThreadMessage(id: id, sender: item.isFromMorphe ? .ai : .user,
+                                        senderName: item.isFromMorphe ? "Morphe" : clientProfile.name,
+                                        text: text, timestamp: item.date.formatted(date: .abbreviated, time: .shortened), sentAt: item.date)
+            turns.append((item.date, index, message))
+        }
+        // Turns saved before dates existed keep their place: each takes the
+        // date of the turn before it (the greeting sits at the start).
+        var last = Date.distantPast
+        for (index, message) in athleteAIAgentConversation.enumerated() {
+            let date = message.sentAt ?? last
+            last = date
+            turns.append((date, morpheInbox.count + index, message))
+        }
+        return turns.sorted { $0.0 == $1.0 ? $0.1 < $1.1 : $0.0 < $1.0 }.map(\.2)
+    }
+
+    /// True while a Morphe reply is being written (the "…" placeholder).
+    var morpheReplyInFlight: Bool {
+        athleteAIAgentConversation.last?.text == "\u{2026}"
+    }
+
+    // MARK: - Chats have the stage (Lucas 2026-10-16)
+
+    /// Counts the chat surfaces on screen (the chats list, an open thread,
+    /// the search board). The floating Morphe AI button slides off while
+    /// any is up and back when the user leaves.
+    var chatSurfaceDepth = 0
+
+    var chatsHaveTheStage: Bool {
+        chatSurfaceDepth > 0 || (selectedClientTab == .community && selectedCommunitySection == .contact)
     }
 
     // MARK: - Connections (Profile → Connections, Lucas 2026-10-13)
@@ -11373,7 +11421,7 @@ final class MorpheAppStore {
         guard !cleanText.isEmpty else { return false }
 
         do {
-            athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now"))
+            athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now", sentAt: .now))
             // Actions first: if the ask maps to something Morphe AI can DO
             // (start a workout, open a screen, change a setting), do it and
             // confirm — otherwise fall back to the coaching reply.
@@ -11383,7 +11431,7 @@ final class MorpheAppStore {
                 return false
             }
             let reply = actionReply ?? athleteAgentReply(to: cleanText)
-            athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
+            athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now", sentAt: .now))
             return actionReply != nil
         }
     }
@@ -12381,11 +12429,11 @@ final class MorpheAppStore {
             guard let prompt = athleteAIAgentConversation
                 .last(where: { $0.sender == .user })?.text else { return }
             let reply = athleteAgentReply(to: prompt)
-            let message = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now")
+            let message = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now", sentAt: .now)
             athleteAIAgentConversation.append(message)
             return
         }
-        let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
+        let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now", sentAt: .now)
         athleteAIAgentConversation.append(placeholder)
         let system = intelligenceSystemBlocks(
             spoken: false,

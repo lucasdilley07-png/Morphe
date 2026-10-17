@@ -9632,5 +9632,41 @@ final class MorpheRemembersTests: XCTestCase {
         store.followEditing(to: .today)
         XCTAssertNil(store.editingPage, "Done ends it; a later switch does not restart it")
     }
+
+    /// One Morphe conversation (Lucas 2026-10-16): an ask from the Network
+    /// chat shows in the floating chat's turns, and inbox reports sit in
+    /// the same timeline in date order.
+    func testMorpheChatAndAIChatShareOneConversation() async {
+        let store = freshStore()
+        store.morpheInbox = [MorpheInboxItem(id: "r1", kind: .weeklyReport, date: Date(timeIntervalSinceNow: -3600), title: "Week in review", body: "Two sessions.")]
+        await store.askMorpheInThread("What should I train tomorrow?")
+        XCTAssertTrue(store.athleteAIAgentConversation.contains { $0.sender == .user && $0.text == "What should I train tomorrow?" })
+        let merged = store.morpheConversation
+        XCTAssertTrue(merged.contains { $0.text.hasPrefix("Week in review") })
+        let reportIndex = merged.firstIndex { $0.text.hasPrefix("Week in review") }!
+        let askIndex = merged.firstIndex { $0.text == "What should I train tomorrow?" }!
+        XCTAssertLessThan(reportIndex, askIndex, "the older report comes first")
+        XCTAssertFalse(store.chatsHaveTheStage)
+        store.chatSurfaceDepth = 1
+        XCTAssertTrue(store.chatsHaveTheStage, "an open chat surface hides the floating button")
+    }
+
+    /// Explore's sections reorder and hide (Lucas 2026-10-16), and the
+    /// Discover tab edits Fitness or Explore depending on its section.
+    func testExploreLayoutAndDiscoverEditablePage() {
+        let store = freshStore()
+        XCTAssertEqual(store.visibleExploreCards, ExploreCardID.defaultOrder)
+        store.setExploreLayout(order: ["challenges", "workouts", "blogs"], hidden: ["blogs"])
+        XCTAssertEqual(store.visibleExploreCards, [.challenges, .workouts])
+        XCTAssertEqual(DiscoverSection.workouts.rawValue, "Fitness")
+        XCTAssertEqual(DiscoverSection.feed.rawValue, "Explore")
+        store.selectedDiscoverSection = .workouts
+        XCTAssertEqual(store.editablePage(for: .discover), .discover)
+        store.selectedDiscoverSection = .feed
+        XCTAssertEqual(store.editablePage(for: .discover), .explore)
+        store.beginEditing(.discover)
+        store.followEditingDiscoverSection()
+        XCTAssertEqual(store.editingPage, .explore)
+    }
 }
 

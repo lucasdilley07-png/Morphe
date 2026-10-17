@@ -3796,6 +3796,10 @@ struct AthleteInboxView: View {
                 threadList
             }
         }
+        // The chats have the stage while this is on screen (Lucas
+        // 2026-10-16): the floating Morphe AI button slides off.
+        .onAppear { store.chatSurfaceDepth += 1 }
+        .onDisappear { store.chatSurfaceDepth = max(0, store.chatSurfaceDepth - 1) }
         .task {
             await store.refreshThreads()
             consumePendingThreadOpen()
@@ -3873,11 +3877,13 @@ struct AthleteInboxView: View {
 
                 // Morphe's own conversation, pinned (Lucas 2026-10-10):
                 // weekly reports, news, answers. Every account has it.
-                if cleanQuery.isEmpty {
+                // Always at the top (Lucas 2026-10-16); a search still
+                // finds it by name.
+                if cleanQuery.isEmpty || "morphe".localizedCaseInsensitiveContains(cleanQuery) {
                     Button {
                         showMorpheThread = true
                     } label: {
-                        MorpheThreadRow(lastItem: store.morpheInbox.last, unread: store.morpheInboxUnreadCount)
+                        MorpheThreadRow(lastItem: store.morpheInbox.last, lastTurn: store.morpheConversation.last, unread: store.morpheInboxUnreadCount)
                     }
                     .buttonStyle(.plain)
                     .sheet(isPresented: $showMorpheThread, onDismiss: { store.markMorpheInboxRead() }) {
@@ -4141,20 +4147,22 @@ private struct ClientConversationRow: View {
 /// The pinned Morphe row in Chats.
 struct MorpheThreadRow: View {
     let lastItem: MorpheInboxItem?
+    /// The last turn of the shared conversation (an ask or a reply).
+    var lastTurn: ThreadMessage? = nil
     let unread: Int
 
     var body: some View {
         HStack(spacing: 12) {
-            // Morphe's avatar is the Spartan helmet on black (Lucas
-            // 2026-10-15), in both appearances.
-            ZStack {
-                Circle().fill(Color.black)
-                MorpheHelmetMark(glowRadius: 3, onBrandField: true)
-                    .frame(width: 26, height: 26)
-            }
-            .frame(width: 44, height: 44)
-            .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
-            .accessibilityHidden(true)
+            // Morphe's avatar is the app icon's Spartan art, in a circle
+            // (Lucas 2026-10-16).
+            Image("MorpheAppIconArt")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFill()
+                .frame(width: 44, height: 44)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     if unread > 0 {
@@ -4169,13 +4177,13 @@ struct MorpheThreadRow: View {
                         .tracking(1.2)
                         .foregroundStyle(MorpheTheme.accentText)
                     Spacer()
-                    if let lastItem {
-                        Text(lastItem.date.formatted(.relative(presentation: .named)))
+                    if let when = lastTurn?.sentAt ?? lastItem?.date {
+                        Text(when.formatted(.relative(presentation: .named)))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(unread > 0 ? MorpheTheme.accentText : MorpheTheme.textMuted)
                     }
                 }
-                Text(lastItem.map { $0.title.isEmpty ? $0.body : "\($0.title): \($0.body)" } ?? "Weekly reports, news, and answers to anything you ask.")
+                Text(lastTurn.map { $0.text == "\u{2026}" ? "Morphe is thinking…" : $0.text.replacingOccurrences(of: "\n", with: ": ") } ?? "Weekly reports, news, and answers to anything you ask.")
                     .font(unread > 0 ? .caption.weight(.semibold) : .caption)
                     .foregroundStyle(unread > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
                     .lineLimit(2)
@@ -4218,29 +4226,25 @@ struct MorpheThreadView: View {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        if store.morpheInbox.isEmpty {
-                            Text("Nothing here yet. Your first report lands on Monday after your first logged week — or ask me something now.")
+                        if !store.morpheConversation.contains(where: { $0.sender == .user }) {
+                            Text("Your first report lands on Monday after your first logged week — or ask me something now. This is the same chat as the Morphe AI bubble.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                                 .padding(.top, 8)
                         }
-                        ForEach(store.morpheInbox) { item in
-                            bubble(item).id(item.id)
-                        }
-                        if store.morpheReplyInFlight {
-                            HStack(spacing: 8) {
-                                ProgressView().tint(MorpheTheme.accent)
-                                Text("Morphe is thinking…")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
+                        // One conversation (Lucas 2026-10-16): the same
+                        // turns, the same rows, as the floating chat.
+                        let turns = store.morpheConversation
+                        ForEach(Array(turns.enumerated()), id: \.element.id) { index, message in
+                            AIAgentMessageRow(message: message, isFirstInRun: index == 0 || turns[index - 1].sender != message.sender)
+                                .id(message.id)
                         }
                     }
                     .padding(20)
                 }
-                .onAppear { if let last = store.morpheInbox.last { proxy.scrollTo(last.id, anchor: .bottom) } }
-                .onChange(of: store.morpheInbox.count) { _, _ in
-                    if let last = store.morpheInbox.last {
+                .onAppear { if let last = store.morpheConversation.last { proxy.scrollTo(last.id, anchor: .bottom) } }
+                .onChange(of: store.morpheConversation.count) { _, _ in
+                    if let last = store.morpheConversation.last {
                         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
@@ -4271,41 +4275,6 @@ struct MorpheThreadView: View {
         Task { await store.askMorpheInThread(text) }
     }
 
-    @ViewBuilder
-    private func bubble(_ item: MorpheInboxItem) -> some View {
-        VStack(alignment: item.isFromMorphe ? .leading : .trailing, spacing: 4) {
-            HStack(spacing: 6) {
-                if item.isFromMorphe {
-                    Text(item.kind == .weeklyReport ? "WEEK IN REVIEW" : (item.kind == .news ? "NEW IN MORPHE" : "MORPHE"))
-                        .font(MorpheTheme.microLabel(9))
-                        .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.accentText)
-                }
-                Text(item.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
-                    .font(.caption2)
-                    .foregroundStyle(MorpheTheme.textMuted)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                if !item.title.isEmpty {
-                    Text(item.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                }
-                Text(item.body)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(12)
-            .frame(maxWidth: 320, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(item.isFromMorphe ? MorpheTheme.panel : MorpheTheme.accentAlt.opacity(0.3))
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: item.isFromMorphe ? .leading : .trailing)
-        .accessibilityElement(children: .combine)
-    }
 }
 
 /// New message (Lucas 2026-10-10): the people you can message now —
@@ -4441,12 +4410,48 @@ struct CreatorFeed: View {
         }
     }
 
-    private var items: [Item] {
+    /// The section a chip stands for (All has none).
+    private func section(for filter: Filter) -> ExploreCardID? {
+        switch filter {
+        case .all: return nil
+        case .blogs: return .blogs
+        case .workouts: return .workouts
+        case .challenges: return .challenges
+        }
+    }
+
+    /// Chips: All plus the sections the user keeps visible.
+    private var chips: [Filter] {
+        Filter.allCases.filter { f in section(for: f).map { store.visibleExploreCards.contains($0) } ?? true }
+    }
+
+    /// One section's items, newest first, filtered by the search.
+    private func items(in section: ExploreCardID) -> [Item] {
         let joined = Set(store.activeChallenges.map(\.code))
+        var all: [Item]
+        switch section {
+        case .workouts: all = store.creatorWorkouts.map(Item.workout)
+        case .blogs: all = store.creatorNotes.map(Item.note)
+        case .challenges: all = store.openChallenges.filter { !joined.contains($0.code) }.map(Item.challenge)
+        }
+        all = searched(all)
+        all.sort { $0.date > $1.date }
+        return all
+    }
+
+    private var items: [Item] {
         var all: [Item] = []
-        if filter == .all || filter == .workouts { all += store.creatorWorkouts.map(Item.workout) }
-        if filter == .all || filter == .blogs { all += store.creatorNotes.map(Item.note) }
-        if filter == .all || filter == .challenges { all += store.openChallenges.filter { !joined.contains($0.code) }.map(Item.challenge) }
+        if let only = section(for: filter) {
+            all = items(in: only)
+        } else {
+            for section in store.visibleExploreCards { all += items(in: section) }
+        }
+        all.sort { $0.date > $1.date }
+        return all
+    }
+
+    private func searched(_ items: [Item]) -> [Item] {
+        var all = items
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !q.isEmpty {
             all = all.filter { item in
@@ -4459,12 +4464,56 @@ struct CreatorFeed: View {
                 return haystack.lowercased().contains(q)
             }
         }
-        all.sort { $0.date > $1.date }
         return all
     }
 
     private var totalCount: Int {
         store.creatorWorkouts.count + store.creatorNotes.count + store.openChallenges.count
+    }
+
+    private var emptyCard: some View {
+        GlassCard(.quiet) {
+            Text(store.authUser == nil
+                 ? "Sign in to see what coaches are publishing."
+                 : (totalCount == 0
+                    ? "Nothing published yet. When Creator Coaches post workouts, blogs and challenges, they land here."
+                    : "Nothing matches that search."))
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func itemCard(_ item: Item) -> some View {
+        switch item {
+        case .workout(let workout): workoutCard(workout)
+        case .note(let note): noteCard(note)
+        case .challenge(let listing): challengeCard(listing)
+        }
+    }
+
+    /// One Explore section: a header line, then its stream or one honest
+    /// line when nothing is published yet.
+    private func sectionBlock(_ card: ExploreCardID) -> some View {
+        let rows = items(in: card)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(card.title.uppercased())
+                    .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Rectangle().fill(MorpheTheme.stroke).frame(height: 1)
+            }
+            if rows.isEmpty {
+                Text(store.authUser == nil ? "Sign in to see what coaches are publishing." : "Nothing here yet — \(card.detail.lowercased()) land here.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .padding(.vertical, 4)
+            } else {
+                ForEach(rows) { item in itemCard(item) }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     var body: some View {
@@ -4490,32 +4539,45 @@ struct CreatorFeed: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(Filter.allCases) { f in
+                    ForEach(chips) { f in
                         Button(f.rawValue) { filter = f }
                             .buttonStyle(FilterChipStyle(isSelected: filter == f))
                     }
                 }
             }
             .pageSwipeExempt()
+            .onChange(of: chips) { _, now in if !now.contains(filter) { filter = .all } }
 
-            if items.isEmpty {
-                GlassCard(.quiet) {
-                    Text(store.authUser == nil
-                         ? "Sign in to see what coaches are publishing."
-                         : (totalCount == 0
-                            ? "Nothing published yet. When Creator Coaches post workouts, blogs and challenges, they land here."
-                            : "Nothing matches that search."))
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            if let only = section(for: filter) {
+                // One chip: that section's stream, flat.
+                if items.isEmpty {
+                    emptyCard
+                } else {
+                    ForEach(items) { item in itemCard(item) }
                 }
             } else {
-                ForEach(items) { item in
-                    switch item {
-                    case .workout(let workout): workoutCard(workout)
-                    case .note(let note): noteCard(note)
-                    case .challenge(let listing): challengeCard(listing)
+                // All: the sections in the user's order (Lucas 2026-10-16),
+                // each hideable and holdable in editor mode.
+                SectionEditorList(
+                    editing: store.editingPage == .explore,
+                    cards: store.visibleExploreCards,
+                    hidden: store.exploreCardLayout.filter { store.styleProfile.exploreHiddenCards.contains($0.rawValue) },
+                    title: \.title,
+                    onMove: { store.setExploreLayout(order: $0.map(\.rawValue)) },
+                    onHide: { card in
+                        guard store.visibleExploreCards.count > 1 else { return }
+                        store.setExploreLayout(hidden: store.styleProfile.exploreHiddenCards + [card.rawValue])
+                    },
+                    onShow: { card in
+                        var set = store.styleProfile.exploreHiddenCards
+                        set.removeAll { $0 == card.rawValue }
+                        store.setExploreLayout(hidden: set)
                     }
+                ) { card in
+                    sectionBlock(card)
+                }
+                if store.editingPage != .explore {
+                    EditLayoutButton(page: "Explore") { store.beginEditing(.explore) }
                 }
             }
         }

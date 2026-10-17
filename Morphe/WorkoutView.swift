@@ -2150,6 +2150,7 @@ struct DiscoverScreenView: View {
             .task { await store.refreshCreatorContent() }
             .onChange(of: store.selectedDiscoverSection) { _, section in
                 if section == .feed { Task { await store.refreshCreatorContent() } }
+                store.followEditingDiscoverSection()
             }
         }
     }
@@ -5001,7 +5002,7 @@ struct DiscoverCatalogSection: View {
                 discoverCard(card)
             }
             if store.editingPage != .discover {
-                EditLayoutButton(page: "Discover") { store.beginEditing(.discover) }
+                EditLayoutButton(page: "Fitness") { store.beginEditing(.discover) }
             }
             }
         }

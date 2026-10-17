@@ -145,8 +145,9 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
 /// Discover's two halves (Lucas 2026-10-10): the workout catalog, and
 /// the Feed of what Creator Coaches published.
 enum DiscoverSection: String, CaseIterable, Identifiable {
-    case workouts = "Workouts"
-    case feed = "Feed"
+    // Fitness / Explore (Lucas 2026-10-16); the cases keep their names.
+    case workouts = "Fitness"
+    case feed = "Explore"
     var id: String { rawValue }
 }
 
@@ -1237,6 +1238,28 @@ enum LearnCardID: String, LayoutCard {
     static let defaultOrder: [LearnCardID] = [.quizzes, .lessons, .whyMorphe, .rules, .coachNotes]
 }
 
+/// Explore's sections (Discover → Explore, Lucas 2026-10-16): the stream
+/// grouped by what Creator Coaches publish, in the user's order.
+enum ExploreCardID: String, LayoutCard {
+    case workouts, blogs, challenges
+
+    var title: String {
+        switch self {
+        case .workouts: return "Workouts"
+        case .blogs: return "Blogs"
+        case .challenges: return "Challenges"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .workouts: return "Workouts coaches published"
+        case .blogs: return "Posts from coaches"
+        case .challenges: return "Open challenges to join"
+        }
+    }
+    static let defaultOrder: [ExploreCardID] = [.workouts, .blogs, .challenges]
+}
+
 enum TrainCardID: String, CaseIterable, Identifiable {
     case program
     /// Build Workout (Lucas 2026-10-10): your own build, or one built with
@@ -1622,6 +1645,9 @@ struct UserStyleProfile: Codable, Equatable {
     var discoverHiddenCards: [String] = []
     var learnCardOrder: [String] = []
     var learnHiddenCards: [String] = []
+    /// Explore's section order / hidden sections (raw ExploreCardID).
+    var exploreCardOrder: [String] = []
+    var exploreHiddenCards: [String] = []
     /// The tab bar's order (raw ClientTab values); empty = default.
     var tabOrder: [String] = []
     /// How often each Today card gets used (learned half — feeds the
@@ -1659,6 +1685,8 @@ struct UserStyleProfile: Codable, Equatable {
         discoverHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .discoverHiddenCards)) ?? nil) ?? []
         learnCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .learnCardOrder)) ?? nil) ?? []
         learnHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .learnHiddenCards)) ?? nil) ?? []
+        exploreCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .exploreCardOrder)) ?? nil) ?? []
+        exploreHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .exploreHiddenCards)) ?? nil) ?? []
         tabOrder = ((try? c.decodeIfPresent([String].self, forKey: .tabOrder)) ?? nil) ?? []
         homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
         declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []
@@ -3541,6 +3569,9 @@ struct ThreadMessage: Identifiable, Hashable, Codable {
     var senderName: String
     var text: String
     var timestamp: String
+    /// When it was sent (Lucas 2026-10-16): lets the Morphe chat and the
+    /// Morphe AI chat share one timeline. Older saved turns decode nil.
+    var sentAt: Date? = nil
 }
 
 struct MessageThread: Identifiable, Hashable {

@@ -36,6 +36,15 @@ below was fixed in this pass.
 | 7 | **The Nutrition door lands under a LEARN kicker.** Tap "Nutrition", read "LEARN" at the top. | Small, but the second door on Today. | Hub pages take the section name as their kicker (NUTRITION), or the door says "Learn · Nutrition". |
 | 8 | **The Morphe AI pill rests on the Progress tile's corner** at Today's default scroll position (6.1" phone). | Covers the tile's chevron; reads as an overlap. | Nudge the pill's rest position up 12 pt or give the tiles a bottom inset equal to the pill. |
 
+## Added after the Network wave (11:05 PM)
+
+| # | Finding | Why it matters | Fix |
+|---|---|---|---|
+| 9 | **The offline brain answered "What should I train tomorrow?" with a Bent-Over Row load note.** The built-in reply matched a load question it wasn't asked. Seen in both chats (they are one conversation now). | The first question a new user asks in Morphe's own chat gets a wrong answer; with the key off, this is the brain they get. | Route "what should I train" / "tomorrow" to the plan reply (tomorrow's workout name, sets, minutes) before the load matcher. |
+| 10 | **Inbox titles lost their weight in the shared chat.** Reports and news render as one bubble with the title on the first line, same weight as the body. | Scannability of the weekly report. | `AIAgentMessageRow` bolds the first line when the message carries a title (or the turn keeps a `title` field). |
+| 11 | **The floating chat's header has no backing.** The conversation scrolls up under the "Morphe" wordmark and the Done pill. | Reads as a layout fault at the top of every long chat. | A material or ink band behind the toolbar, like the page header's fade. |
+| 12 | **Network's Morphe row still says GUARDIAN** next to the name while the thread subtitle says reports · news · ask anything. | Two names for one thing. | Keep one. |
+
 ## Honest notes
 - #2 was produced by my own relaunch over an open session; it is real
   but I only saw it in local mode. Worth a check on the phone: start a
@@ -45,4 +54,4 @@ below was fixed in this pass.
 - Not re-walked tonight: finish sequence, check-in, food check, voice.
 
 ## Order
-2 → 1 → 4 → 5 (+6) → 3 → 7 → 8.
+2 → 9 → 1 → 4 → 5 (+6) → 3 → 10 → 11 → 7 → 8 → 12.
