@@ -7,6 +7,8 @@ struct LaunchSequenceView: View {
     @State private var revealed = false
     @State private var entering = false
     @State private var progress: CGFloat = 0
+    /// 0 still · 1 activated (from three quarters on).
+    @State private var loadFrame = 0
     /// The orb's box in art rows: the old helmet box (235,87)–(617,539)
     /// inside the mark, as a circle 1.22× its width.
     private static let orbBox: CGRect = {
@@ -41,15 +43,21 @@ struct LaunchSequenceView: View {
                 // Same navy as the system splash (LaunchField).
                 Color("LaunchField")
 
-                // Lucas's final art, split in two (Tools/make_loading_final_layers.py):
-                // the field zooms toward the viewer, the mark holds still.
-                Image("LoadingFinalPlate")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFill()
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .scaleEffect(entering ? Self.enterZoom : 1.0)
-                    .clipped()
+                // Lucas's full-frame loading art (2026-10-17): Still until
+                // the bar is three quarters full, then Activated. The field
+                // zooms toward the viewer over the beat.
+                ZStack {
+                    Image("LoadingScreenStill")
+                        .resizable().interpolation(.high).scaledToFill()
+                        .opacity(loadFrame == 1 ? 0 : 1)
+                    Image("LoadingScreenActivated")
+                        .resizable().interpolation(.high).scaledToFill()
+                        .opacity(loadFrame == 1 ? 1 : 0)
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+                .scaleEffect(entering ? Self.enterZoom : 1.0)
+                .clipped()
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: loadFrame)
 
                 if !reduceMotion {
                     LoadingMotes(isLight: false)
@@ -57,33 +65,10 @@ struct LaunchSequenceView: View {
                         .scaleEffect(entering ? Self.enterZoom : 1.0)
                 }
 
-                Image("LoadingFinalMark")
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: Self.markBox.width * scale * Self.markScale,
-                           height: Self.markBox.height * scale * Self.markScale)
-                    .position(markCenter)
-
-                // The Spartan wakes inside the orb (Lucas 2026-10-17): the
-                // dark visor, then the half-lit one, then the eyes — three
-                // crossfades over the load beat, a small pop on the last.
-                let orbSide = Self.orbBox.width * scale * Self.markScale
-                let orbCenter = CGPoint(
-                    x: originX + Self.orbBox.midX * scale,
-                    y: markCenter.y + (Self.orbBox.midY - Self.markBox.midY) * scale * Self.markScale)
-                SpartanWakeView(duration: 1.25)
-                    .frame(width: orbSide, height: orbSide)
-                    .position(orbCenter)
-
-                VStack(spacing: 10) {
-                    LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: false)
-                        .frame(width: 178, height: 8)
-                    Text("LOADING…")
-                        .font(MorpheTheme.microLabel(8.5))
-                        .tracking(3)
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-                .position(x: geo.size.width / 2, y: barY)
+                // The live bar rides over the art's bar.
+                LoadingGlassBar(progress: progress, animates: !reduceMotion, isLight: false)
+                    .frame(width: geo.size.width * 0.49, height: 8)
+                    .position(x: geo.size.width / 2, y: geo.size.height * 0.729 * (entering ? Self.enterZoom : 1.0) - (entering ? geo.size.height * (Self.enterZoom - 1) / 2 : 0))
             }
             // One layer for the fade: per-layer opacity showed the mark's
             // box over the half-faded field.
@@ -105,6 +90,13 @@ struct LaunchSequenceView: View {
                 withAnimation(.easeIn(duration: 1.6)) { entering = true }
             }
             withAnimation(.easeInOut(duration: 1.25)) { progress = 1 }
+            // Still until the bar reaches three quarters (the 1.25 s fill
+            // → ~0.94 s), then Activated for the rest (Lucas 2026-10-17).
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(940))
+                loadFrame = 1
+                Haptics.impact(.light)
+            }
             // One brand beat on every cold open; store init is already
             // done, so this is the only cost — never on a foreground return.
             try? await Task.sleep(for: Self.beat)

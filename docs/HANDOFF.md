@@ -1206,3 +1206,12 @@ Network is deliberately left alone.
 - The floating Morphe AI button's mark is the side-view Spartan orb
   (Lucas 2026-10-17, `MorpheAIButtonMark`); everything else about the
   button is unchanged.
+- Loading screen (Lucas 2026-10-17): two full-frame designs,
+  `LoadingScreenStill` and `LoadingScreenActivated` (850×1850, helmet +
+  wordmark + tagline + a drawn bar in frame). The screen shows Still until the
+  bar is three quarters full (~0.94 s), then Activated with a light buzz
+  for the rest of the beat; the live
+  `LoadingGlassBar` rides over the art's bar (49% width at 72.9% height).
+  The old plate/mark/orb layers and the LOADING… label are gone from the
+  view; the `LoadingFinalPlate` / `LoadingFinalMark` imagesets and the
+  `orbBox`/`markBox` constants remain unused. Only the loading screen changed here.
