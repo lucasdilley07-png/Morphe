@@ -816,3 +816,14 @@ Network is deliberately left alone.
   days in a row + best, sessions done/target, and the week's good and bad
   lines from the log (PRs, days shown up, missed training days so far,
   short days, a forgiven day).
+- **Sticker → glass calendar tile** (Lucas): 46×50, accent header band
+  carrying a drawn robot arm (`RobotArmFlex` Shape — no SF symbol or
+  emoji exists), frosted body with the day count, bubble highlight,
+  accent hairline; every color from the user's palette. The week sheet's
+  flame became the same arm in accent.
+- **Electric sweep** (`electricSweep(armed:)` on the greeting): a thin
+  accent band with a white core and a fainter trailing pass, masked to the
+  glyphs, sweeping ~0.9 s — once ~0.9 s after the greeting lands, then
+  every 2–3 min at random while Today is on screen; a soft tap with it;
+  nothing under Reduce Motion. Verified by burst capture (the band reads
+  through "in" and "Verif").

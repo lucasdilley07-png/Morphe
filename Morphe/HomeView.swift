@@ -53,6 +53,9 @@ struct HomeView: View {
                         .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .multilineTextAlignment(.center)
+                        // A current runs through the name every couple of
+                        // minutes (Lucas 2026-10-16) — the user's accent.
+                        .electricSweep(armed: greetingAppeared)
                     // Morphe introduces the athlete to themselves (Lucas
                     // 2026-10-16): readiness, score, energy, level — the
                     // numbers roll up on arrival — then the question.
@@ -2956,7 +2959,7 @@ private struct StreakSticker: View {
     @State private var dragStart: CGPoint? = nil
     @State private var lifted = false
     @State private var showSheet = false
-    private let size = CGSize(width: 64, height: 34)
+    private let size = CGSize(width: 46, height: 50)
 
     var body: some View {
         GeometryReader { geo in
@@ -2999,31 +3002,102 @@ private struct StreakSticker: View {
         }
     }
 
+    /// The magnet is a calendar tile in the glass-bubble idiom (Lucas
+    /// 2026-10-16): an accent header band carrying the robot arm, the day
+    /// count on a frosted body, one highlight — the Watch calendar
+    /// complication, in Morphe's colors. Every color is the user's
+    /// palette (accent / onFill / ink), so it follows the app's theme.
     private var magnet: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "calendar")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(MorpheTheme.textPrimary)
-            Image(systemName: "flame.fill")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(MorpheTheme.warning)
-                .symbolEffect(.bounce, value: store.dailyStreakDays)
-            Text("\(store.dailyStreakDays)")
-                .font(.system(size: 15, weight: .black, design: .rounded).monospacedDigit())
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .contentTransition(.numericText())
+        VStack(spacing: 0) {
+            ZStack {
+                LinearGradient(colors: [MorpheTheme.accent, MorpheTheme.accent.opacity(0.78)],
+                               startPoint: .top, endPoint: .bottom)
+                RobotArmFlex()
+                    .fill(MorpheTheme.onFill(MorpheTheme.accent))
+                    .frame(width: 18, height: 12)
+                    .symbolEffectCompat(trigger: store.dailyStreakDays)
+            }
+            .frame(height: 16)
+            ZStack {
+                (MorpheTheme.isLight ? Color.white.opacity(0.78) : MorpheTheme.inkAlt.opacity(0.82))
+                Text("\(store.dailyStreakDays)")
+                    .font(.system(size: 20, weight: .black, design: .rounded).monospacedDigit())
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .padding(.horizontal, 4)
+            }
         }
-        .padding(.horizontal, 8)
         .frame(width: size.width, height: size.height)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(MorpheTheme.isLight ? Color.white : MorpheTheme.inkAlt)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay(
+            // The bubble highlight.
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(LinearGradient(colors: [Color.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center))
+                .allowsHitTesting(false)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(MorpheTheme.accent.opacity(0.55), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .stroke(MorpheTheme.accent.opacity(0.6), lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+}
+
+/// A flexing robot arm, drawn (no emoji, no SF symbol exists): angular
+/// upper arm, forearm curled up, a boxy fist, two joint pins.
+private struct RobotArmFlex: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let w = r.width, h = r.height
+        let t = h * 0.3                                    // limb thickness
+        let elbow = CGPoint(x: r.minX + w * 0.62, y: r.minY + h * 0.72)
+        // Upper arm: shoulder (left) to the elbow.
+        p.addRoundedRect(in: CGRect(x: r.minX, y: elbow.y - t / 2, width: w * 0.62, height: t),
+                         cornerSize: CGSize(width: t / 2, height: t / 2))
+        // Bicep: the bulge on top of the upper arm — the flex.
+        p.addEllipse(in: CGRect(x: r.minX + w * 0.16, y: elbow.y - t / 2 - h * 0.26, width: w * 0.34, height: h * 0.34))
+        // Forearm: from the elbow up and back over the upper arm (a curl).
+        var fore = Path()
+        fore.addRoundedRect(in: CGRect(x: -t / 2, y: -h * 0.72, width: t, height: h * 0.76),
+                            cornerSize: CGSize(width: t / 2, height: t / 2))
+        p.addPath(fore.applying(CGAffineTransform(translationX: elbow.x, y: elbow.y).rotated(by: 0.55)))
+        // Fist: a box at the top of the forearm.
+        p.addRoundedRect(in: CGRect(x: r.minX + w * 0.70, y: r.minY, width: w * 0.30, height: h * 0.34),
+                         cornerSize: CGSize(width: 2, height: 2))
+        // Joint pins, cut out — the mechanical tell.
+        var pins = Path()
+        pins.addEllipse(in: CGRect(x: elbow.x - t * 0.2, y: elbow.y - t * 0.2, width: t * 0.4, height: t * 0.4))
+        pins.addEllipse(in: CGRect(x: r.minX + t * 0.3, y: elbow.y - t * 0.2, width: t * 0.4, height: t * 0.4))
+        return p.subtracting(pins)
+    }
+}
+
+private extension View {
+    /// A one-shot pop when the number changes; plain on Reduce Motion.
+    @ViewBuilder
+    func symbolEffectCompat(trigger: Int) -> some View {
+        self.modifier(PopOnChange(trigger: trigger))
+    }
+}
+
+private struct PopOnChange: ViewModifier {
+    let trigger: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pop = false
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pop ? 1.25 : 1)
+            .onChange(of: trigger) { _, _ in
+                guard !reduceMotion else { return }
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) { pop = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(220))
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { pop = false }
+                }
+            }
     }
 }
 
@@ -3064,9 +3138,9 @@ private struct StreakStickerSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
-                Image(systemName: "flame.fill")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(MorpheTheme.warning)
+                RobotArmFlex()
+                    .fill(MorpheTheme.accent)
+                    .frame(width: 30, height: 20)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(store.dailyStreakDays) day\(store.dailyStreakDays == 1 ? "" : "s") in a row")
                         .font(.title3.weight(.bold))
@@ -3120,4 +3194,81 @@ private struct StreakStickerSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
+}
+
+
+// MARK: - Electric sweep (Lucas 2026-10-16)
+
+/// A thin charge of light that runs through text: a bright accent band
+/// with a white core, masked to the glyphs, sweeping left to right in
+/// ~0.9 s with a fainter second pass right behind it. Runs once on
+/// arrival, then every 2–3 minutes at random while the view is alive.
+/// Colors are the user's accent, so it follows the palette. Nothing
+/// under Reduce Motion.
+private struct ElectricSweep: ViewModifier {
+    let armed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -1.4   // -1.4 (off left) → 1.4 (off right)
+    @State private var running = false
+    @State private var loop: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if running {
+                    GeometryReader { geo in
+                        let w = geo.size.width
+                        ZStack {
+                            band(width: w * 0.42, core: 0.95).offset(x: phase * w)
+                            band(width: w * 0.26, core: 0.55).offset(x: (phase - 0.32) * w)
+                        }
+                        .frame(width: w, height: geo.size.height)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+            .onChange(of: armed, initial: true) { _, now in
+                guard now, loop == nil, !reduceMotion else { return }
+                loop = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(900))
+                    while !Task.isCancelled {
+                        await sweep()
+                        try? await Task.sleep(for: .seconds(Double.random(in: 120...180)))
+                    }
+                }
+            }
+            .onDisappear { loop?.cancel(); loop = nil }
+    }
+
+    private func band(width: CGFloat, core: Double) -> some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0),
+                .init(color: MorpheTheme.accent.opacity(0.0), location: 0.2),
+                .init(color: MorpheTheme.accent.opacity(0.9), location: 0.42),
+                .init(color: Color.white.opacity(core), location: 0.5),
+                .init(color: MorpheTheme.accentAlt.opacity(0.9), location: 0.58),
+                .init(color: .clear, location: 0.8),
+                .init(color: .clear, location: 1)
+            ],
+            startPoint: .leading, endPoint: .trailing
+        )
+        .frame(width: width)
+        .blur(radius: 0.6)
+    }
+
+    @MainActor
+    private func sweep() async {
+        phase = -1.4
+        running = true
+        withAnimation(.easeInOut(duration: 0.9)) { phase = 1.4 }
+        Haptics.impact(.soft)
+        try? await Task.sleep(for: .milliseconds(950))
+        running = false
+    }
+}
+
+extension View {
+    func electricSweep(armed: Bool) -> some View { modifier(ElectricSweep(armed: armed)) }
 }
