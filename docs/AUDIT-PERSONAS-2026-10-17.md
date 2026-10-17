@@ -32,21 +32,21 @@ What was fixed tonight is marked ✔; everything else is the list.
 | # | Lens | Finding | Fix |
 |---|---|---|---|
 | 1 | Foreign user | **English only.** No `.xcstrings`, no `String(localized:)`; every string is a literal. A Spanish or Hindi speaker gets nothing in their language. | Add a String Catalog, wrap the ~40 first-run and Today strings first, let Xcode's catalog pick up the rest; ship es/pt/fr/de/hi/ja/zh via machine draft + review. Dates already localize. |
-| 2 | Foreign user | **Units default to pounds.** `weightUnit = .pounds` regardless of locale; kg is a Profile toggle. | Default from `Locale.current.measurementSystem`; the intro's birthday picker already honours locale. |
-| 3 | 12–18 | **The age gate accepts 13+, but the first-run copy, the privacy line and Morphe AI online (18+) never say so.** A 15-year-old sees "Turn on Morphe AI online" in Nutrition with no reason it is greyed. | One line on day one for 13–17: "Some features unlock at 18." Hide the online-AI nudges under 18. |
-| 4 | 12–18 / 41–80 | **Dense mono micro-labels (10–11 pt tracked caps) on the identity strip, the kicker and section headers.** Dynamic Type scales them, but at the default size a 60-year-old reads "0 DAYS LOGGED" squinting. | Bump microLabel floors to 11/12 pt; test at AX1. |
-| 5 | 41–80 | **Hold-to-record and the 2-second hold-to-move have no spoken affordance for VoiceOver** (labels exist; the gesture itself does not). | Add `.accessibilityAction` equivalents: "Record a voice memo" / "Move up" / "Move down" / "Hide". |
-| 6 | 26–40 | **Morphe speaks on seven pages; none of it is tunable.** A commuter who reads at a glance and a user who wants the brain to shut up get the same volume. | Profile → Morphe's voice: Quiet / Normal / Coach. Quiet hides the directives and the hints after week one. |
+| 2 | Foreign user | **Units default to pounds.** `weightUnit = .pounds` regardless of locale; kg is a Profile toggle. | ✔ metric locales start in kg |
+| 3 | 12–18 | **The age gate accepts 13+, but the first-run copy, the privacy line and Morphe AI online (18+) never say so.** A 15-year-old sees "Turn on Morphe AI online" in Nutrition with no reason it is greyed. | ✔ "unlocks at 18" copy + a day-one line for 13–17 |
+| 4 | 12–18 / 41–80 | **Dense mono micro-labels (10–11 pt tracked caps) on the identity strip, the kicker and section headers.** Dynamic Type scales them, but at the default size a 60-year-old reads "0 DAYS LOGGED" squinting. | ✔ microLabel floor raised to caption at 10–11 pt |
+| 5 | 41–80 | **Hold-to-record and the 2-second hold-to-move have no spoken affordance for VoiceOver** (labels exist; the gesture itself does not). | ✔ VoiceOver Move up/down on boxes, left/right on tabs |
+| 6 | 26–40 | **Morphe speaks on seven pages; none of it is tunable.** A commuter who reads at a glance and a user who wants the brain to shut up get the same volume. | ✔ Profile → Training → Morphe's voice: Quiet / Normal / Coach |
 | 7 | Engineer | **Two nested `GeometryReader`/preference-key scroll trackers per page** (Discover, Chats, Quick Add) and a window-level pan recognizer per paging view. They work, but each is hand-rolled. | One `ScrollTracker` modifier with a shared key; one `PageSwipeRecognizer` instance owned by the shell. |
 | 8 | Engineer | **`MorpheStore.swift` is ~19k lines, `RootView.swift` ~6k, `ChatView.swift` ~5k.** Compile times showed it (type-checker timeouts earlier today). | Split by feature folders (Voice, Network, Nutrition, Layout). No behaviour change. |
 | 9 | Engineer | **Voice memos ride the message text as a marker** (`[voice:id|m:ss] transcript`) and the clip stays on the sender's phone. | Upload the clip to Storage, send a `voiceMemo` field; the marker stays as the offline fallback. |
 | 10 | Investor | **Zero strangers have used the app.** Every number tonight is a local-mode account. The Apple Developer gate ($99) and the relay deploy are still the blockers. | Pay the gate, ship TestFlight to 10 people this week, read the first-run funnel from real taps. |
-| 11 | Investor | **Explore is an empty grid** until coaches publish; Network's chats error in local mode. Day one of a real user is two empty social pages. | Seed Explore with Morphe's own threads (the weekly report, the news) so the grid is never blank; show "No chats yet" instead of a fetch card. |
+| 11 | Investor | **Explore is an empty grid** until coaches publish; Network's chats error in local mode. Day one of a real user is two empty social pages. | ✔ Explore seeds Morphe's reports and news (chats card unchanged) |
 | 12 | 19–25 | **No sharing of a logged session to Explore from the finish screen** (the share card exists; it goes to the system sheet). | "Post to Explore" on the finish sequence — one tap, the card becomes a tile. |
-| 13 | All | **Personalization reads data but not feedback.** The hint cards have "Got it"; the directives have no thumbs; the layout proposes once. Nothing learns from a dismissal. | Every Morphe line gets a tiny "less of this" on long-press; store per-bucket weights; the day pick uses them. That is the real-time adaptation asked for. |
-| 14 | 12–18 | **Quizzes and XP exist but there is no visible level-up moment on Today** beyond the LEVEL tile counting. | The finish sequence already exists; fire it on a level change. |
+| 13 | All | **Personalization reads data but not feedback.** The hint cards have "Got it"; the directives have no thumbs; the layout proposes once. Nothing learns from a dismissal. | ✔ long-press any page line → More / Less of this; bucket weights shape the pick |
+| 14 | 12–18 | **Quizzes and XP exist but there is no visible level-up moment on Today** beyond the LEVEL tile counting. | ✔ a level change raises the celebration banner |
 
-## How to make it adapt in real time (the plan, not built)
+## How to make it adapt in real time (steps 1–3 built in the fix wave; 4–6 not)
 1. **A feedback bus.** Every Morphe line, hint, nudge and layout proposal
    carries an id. Long-press → "More like this / Less of this / Not now."
    Store counts per id and per bucket (tip / task / cheer) per user.

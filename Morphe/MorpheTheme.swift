@@ -172,7 +172,9 @@ enum MorpheTheme {
     /// 2026-10-16: the UIFontMetrics value was read once at launch and the
     /// labels never grew). caption2 is Apple's 11pt floor; 12+ maps to caption.
     static func microLabel(_ size: CGFloat = 11) -> Font {
-        .system(size <= 11 ? .caption2 : .caption, design: .monospaced).weight(.semibold)
+        // Floor raised (persona audit 2026-10-17 #4): the 10–11 pt tracked
+        // caps read as caption (12 pt); only ≤ 9 stays caption2.
+        .system(size <= 9 ? .caption2 : .caption, design: .monospaced).weight(.semibold)
     }
 
     // Glows retired with the glass design; kept near-zero for API compat.

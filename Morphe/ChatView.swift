@@ -5359,6 +5359,12 @@ extension MorpheAppStore {
             items.append(ExploreItem(id: "n-" + note.id, kind: .thread, title: note.title, body: note.body,
                                      authorName: note.authorName, date: note.createdAt, post: nil, note: note))
         }
+        // Morphe's own reports and news seed the grid (persona audit #11):
+        // day one is never a blank wall.
+        for item in morpheInbox where item.kind == .weeklyReport || item.kind == .news {
+            items.append(ExploreItem(id: "m-" + item.id, kind: .thread, title: item.title, body: item.body,
+                                     authorName: "Morphe", date: item.date, post: nil, note: nil))
+        }
         return items.sorted { $0.date > $1.date }
     }
 }

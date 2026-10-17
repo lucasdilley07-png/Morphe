@@ -192,20 +192,34 @@ struct SpartanWakeView: View {
 }
 
 struct MorpheDirectiveLine: View {
+    @Environment(MorpheAppStore.self) private var store
     let text: String
+    /// page.bucket — long-press offers More / Less of this (persona
+    /// audit #13); nil for fixed lines.
+    var feedbackKey: String? = nil
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "sparkle")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(MorpheTheme.accentText)
-            Text(text)
-                .multilineTextAlignment(.center)
+        if !text.isEmpty {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "sparkle")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                Text(text)
+                    .multilineTextAlignment(.center)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(MorpheTheme.textPrimary)
+            .frame(maxWidth: .infinity)
+            .contentTransition(.opacity)
+            .contextMenu {
+                if let feedbackKey {
+                    Button("More like this", systemImage: "hand.thumbsup") { store.rateDirective(feedbackKey, more: true) }
+                    Button("Less of this", systemImage: "hand.thumbsdown") { store.rateDirective(feedbackKey, more: false) }
+                }
+            }
+            .accessibilityLabel("Morphe: \(text)")
+            .accessibilityHint(feedbackKey == nil ? "" : "Long press for more or less of this")
         }
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(MorpheTheme.textPrimary)
-        .frame(maxWidth: .infinity)
-        .contentTransition(.opacity)
-        .accessibilityLabel("Morphe: \(text)")
     }
 }
 
@@ -846,7 +860,8 @@ struct GuideHint: View {
 
     var body: some View {
         let _ = store.guideRefresh
-        if !store.hasSeenGuide(key) {
+        // Quiet voice hides the hints (persona audit #6).
+        if !store.hasSeenGuide(key), store.morpheVoiceLevel != .quiet {
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkle")
@@ -3757,6 +3772,10 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
                     })
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
                     .accessibilityAction(named: "Hide \(title(card))") { hide(card) }
+                    // VoiceOver can't hold-and-slide (persona audit #5):
+                    // Move up / Move down do the same reorder.
+                    .accessibilityAction(named: "Move \(title(card)) up") { nudge(card, by: -1) }
+                    .accessibilityAction(named: "Move \(title(card)) down") { nudge(card, by: 1) }
             }
             if editing, !hidden.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -3819,6 +3838,15 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
             onHide(card)
             popping = nil
         }
+    }
+
+    private func nudge(_ card: Card, by delta: Int) {
+        guard let from = cards.firstIndex(of: card) else { return }
+        let to = from + delta
+        guard cards.indices.contains(to) else { return }
+        var next = cards; next.swapAt(from, to)
+        Haptics.selection()
+        onMove(next)
     }
 
     private func reorderIfNeeded(_ card: Card) {
@@ -3898,6 +3926,8 @@ struct TabOrderStrip: View {
                 }
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: lifted)
                 .accessibilityLabel("\(tab.title) tab")
+                .accessibilityAction(named: "Move \(tab.title) left") { nudgeTab(tab, by: -1) }
+                .accessibilityAction(named: "Move \(tab.title) right") { nudgeTab(tab, by: 1) }
             }
         }
         .onPreferenceChange(EditorFrameKey.self) { frames = $0 }
@@ -3907,6 +3937,14 @@ struct TabOrderStrip: View {
         .background(Capsule(style: .continuous).fill(.ultraThinMaterial))
         .overlay(Capsule(style: .continuous).stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1))
         .padding(.horizontal, 16)
+    }
+
+    private func nudgeTab(_ tab: ClientTab, by delta: Int) {
+        var order = store.tabLayout
+        guard let from = order.firstIndex(of: tab), order.indices.contains(from + delta) else { return }
+        order.swapAt(from, from + delta)
+        Haptics.selection()
+        store.setTabOrder(order.map(\.rawValue))
     }
 
     private func reorderIfNeeded(_ tab: ClientTab) {

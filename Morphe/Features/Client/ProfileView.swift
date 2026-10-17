@@ -1848,6 +1848,32 @@ struct ProfileView: View {
 
             settingsGroup("Training", "How you train, connections, Morphe Intelligence, notifications") {
 
+                settingsSection("Morphe's voice", keywords: "voice quiet normal coach tips hints lines directive") {
+                    // Persona audit 2026-10-17 #6: how much Morphe says.
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(MorpheAppStore.MorpheVoiceLevel.allCases) { level in
+                            Button {
+                                store.morpheVoiceLevel = level
+                                Haptics.selection()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: store.morpheVoiceLevel == level ? "largecircle.fill.circle" : "circle")
+                                        .foregroundStyle(store.morpheVoiceLevel == level ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(level.title).font(.subheadline.weight(.semibold)).foregroundStyle(MorpheTheme.textPrimary)
+                                        Text(level.detail).font(.caption).foregroundStyle(MorpheTheme.textSecondary)
+                                    }
+                                    Spacer()
+                                }
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(store.morpheVoiceLevel == level ? .isSelected : [])
+                        }
+                    }
+                }
+
                 settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
                     // Weekly target — drives the consistency denominator on
                     // Progress; was user-set in onboarding then locked forever.

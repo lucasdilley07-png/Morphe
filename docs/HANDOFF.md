@@ -1174,3 +1174,17 @@ Network is deliberately left alone.
   pop-up choices (tinted with their solid fill for legibility over the
   scrim), the Train door, the Fuel doors and the history button all route
   through it. `VoiceGlass` on the stage is the same idea, kept private.
+- Persona-audit fix wave (2026-10-17): #2 metric locales start in kg when
+  nothing is saved; #3 `isMinor` (13–17) — the 18+ Morphe-AI nudges in
+  Nutrition read "unlocks at 18" and Today's day-one directive says some
+  features unlock at 18; #4 `microLabel` floor raised (≤ 9 pt stays
+  caption2, 10–11 pt now caption); #5 VoiceOver actions — Move up/down on
+  every editor box, Move left/right on tabs; #6 Profile → Training →
+  "Morphe's voice": Quiet / Normal / Coach (`morpheVoiceLevel`) — Quiet
+  hides page lines, Today's directive and hints, Coach puts tasks first;
+  #11 Explore seeds Morphe's reports/news as threads; #13 feedback bus —
+  long-press any page line → More / Less of this (`rateDirective`,
+  `directiveFeedback` page.bucket weights; a bucket at −1 sleeps, a bucket
+  rated up takes more days); #14 a level change raises the celebration
+  banner. Not done: #1 localization (needs a String Catalog + translations),
+  #7–#9 engineering refactors, #10 distribution, #12 post-to-Explore.

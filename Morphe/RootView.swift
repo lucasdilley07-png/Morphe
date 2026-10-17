@@ -4040,7 +4040,7 @@ private struct QuickAddSheet: View {
                     Text("Quick Add")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    MorpheDirectiveLine(text: store.pageDirective(.connect))
+                    MorpheDirectiveLine(text: store.pageDirectiveLine(.connect).text, feedbackKey: store.pageDirectiveLine(.connect).key)
                 }
                 .frame(maxWidth: .infinity)
 

@@ -89,8 +89,10 @@ struct MoreView: View {
                 selection: Binding(get: { activeFeature }, set: { store.selectedHubFeature = $0 })
             )
             .padding(.top, -8)
-            MorpheDirectiveLine(text: store.pageDirective(
-                activeFeature == .nutrition ? .nutrition : (activeFeature == .library ? .library : .lessons)))
+            MorpheDirectiveLine(text: store.pageDirectiveLine(
+                activeFeature == .nutrition ? .nutrition : (activeFeature == .library ? .library : .lessons)).text,
+                                feedbackKey: store.pageDirectiveLine(
+                                    activeFeature == .nutrition ? .nutrition : (activeFeature == .library ? .library : .lessons)).key)
         }
     }
 
@@ -1661,7 +1663,9 @@ struct FuelLogCard: View {
             Button("Search instead") { showSearch = true }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Morphe never guesses food on its own — search the library instead.")
+            Text(store.isMinor
+                 ? "Reading a plate unlocks at 18. Search the library instead — Morphe never guesses food on its own."
+                 : "Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Morphe never guesses food on its own — search the library instead.")
         }
     }
 
@@ -2515,7 +2519,9 @@ struct FoodCheckCard: View {
                         HistoryButton(label: "Food check history", count: store.foodChecks.count) { showHistory = true }
                     }
                     Text(!store.intelligenceEnabled
-                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal or drink from a photo and searches the web for the supply chain."
+                         ? (store.isMinor
+                            ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Photo checks unlock at 18."
+                            : "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal or drink from a photo and searches the web for the supply chain.")
                          : "Scan a barcode or photograph a meal or a drink. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -2565,7 +2571,9 @@ struct FoodCheckCard: View {
             Button("Scan a barcode instead") { showScanner = true }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Barcodes work without it.")
+            Text(store.isMinor
+                 ? "Photo checks unlock at 18. Barcodes work for everyone."
+                 : "Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Barcodes work without it.")
         }
         .sheet(isPresented: $showScanner, onDismiss: presentPending) {
             FoodBarcodeSheet { code in

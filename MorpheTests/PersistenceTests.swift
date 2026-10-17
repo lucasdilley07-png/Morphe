@@ -9933,5 +9933,26 @@ final class MorpheRemembersTests: XCTestCase {
         let lines = Set(MorpheAppStore.MorphePage.allCases.map { store.pageDirective($0, now: day) })
         XCTAssertEqual(lines.count, MorpheAppStore.MorphePage.allCases.count, "every page speaks its own line")
     }
+
+    /// Persona-audit fix wave (2026-10-17): the voice dial, the feedback
+    /// weights, and the level-up banner.
+    func testVoiceLevelAndDirectiveFeedbackShapeTheLines() {
+        let store = freshStore()
+        let day = Date(timeIntervalSince1970: 1_792_300_000)
+        store.morpheVoiceLevel = .quiet
+        XCTAssertEqual(store.pageDirective(.train, now: day), "", "quiet says nothing on the pages")
+        XCTAssertNil(store.morpheDirective(now: day), "and nothing on Today")
+        store.morpheVoiceLevel = .coach
+        let coach = store.pageDirectiveLine(.nutrition, now: day)
+        XCTAssertTrue(coach.key.hasSuffix(".task"), "coach leads with the task: \(coach)")
+        store.morpheVoiceLevel = .normal
+        let before = store.pageDirectiveLine(.lessons, now: day)
+        store.rateDirective(before.key, more: false); store.rateDirective(before.key, more: false)
+        let after = store.pageDirectiveLine(.lessons, now: day)
+        XCTAssertNotEqual(after.key, before.key, "two 'less of this' put that bucket to sleep")
+        store.morpheVoiceLevel = .normal
+        UserDefaults.standard.removeObject(forKey: MorpheAppStore.directiveFeedbackKey)
+        UserDefaults.standard.removeObject(forKey: MorpheAppStore.voiceLevelKey)
+    }
 }
 

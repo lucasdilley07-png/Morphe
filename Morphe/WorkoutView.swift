@@ -906,7 +906,8 @@ struct WorkoutView: View {
                 // or a logged number, changing daily.
                 MorpheDirectiveLine(text: store.hasCompletedWorkoutFlow
                                     ? "Session logged. Look it over, rate it, and I'll lock it in."
-                                    : store.pageDirective(.train))
+                                    : store.pageDirectiveLine(.train).text,
+                                    feedbackKey: store.hasCompletedWorkoutFlow ? nil : store.pageDirectiveLine(.train).key)
 
 
                 // The hint describes the first session; it retires the
@@ -2141,7 +2142,8 @@ struct DiscoverScreenView: View {
                             Color.clear.preference(key: DiscoverScrollOffsetKey.self, value: geo.frame(in: .named("discoverScroll")).minY)
                         })
 
-                    MorpheDirectiveLine(text: store.pageDirective(store.selectedDiscoverSection == .feed ? .explore : .fitness))
+                    MorpheDirectiveLine(text: store.pageDirectiveLine(store.selectedDiscoverSection == .feed ? .explore : .fitness).text,
+                                        feedbackKey: store.pageDirectiveLine(store.selectedDiscoverSection == .feed ? .explore : .fitness).key)
 
                     if store.selectedDiscoverSection == .feed {
                         ExploreGrid()

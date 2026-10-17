@@ -744,8 +744,13 @@ final class MorpheAppStore {
     /// rotating through the top three. Nothing invented: every line is
     /// gated on a real number. Clock injectable for tests.
     func morpheDirective(now: Date = .now) -> String? {
-        guard hasCompletedOnboarding else { return nil }
+        guard hasCompletedOnboarding, morpheVoiceLevel != .quiet else { return nil }
         var lines: [String] = []
+        // Persona audit #3: a 13–17 user hears once, on day one, that
+        // some features unlock at 18 — everything needed to train is here.
+        if isMinor, loggedWorkoutCount == 0 {
+            lines.append("Some features unlock at 18. Everything you need to train is here.")
+        }
         let target = max(clientProfile.trainingDaysPerWeek, 1)
         let done = currentAthleteWorkoutSummary.workoutsThisWeek
         let hour = Calendar.current.component(.hour, from: now)
@@ -798,9 +803,51 @@ final class MorpheAppStore {
         return pool[hour % pool.count]
     }
 
+    // MARK: Morphe's voice — volume and feedback (persona audit 2026-10-17)
+
+    /// 13–17: the online-AI nudges (18+) stay quiet and day one says so.
+    var isMinor: Bool { clientProfile.age > 0 && clientProfile.age < 18 }
+
+    enum MorpheVoiceLevel: String, CaseIterable, Identifiable {
+        case quiet, normal, coach
+        var id: String { rawValue }
+        var title: String { rawValue.capitalized }
+        var detail: String {
+            switch self {
+            case .quiet: return "No page lines or hints — just the numbers"
+            case .normal: return "A tip, a task or a number a day per page"
+            case .coach: return "Tasks first, every page, every day"
+            }
+        }
+    }
+    static let voiceLevelKey = "morphe.voice.level"
+    var morpheVoiceLevel: MorpheVoiceLevel = MorpheVoiceLevel(rawValue: UserDefaults.standard.string(forKey: MorpheAppStore.voiceLevelKey) ?? "") ?? .normal {
+        didSet { UserDefaults.standard.set(morpheVoiceLevel.rawValue, forKey: Self.voiceLevelKey) }
+    }
+
+    /// "More of this / Less of this" on any Morphe line, keyed page.bucket.
+    /// Weights shape which bucket speaks; a bucket at -2 or below sleeps.
+    static let directiveFeedbackKey = "morphe.directive.feedback"
+    private(set) var directiveFeedback: [String: Int] = (UserDefaults.standard.dictionary(forKey: MorpheAppStore.directiveFeedbackKey) as? [String: Int]) ?? [:] {
+        didSet { UserDefaults.standard.set(directiveFeedback, forKey: Self.directiveFeedbackKey) }
+    }
+    func rateDirective(_ key: String, more: Bool) {
+        directiveFeedback[key, default: 0] += more ? 1 : -1
+        Haptics.selection()
+        // Two "less" in a row on one page flips that page quiet for the day
+        // (the pick re-weights on the next read).
+        showToast(more ? "More like that." : "Less of that.")
+    }
+    private func bucketWeight(_ key: String) -> Int { 1 + (directiveFeedback[key] ?? 0) }
+
     // MARK: Per-page directives (Lucas 2026-10-17)
 
     enum MorphePage: String, CaseIterable { case train, fitness, explore, lessons, nutrition, library, connect }
+
+    /// The line and the feedback key it came from (page.bucket).
+    func pageDirectiveLine(_ page: MorphePage, now: Date = .now) -> (text: String, key: String) {
+        pageDirectiveResolved(page, now: now)
+    }
 
     /// Morphe's line at the top of each page: a navigation tip, a task from
     /// the user's own data, or an encouragement built from a real number —
@@ -809,7 +856,12 @@ final class MorpheAppStore {
     /// experienced get tasks and numbers. Nothing invented, no quotes
     /// (sourcing law): every encouragement is a logged fact.
     func pageDirective(_ page: MorphePage, now: Date = .now) -> String {
-        guard hasCompletedOnboarding else { return pageFallback(page) }
+        pageDirectiveResolved(page, now: now).text
+    }
+
+    private func pageDirectiveResolved(_ page: MorphePage, now: Date) -> (text: String, key: String) {
+        guard hasCompletedOnboarding else { return (pageFallback(page), "\(page.rawValue).fallback") }
+        if morpheVoiceLevel == .quiet { return ("", "\(page.rawValue).quiet") }
         let beginner = planDifficulty == .beginner
         let logs = loggedWorkoutCount
         let week = currentAthleteWorkoutSummary.workoutsThisWeek
@@ -862,16 +914,28 @@ final class MorpheAppStore {
             if saved > 0 { cheers.append("\(saved) thing\(saved == 1 ? "" : "s") saved.") }
         }
 
-        // Day-stable pick: tasks lead when there is one, then the day
-        // rotates tip / cheer / task; beginners see tips on even days.
+        // Day-stable pick, shaped by feedback (persona audit #13): each
+        // bucket's weight is 1 + more − less; a bucket at −1 or below
+        // sleeps unless it is the only one. Coach puts tasks first always;
+        // beginners lead with tips; the day rotates the rest.
         let day = Calendar.current.ordinality(of: .day, in: .era, for: now) ?? 0
         let seed = day + MorphePage.allCases.firstIndex(of: page)!
-        var order: [[String]] = beginner ? [tips, tasks, cheers] : [tasks, cheers, tips]
-        if !tasks.isEmpty, seed % 2 == 0 { order = [tasks] + order.filter { $0 != tasks } }
-        let pools = order.filter { !$0.isEmpty }
-        guard !pools.isEmpty else { return pageFallback(page) }
-        let pool = pools[seed % pools.count]
-        return pool[(seed / 3) % pool.count]
+        let named: [(String, [String])] = [("tip", tips), ("task", tasks), ("cheer", cheers)]
+        var order: [(String, [String])] = beginner ? [named[0], named[1], named[2]] : [named[1], named[2], named[0]]
+        if morpheVoiceLevel == .coach || (!tasks.isEmpty && seed % 2 == 0) {
+            order = [named[1]] + order.filter { $0.0 != "task" }
+        }
+        var pools = order.filter { !$0.1.isEmpty }
+        // Coach: the task speaks whenever there is one.
+        if morpheVoiceLevel == .coach, !tasks.isEmpty { pools = [named[1]] }
+        let awake = pools.filter { bucketWeight("\(page.rawValue).\($0.0)") > 0 }
+        if !awake.isEmpty { pools = awake }
+        guard !pools.isEmpty else { return (pageFallback(page), "\(page.rawValue).fallback") }
+        // Weighted spread: a bucket rated up takes more days of the week.
+        var spread: [(String, [String])] = []
+        for p in pools { for _ in 0..<max(1, bucketWeight("\(page.rawValue).\(p.0)")) { spread.append(p) } }
+        let pick = spread[seed % spread.count]
+        return (pick.1[(seed / 3) % pick.1.count], "\(page.rawValue).\(pick.0)")
     }
 
     private func pageFallback(_ page: MorphePage) -> String {
@@ -3066,6 +3130,9 @@ final class MorpheAppStore {
 
         if let unit = WeightUnit(rawValue: snapshot.weightUnit) {
             weightUnit = unit
+        } else if Locale.current.measurementSystem == .metric {
+            // Persona audit 2026-10-17 #2: a metric locale starts in kg.
+            weightUnit = .kilograms
         }
         if !snapshot.currentProgram.isEmpty {
             clientProfile.currentProgram = snapshot.currentProgram
@@ -18687,6 +18754,16 @@ final class MorpheAppStore {
     }
 
     private func updateXP(for amount: Int, add: Bool) {
+        let before = currentLevelNumber
+        defer {
+            // Persona audit #14: a level change is a visible moment, not a
+            // tile counting up — the banner says it.
+            let after = currentLevelNumber
+            if add, after > before {
+                celebration = CelebrationMoment(title: "Level \(after)", detail: "\(MorpheRank.rank(forLevel: after).title.capitalized) — earned from what you logged.", symbol: "arrow.up.circle.fill")
+                Haptics.success()
+            }
+        }
         if add {
             clientProfile.level.currentXP += amount
             // Roll surplus XP into real level-ups — the bar used to clamp at
