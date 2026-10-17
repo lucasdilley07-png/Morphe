@@ -9050,7 +9050,10 @@ final class MorpheAppStore {
         trackedSetCamera[exercise.id] = cameraFlags
         // The set logged; its draft is spent.
         pendingSetDrafts[exercise.id] = nil
+        // Confirm tier (feedback audit 2026-10-16): the hero action is
+        // heard and felt together — a ding with the light impact.
         Haptics.impact(.light)
+        SoundEffects.play(.ding)
 
         // The exercise's own unit in every toast (Lucas 2026-10-16): a
         // round is not a set.

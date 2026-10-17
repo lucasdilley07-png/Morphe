@@ -825,6 +825,8 @@ struct MetricPill: View {
                     .tracking(1.2)
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(value)
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.25), value: value)
                     .font(.system(.subheadline, design: .monospaced).weight(.semibold))
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(2)

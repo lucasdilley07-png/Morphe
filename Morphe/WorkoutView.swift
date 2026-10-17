@@ -2928,6 +2928,10 @@ private struct TrainExpandableSection<Content: View>: View {
 
 private struct ActiveWorkoutTrackerCard: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// A 160 ms accent flash on the clock when a round/run/hold reaches
+    /// its target (feedback audit 2026-10-16, Complete tier).
+    @State private var clockFlash = false
     let workout: WorkoutTemplate
     let exercise: WorkoutExercise
     let exerciseIndex: Int
@@ -3066,7 +3070,15 @@ private struct ActiveWorkoutTrackerCard: View {
             MainActor.assumeIsolated {
                 holdElapsed += 1
                 if holdElapsed == holdTarget {
+                    // Complete tier: felt, heard, seen — the same event
+                    // as the rest timer reaching zero.
                     Haptics.success()
+                    SoundEffects.play(.star)
+                    clockFlash = true
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(160))
+                        clockFlash = false
+                    }
                     // A round/run ends itself at zero and logs the full
                     // prescription; a hold keeps counting.
                     if unit.countsDown {
@@ -3157,6 +3169,7 @@ private struct ActiveWorkoutTrackerCard: View {
                 // A beat after the owner resets the weight for the new
                 // exercise, so the seed lands on top of the reset.
                 .onChange(of: exercise.id, initial: true) {
+                    Haptics.prepare()
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(80))
                         guard completedSets == 0, weight <= 0,
@@ -3363,6 +3376,11 @@ private struct ActiveWorkoutTrackerCard: View {
                                     .contentTransition(.numericText(value: Double(holdElapsed)))
                                     .foregroundStyle(holdRunning && holdElapsed >= holdTarget ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                                     .frame(maxWidth: .infinity)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                            .fill(MorpheTheme.accent.opacity(clockFlash ? 0.28 : 0))
+                                    )
+                                    .animation(.easeOut(duration: 0.16), value: clockFlash)
                                     .accessibilityLabel(holdRunning ? "\(unit.singular) running, \(clockText)" : "Target \(holdTarget) seconds")
                                 HStack(spacing: 8) {
                                     Text("TARGET")
@@ -3448,7 +3466,13 @@ private struct ActiveWorkoutTrackerCard: View {
                         // two steppers and one button.
                         if !isTimedMove {
                             Button(logButtonTitle) {
-                                onQuickLogSet(repsToLog)
+                                // The Log Set signature (feedback audit
+                                // 2026-10-16, F1): the new row slides in
+                                // under a spring; the store adds the ding
+                                // and the light impact.
+                                withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.75)) {
+                                    onQuickLogSet(repsToLog)
+                                }
                             }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                             .accessibilityLabel(
@@ -3604,6 +3628,9 @@ private struct ActiveWorkoutTrackerCard: View {
                                 .foregroundStyle(MorpheTheme.danger)
                                 .accessibilityLabel("Delete \(unit.singular.lowercased()) \(index + 1)")
                             }
+                            .transition(reduceMotion
+                                ? .opacity
+                                : .move(edge: .trailing).combined(with: .opacity))
                         }
                     }
                     .padding(10)
@@ -3864,7 +3891,8 @@ private struct SetConsoleRow: View {
                 .frame(width: 56, alignment: .leading)
 
             if let onCoarseDown, let coarseStep {
-                ConsoleStepButton(title: "-\(coarseStep)", action: onCoarseDown)
+                // A plate jump is heavier than a tick (Tick tier, F1).
+                ConsoleStepButton(title: "-\(coarseStep)") { onCoarseDown(); Haptics.impact(.light) }
             }
             ConsoleStepButton(title: "−", action: onDown)
 
@@ -3920,9 +3948,12 @@ private struct SetConsoleRow: View {
 
             ConsoleStepButton(title: "+", action: onUp)
             if let onCoarseUp, let coarseStep {
-                ConsoleStepButton(title: "+\(coarseStep)", action: onCoarseUp)
+                ConsoleStepButton(title: "+\(coarseStep)") { onCoarseUp(); Haptics.impact(.light) }
             }
         }
+        // Tick tier (feedback audit 2026-10-16): every value change is a
+        // selection tick — Apple's standard for steppers.
+        .sensoryFeedback(.selection, trigger: value)
     }
 
     private var valueText: some View {
@@ -6429,8 +6460,9 @@ private struct WorkoutRestControlBar: View {
                 isRunning = false
                 Haptics.success()
                 // Rest's end is the moment you're waiting for — heard, not
-                // just felt (Skip already dings; feedback pass 2026-09).
-                SoundEffects.play(.ding)
+                // just felt. `star` is the Complete cue (feedback audit
+                // 2026-10-16); `ding` stays for contributions.
+                SoundEffects.play(.star)
             }
         }
     }
@@ -6921,7 +6953,7 @@ private struct CircuitModeView: View {
                 Haptics.impact(.medium)
                 beginSegment(.stationRest)
             } else if roundIndex + 1 < rounds {
-                SoundEffects.play(.ding)   // round completion
+                SoundEffects.play(.star)   // round completion (Complete tier)
                 Haptics.impact(.heavy)
                 beginSegment(.roundRest)
             } else {

@@ -635,32 +635,57 @@ extension View {
 }
 
 enum Haptics {
+    // Shared generators, kept warm (feedback audit 2026-10-16, F1): a
+    // generator built per call fires late on the first hit — Apple's
+    // guidance is `prepare()` ahead of the moment, and latency is the
+    // feel (Nintendo's HD Rumble 2 headline was "quicker response").
+    private static let light = UIImpactFeedbackGenerator(style: .light)
+    private static let medium = UIImpactFeedbackGenerator(style: .medium)
+    private static let heavy = UIImpactFeedbackGenerator(style: .heavy)
+    private static let soft = UIImpactFeedbackGenerator(style: .soft)
+    private static let rigid = UIImpactFeedbackGenerator(style: .rigid)
+    private static let notification = UINotificationFeedbackGenerator()
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+
+    private static func impactGenerator(_ style: UIImpactFeedbackGenerator.FeedbackStyle) -> UIImpactFeedbackGenerator {
+        switch style {
+        case .light: return light
+        case .heavy: return heavy
+        case .soft: return soft
+        case .rigid: return rigid
+        default: return medium
+        }
+    }
+
+    /// Call when a feedback-heavy surface appears (the console) so the
+    /// first tap lands on time.
+    static func prepare() {
+        light.prepare(); medium.prepare(); notification.prepare(); selectionGenerator.prepare()
+    }
+
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
-        let generator = UIImpactFeedbackGenerator(style: style)
-        generator.prepare()
+        let generator = impactGenerator(style)
         generator.impactOccurred()
+        generator.prepare()
     }
 
     static func success() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(.success)
+        notification.notificationOccurred(.success)
+        notification.prepare()
     }
 
     /// Failure gets felt too — success-only feedback made silent network
     /// errors literally imperceptible.
     static func error() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(.error)
+        notification.notificationOccurred(.error)
+        notification.prepare()
     }
 
     /// The light tick for choosing among options (filter chips, tabs) —
     /// the most common interaction in the app finally has a feel.
     static func selection() {
-        let generator = UISelectionFeedbackGenerator()
-        generator.prepare()
-        generator.selectionChanged()
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
     }
 
     /// "Hey Morphe" heard (Lucas 2026-10-04): a real vibration, not a
@@ -908,6 +933,7 @@ struct PremiumBackground: View {
 
 struct PrimaryCTAButtonStyle: ButtonStyle {
     var accent: Color = MorpheTheme.accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -928,11 +954,16 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
                 Capsule(style: .continuous)
                     .fill(accent.opacity(configuration.isPressed ? 0.78 : 1))
             )
-            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
+            // The finger expects give (feedback audit 2026-10-16, F1):
+            // Apple's own buttons and both social apps scale on press.
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
 struct SecondaryCTAButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             // Same calm pill grammar as the primary — outlined, not filled.
@@ -952,7 +983,8 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
                 Capsule(style: .continuous)
                     .stroke(MorpheTheme.stroke, lineWidth: 1)
             )
-            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

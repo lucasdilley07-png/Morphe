@@ -669,3 +669,32 @@ Findings and the plan: `docs/AUDIT-USER-INVESTOR-2026-10-16.md`. Shipped:
   capsule dock is retired for the system `TabView` bar (`.tabItem` +
   `.badge`, `.tint(accent)`, `popTabToRoot` on selection change; the AI
   button clears 98pt) and Learn's quote card is gone from the first screen.
+
+## Feedback audit — animation, sound, haptics (2026-10-16)
+
+Read-only audit in `docs/AUDIT-FEEDBACK-2026-10-16.md`: a moment-by-moment
+matrix (visual / sound / haptic now vs the Apple, Nintendo, PlayStation,
+Xbox, TikTok, Instagram bar), ten ranked findings, and a five-tier feedback
+grammar (Tick / Confirm / Complete / Signature / Miss) with three waves:
+F1 the Log Set signature + stepper ticks + round-end sound + prepared
+generators; F2 quiz/streak/finish-sequence game feel; F3 `sensoryFeedback`
+migration, selection-haptic pruning, button press scale. Nothing changed.
+
+## Feedback wave F1 (2026-10-16)
+
+- **Log Set signature**: the new set row slides in from the trailing edge
+  under a spring (opacity-only under Reduce Motion); the store plays `ding`
+  with the light impact on every logged set; the SETS/ROUNDS pill rolls
+  its number (`contentTransition(.numericText)`).
+- **Press feel**: Primary and Secondary buttons scale to 0.97 on press
+  (0.25 s spring), not just dim; off under Reduce Motion.
+- **Stepper ticks**: `sensoryFeedback(.selection, trigger: value)` on the
+  reps/weight rows; the ±25/±10 plate jumps add a light impact.
+- **Complete tier**: a round/run/hold reaching its target now plays `star`
+  + success + a 160 ms accent flash on the clock; rest-end and circuit
+  round-end switched from `ding` to `star` (ding = contribution, star =
+  completion, pr = record — the three meanings stay fixed).
+- **Prepared generators**: `Haptics` keeps one generator per style warm
+  and re-prepares after each hit; `Haptics.prepare()` fires when the
+  console appears. Haptics can't be felt in the simulator — verify the
+  timing on the phone.
