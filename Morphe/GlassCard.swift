@@ -3480,7 +3480,9 @@ struct EditorModeBar: View {
                 Text("EDITING \((page?.title ?? tab.title).uppercased())")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
                     .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
-                Text(editable ? "Hold a box to lift it, then slide · tap the eye to hide it · hold a tab to move it" : "Nothing to arrange here · hold a tab below to move it")
+                Text(!editable ? "Nothing to arrange here · hold a tab below to move it"
+                     : (page == .today ? "Hold a box to lift it, then slide · tap the eye to hide it · the pinned boxes hide only"
+                        : "Hold a box to lift it, then slide · tap the eye to hide it · hold a tab to move it"))
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent).opacity(0.85))
             }
@@ -3521,6 +3523,8 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
     @State private var fingerY: CGFloat = 0
     @State private var popping: Card? = nil
     @State private var shaking: Card? = nil
+    /// Finger down on a box, before the hold completes.
+    @State private var pressing: Card? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -3536,6 +3540,7 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
                         // still scrolls — the home-screen pattern.
                         if editing {
                             HoldDragOverlay(
+                                onPress: { down in pressing = down ? card : nil },
                                 onLift: {
                                     lifted = card
                                     fingerY = frames[AnyHashable(card)]?.midY ?? 0
@@ -3559,11 +3564,14 @@ struct SectionEditorList<Card: Hashable & Identifiable, Content: View>: View {
                         if editing {
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
-                                .foregroundStyle(MorpheTheme.accent.opacity(isLifted ? 0.9 : 0.45))
+                                .foregroundStyle(MorpheTheme.accent.opacity(isLifted ? 0.9 : (pressing == card ? 0.8 : 0.45)))
                                 .allowsHitTesting(false)
                         }
                     }
-                    .scaleEffect(popping == card ? 0.001 : (isLifted && !reduceMotion ? 1.03 : 1))
+                    // Charging: a slight press-in while the hold counts,
+                    // then the lift (late audit 2026-10-16, #4).
+                    .scaleEffect(popping == card ? 0.001 : (isLifted && !reduceMotion ? 1.03 : (pressing == card && !reduceMotion ? 0.98 : 1)))
+                    .animation(.easeOut(duration: 0.25), value: pressing)
                     .opacity(popping == card ? 0 : 1)
                     .offset(x: shaking == card ? 8 : 0)
                     .offset(y: isLifted ? fingerY - (frames[AnyHashable(card)]?.midY ?? fingerY) : 0)
@@ -3662,6 +3670,7 @@ struct TabOrderStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var frames: [AnyHashable: CGRect] = [:]
     @State private var lifted: ClientTab? = nil
+    @State private var pressing: ClientTab? = nil
     @State private var fingerX: CGFloat = 0
 
     var body: some View {
@@ -3679,10 +3688,11 @@ struct TabOrderStrip: View {
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(MorpheTheme.accent.opacity(isLifted ? 0.22 : 0))
+                        .fill(MorpheTheme.accent.opacity(isLifted ? 0.22 : (pressing == tab ? 0.12 : 0)))
                         .padding(.horizontal, 2)
                 )
-                .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
+                .scaleEffect(isLifted && !reduceMotion ? 1.12 : (pressing == tab && !reduceMotion ? 0.94 : 1))
+                .animation(.easeOut(duration: 0.25), value: pressing)
                 .offset(x: isLifted ? fingerX - (frames[AnyHashable(tab)]?.midX ?? fingerX) : 0)
                 .shadow(color: .black.opacity(isLifted ? 0.3 : 0), radius: 10, y: 4)
                 .zIndex(isLifted ? 2 : 0)
@@ -3692,6 +3702,7 @@ struct TabOrderStrip: View {
                 .overlay {
                     HoldDragOverlay(
                         onTap: { store.selectedClientTab = tab },
+                        onPress: { down in pressing = down ? tab : nil },
                         onLift: {
                             lifted = tab
                             fingerX = frames[AnyHashable(tab)]?.midX ?? 0
@@ -3744,12 +3755,24 @@ struct HoldDragOverlay: UIViewRepresentable {
     static let holdSeconds: TimeInterval = 2.0
 
     var onTap: (() -> Void)? = nil
+    /// Finger down / up, before the hold completes (late audit
+    /// 2026-10-16, #4): the box shows it is charging.
+    var onPress: ((Bool) -> Void)? = nil
     let onLift: () -> Void
     let onMove: (CGPoint) -> Void
     let onDrop: () -> Void
 
+    /// A view that reports raw touch down/up.
+    final class PressView: UIView {
+        var onPress: ((Bool) -> Void)?
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesBegan(touches, with: event); onPress?(true) }
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesEnded(touches, with: event); onPress?(false) }
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesCancelled(touches, with: event); onPress?(false) }
+    }
+
     func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+        let view = PressView()
+        view.onPress = { [weak coordinator = context.coordinator] down in coordinator?.parent.onPress?(down) }
         view.backgroundColor = nil
         view.isOpaque = false
         let hold = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleHold(_:)))

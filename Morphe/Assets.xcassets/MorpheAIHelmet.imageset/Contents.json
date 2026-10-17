@@ -3,16 +3,6 @@
     {
       "filename": "MorpheAIHelmet-dark.png",
       "idiom": "universal"
-    },
-    {
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "dark"
-        }
-      ],
-      "filename": "MorpheAIHelmet-light.png",
-      "idiom": "universal"
     }
   ],
   "info": {

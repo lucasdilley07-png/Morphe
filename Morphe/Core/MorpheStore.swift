@@ -10402,6 +10402,33 @@ final class MorpheAppStore {
         athleteAIAgentConversation.last?.text == "\u{2026}"
     }
 
+    /// The next session, for "what should I train (tomorrow / next)".
+    private func planAheadReply(to prompt: String) -> String? {
+        let asksPlan = prompt.contains("what should i train") || prompt.contains("what do i train")
+            || prompt.contains("what should i do tomorrow") || prompt.contains("train tomorrow")
+            || prompt.contains("workout tomorrow") || prompt.contains("what's my next workout")
+            || prompt.contains("whats my next workout") || prompt.contains("next workout")
+        guard asksPlan else { return nil }
+        let workout = currentWorkout
+        let when = isWorkoutLoggedToday ? "Today's logged. Next up" : (prompt.contains("tomorrow") ? "Tomorrow" : "Next up")
+        if isPlannedRestDay, !prompt.contains("tomorrow") {
+            return "Today is a rest day. Next up: \(workout.name) — \(workout.exercises.count) exercises, about \(workout.durationMinutes) minutes. Start it from Train."
+        }
+        return "\(when): \(workout.name) — \(workout.exercises.count) exercises, about \(workout.durationMinutes) minutes. Start it from Train."
+    }
+
+    /// The Today Discover door (late audit 2026-10-16, #1): Explore when
+    /// coaches have published something, the Fitness library otherwise —
+    /// never an empty wall on day one.
+    func openDiscoverDoor() {
+        if !creatorWorkouts.isEmpty || !creatorNotes.isEmpty || !openChallenges.isEmpty {
+            openFeed()
+        } else {
+            selectedDiscoverSection = .workouts
+            showDiscoverTab()
+        }
+    }
+
     // MARK: - Chats have the stage (Lucas 2026-10-16)
 
     /// Counts the chat surfaces on screen (the chats list, an open thread,
@@ -18901,6 +18928,11 @@ final class MorpheAppStore {
 
     private func athleteAgentReply(to prompt: String) -> String {
         let lowercasedPrompt = Self.normalizedPrompt(prompt)
+        // "What should I train tomorrow?" is a plan question (late audit
+        // 2026-10-16, #9): it answered with a load note before.
+        if let plan = planAheadReply(to: lowercasedPrompt) {
+            return plan
+        }
         // "How much should I squat next time?" — a number from the log and
         // the plan's rule, ahead of the plain recall (audit 2026-10-16).
         if let suggestion = Self.loadSuggestionReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, planned: currentWorkout.exercises, unit: weightUnit) {

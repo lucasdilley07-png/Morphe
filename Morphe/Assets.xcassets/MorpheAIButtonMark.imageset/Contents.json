@@ -3,16 +3,6 @@
     {
       "filename": "MorpheAIButtonMark-dark.png",
       "idiom": "universal"
-    },
-    {
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "dark"
-        }
-      ],
-      "filename": "MorpheAIButtonMark-light.png",
-      "idiom": "universal"
     }
   ],
   "info": {

@@ -507,10 +507,10 @@ struct HomeView: View {
             HomeLinkTile(
                 systemImage: "safari.fill",
                 title: "Discover",
-                detail: "Feed, new workouts, programs",
+                detail: "Fitness library · Explore",
                 detailIsMuted: true,
                 accessibilityLabel: "Discover"
-            ) { store.openFeed() }
+            ) { store.openDiscoverDoor() }
         }
     }
 

@@ -83,7 +83,9 @@ struct MoreView: View {
     private var learnHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitleView(
-                title: "Learn",
+                // The kicker follows the chip (late audit 2026-10-16, #7):
+                // the Nutrition door lands under NUTRITION, not LEARN.
+                title: activeFeature == .nutrition ? "Nutrition" : (activeFeature == .library ? "Library" : "Learn"),
                 subtitle: "Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.",
                 titleSize: 16
             )

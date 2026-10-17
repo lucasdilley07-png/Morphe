@@ -945,3 +945,20 @@ Network is deliberately left alone.
   `SectionEditorList` (hold to move, eye to hide, min 1); a hidden section
   also loses its chip. A section switch mid-edit moves the mode with it
   (`followEditingDiscoverSection`).
+- Morphe AI designs (Lucas 2026-10-16): the orb base, the AI button mark
+  and the helmet are single-appearance now — the darker orb/button art
+  and the light-mode Spartan in every appearance (the "-light" PNGs are
+  gone; the imagesets keep the one universal file). The Hey Morphe wash
+  darkens the page in light mode (black 0.42) and lightens it in dark
+  mode (white 0.24).
+- Late-audit fix wave (docs/AUDIT-USER-2026-10-16-LATE.md): #2 the resume
+  alert is gated on the app shell; #9 `planAheadReply` answers "what
+  should I train (tomorrow)" with the next session before the load
+  matcher; #1 `openDiscoverDoor()` lands on Explore only when coaches
+  have published, else Fitness; #4 `HoldDragOverlay.onPress` gives a
+  press-in (scale 0.98 / brighter outline; tabs 0.94) while the 2 s hold
+  charges; #5 Today's banner says the pinned boxes hide only; #10 titled
+  Morphe turns bold their first line; #11 the floating chat's nav bar has
+  a material backing; #12 the GUARDIAN tag is gone. #3 is the local-mode
+  fetch failure (prod shows the Morphe row alone when there are no
+  chats); #8 (the AI pill over the Progress tile) is left as is.

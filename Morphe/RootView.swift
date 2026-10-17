@@ -389,7 +389,11 @@ struct RootView: View {
         .sessionWorkGateDialog()
         // A session left running when the app closed (Lucas 2026-10-13):
         // asked instead of the welcome pop-up.
-        .alert("Continue your workout?", isPresented: $store.showResumeWorkoutPrompt) {
+        // Only inside the app (late audit 2026-10-16, #2): it fired over
+        // the sign-in screen when the saved session beat the account.
+        .alert("Continue your workout?", isPresented: Binding(
+            get: { store.showResumeWorkoutPrompt && isInAppShell },
+            set: { store.showResumeWorkoutPrompt = $0 })) {
             Button("Continue") { store.continueResumedWorkout() }
             Button("End without saving", role: .destructive) { store.cancelTrackedWorkoutSession() }
             Button("Not now", role: .cancel) {}
@@ -1178,6 +1182,10 @@ private struct MorpheAIAgentSheet: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        // A material behind the header (late audit 2026-10-16, #11): the
+        // conversation no longer scrolls under the wordmark and Done.
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     /// Full-width composer pinned to the bottom of the chat.
@@ -1330,10 +1338,22 @@ struct AIAgentMessageRow: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .symbolEffect(.variableColor.iterative, options: .repeating)
                     } else {
-                        Text(message.text)
-                            .font(.subheadline)
+                        // A report or news turn carries its title on the
+                        // first line (late audit 2026-10-16, #10).
+                        if !isUser, message.senderName == "Morphe", let cut = message.text.firstIndex(of: "\n") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(message.text[..<cut])
+                                    .font(.subheadline.weight(.semibold))
+                                Text(message.text[message.text.index(after: cut)...])
+                                    .font(.subheadline)
+                            }
                             .foregroundStyle(MorpheTheme.textPrimary)
-                            .contentTransition(.opacity)
+                        } else {
+                            Text(message.text)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .contentTransition(.opacity)
+                        }
                     }
                 }
                     .padding(12)
@@ -5259,9 +5279,10 @@ private struct HeyMorpheStage: View {
 
     var body: some View {
         ZStack {
-            // The wash: brighter, not darker. Takes the touch that ends
-            // the exchange (Lucas 2026-10-05).
-            Color.white.opacity(MorpheTheme.isLight ? 0.5 : 0.24)
+            // The wash (Lucas 2026-10-16): the page darkens in light mode
+            // and lightens in dark mode behind the orb. Takes the touch
+            // that ends the exchange (Lucas 2026-10-05).
+            (MorpheTheme.isLight ? Color.black.opacity(0.42) : Color.white.opacity(0.24))
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { _ in

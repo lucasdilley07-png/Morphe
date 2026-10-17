@@ -9668,5 +9668,19 @@ final class MorpheRemembersTests: XCTestCase {
         store.followEditingDiscoverSection()
         XCTAssertEqual(store.editingPage, .explore)
     }
+
+    /// Late audit 2026-10-16 fixes: the Discover door avoids an empty
+    /// Explore, and "what should I train tomorrow" gets the plan, not a
+    /// load note.
+    func testDiscoverDoorAndPlanAheadReply() {
+        let store = freshStore()
+        store.openDiscoverDoor()
+        XCTAssertEqual(store.selectedClientTab, .discover)
+        XCTAssertEqual(store.selectedDiscoverSection, .workouts, "nothing published → Fitness, not an empty Explore")
+        _ = store.sendAIAgentPrompt("What should I train tomorrow?")
+        let reply = store.athleteAIAgentConversation.last?.text ?? ""
+        XCTAssertTrue(reply.contains(store.currentWorkout.name), "the plan reply names the next session: \(reply)")
+        XCTAssertFalse(reply.contains("No logged sets"), "not the load note")
+    }
 }
 

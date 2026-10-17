@@ -4172,10 +4172,7 @@ struct MorpheThreadRow: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .featureGlimmer()
-                    Text("GUARDIAN")
-                        .font(MorpheTheme.microLabel(9))
-                        .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.accentText)
+                    // (GUARDIAN tag retired — one name, late audit #12.)
                     Spacer()
                     if let when = lastTurn?.sentAt ?? lastItem?.date {
                         Text(when.formatted(.relative(presentation: .named)))
