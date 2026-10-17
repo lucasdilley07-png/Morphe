@@ -4169,7 +4169,7 @@ struct AIMemory: Codable, Equatable {
 // clock — not "sets × reps". The console, the toasts and history all speak
 // the exercise's own unit.
 enum WorkUnit: String {
-    case set, round, run, interval, lap, hold
+    case set, round, run, interval, lap, hold, flow
 
     var singular: String {
         switch self {
@@ -4179,11 +4179,12 @@ enum WorkUnit: String {
         case .interval: return "Interval"
         case .lap: return "Lap"
         case .hold: return "Hold"
+        case .flow: return "Flow"
         }
     }
     var plural: String { singular + "s" }
-    /// Timed units run a countdown; a hold counts up (you hold as long as you can).
-    var countsDown: Bool { self != .set && self != .hold }
+    /// Timed units run a countdown; a hold or a flow counts up.
+    var countsDown: Bool { self != .set && self != .hold && self != .flow }
     var isTimed: Bool { self != .set }
 
     /// The unit for an exercise, from its name, its workout's catalog
@@ -4195,9 +4196,12 @@ enum WorkUnit: String {
         // Warm-ups, mobility and stretches are timed holds whatever the
         // workout's category (evening audit 2026-10-16, #5: "Arm Swings &
         // Circles" opened as "Round 1").
-        if ["arm swing", "arm circle", "leg swing", "hip circle", "stretch", "mobility", "warm-up", "warm up",
-            "foam roll", "cat-cow", "cat cow", "reset", "breathing", "shoulder circle", "ankle circle", "inchworm",
-            "world's greatest", "flow"].contains(where: name.contains) { return .hold }
+        // Mobility work moves — it's a flow, not a hold (night audit
+        // 2026-10-16, #6); stretches and static positions stay holds.
+        if ["arm swing", "arm circle", "leg swing", "hip circle", "mobility", "warm-up", "warm up", "foam roll",
+            "cat-cow", "cat cow", "reset", "breathing", "shoulder circle", "ankle circle", "inchworm",
+            "world's greatest", "flow"].contains(where: name.contains) { return .flow }
+        if name.contains("stretch") { return .hold }
         // Machines first: "Bike: Sprint" is an interval, not a run.
         if ["bike", "spin", "cycl", "row", "erg", "ski", "elliptical", "cross-trainer", "stair"].contains(where: name.contains)
             && !["dumbbell row", "barbell row", "cable row", "bent-over", "bent over", "inverted"].contains(where: name.contains) { return .interval }
@@ -4219,6 +4223,7 @@ enum WorkUnit: String {
     func label(seconds: Int) -> String {
         switch self {
         case .hold: return "Hold \(seconds)s"
+        case .flow: return "Flow \(seconds)s"
         case .set: return ""
         default:
             return seconds >= 60 ? "\(singular) \(seconds / 60):\(String(format: "%02d", seconds % 60))" : "\(singular) \(seconds)s"
@@ -4246,7 +4251,7 @@ enum WorkUnit: String {
     /// "sets", "rounds", "runs", or "sets and rounds" for a mix — the word
     /// for a session's logged work, from its per-set labels.
     static func word(forLabels labels: [String]) -> String {
-        let units = Set(labels.map { unit(ofLabel: $0) ?? .set }).map { $0 == .hold ? .set : $0 }
+        let units = Set(labels.map { unit(ofLabel: $0) ?? .set }).map { ($0 == .hold || $0 == .flow) ? .set : $0 }
         let distinct = Array(Set(units))
         if distinct.isEmpty { return "sets" }
         if distinct.count == 1 { return distinct[0].plural.lowercased() }
@@ -4272,7 +4277,7 @@ enum WorkUnit: String {
 
     /// True for any stored label that means "the reps slot holds seconds".
     static func isTimedLabel(_ label: String) -> Bool {
-        ["Hold ", "Round ", "Run ", "Interval ", "Lap "].contains(where: label.hasPrefix)
+        ["Hold ", "Flow ", "Round ", "Run ", "Interval ", "Lap "].contains(where: label.hasPrefix)
     }
 
     /// "5 sets" → "5 rounds", "1 sets" → "1 round" for the summary lines.

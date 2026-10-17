@@ -4987,7 +4987,7 @@ final class PersonalizationEngineTests: XCTestCase {
     }
 
     func testWarmUpsAreHoldsNotRounds() {
-        XCTAssertEqual(WorkUnit.infer(exerciseName: "Arm Swings & Circles", category: "Kettlebell & Dumbbell", isTimed: true, seconds: 30), .hold)
+        XCTAssertEqual(WorkUnit.infer(exerciseName: "Arm Swings & Circles", category: "Kettlebell & Dumbbell", isTimed: true, seconds: 30), .flow, "mobility work moves — a flow, not a hold")
         XCTAssertEqual(WorkUnit.infer(exerciseName: "Hip Flexor Stretch", category: "Running & Cardio", isTimed: true, seconds: 45), .hold)
         XCTAssertEqual(WorkUnit.infer(exerciseName: "Kettlebell Swing", category: "Kettlebell & Dumbbell", isTimed: true, seconds: 60), .round, "a loaded swing is still round work")
     }

@@ -45,29 +45,17 @@ struct HomeView: View {
                 // real state — coach session due, rest day, streak, or the
                 // plain "what are we training?"
                 VStack(spacing: 6) {
-                    Text(store.homeGreeting)
-                        // Demoted from .title2 (hierarchy audit 2026-09):
-                        // the greeting is chrome — and the full-screen day
-                        // popup already delivers it. The day's WORKOUT is
-                        // the primary, so it must out-weigh the hello.
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                        .multilineTextAlignment(.center)
-                        // A current runs through the name every couple of
-                        // minutes (Lucas 2026-10-16) — the user's accent.
-                        .electricSweep(armed: greetingAppeared)
+                    // The "Good evening, name" line left Today (Lucas
+                    // 2026-10-16) — it belongs to the welcome pop-up. The
+                    // page opens on the identity strip.
                     // Morphe introduces the athlete to themselves (Lucas
                     // 2026-10-16): readiness, score, energy, level — the
                     // numbers roll up on arrival — then the question.
                     TodayIdentityStrip(appeared: greetingAppeared)
                         .padding(.top, 6)
-                    Text(store.homePrompt)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .contentTransition(.opacity)
-                        .glimmer()
-                        .padding(.top, 4)
+                    // The question under the strip moved to the welcome
+                    // pop-up with the greeting (Lucas 2026-10-16). The plan
+                    // card is the next thing on the page.
                     // The visible learning loop (phase 4): one line of what
                     // Morphe actually derived — absent until the honesty
                     // gates have real data.
@@ -94,8 +82,6 @@ struct HomeView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                // The gutter the streak sticker parks in.
-                .padding(.horizontal, store.dailyStreakDays >= 1 ? 56 : 0)
                 .accessibilityElement(children: .combine)
                 // The voice arrives, it doesn't just print (Jarvis wave) —
                 // and the prompt cross-fades when the day's state changes.
@@ -116,13 +102,6 @@ struct HomeView: View {
 
                 // Retires on the first logged session — it describes a page
                 // the user has now used (audit 2026-10-16, U11).
-                if store.loggedWorkoutCount == 0 {
-                    GuideHint(
-                        key: "home.welcome",
-                        text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
-                    )
-                }
-
                 // "Here's what I've got for you" sits right under the streak
                 // (Lucas 2026-10-05) — above the profile strip and the plan.
                 // Week one keeps its own copy further down, by the checklist.
@@ -254,6 +233,15 @@ struct HomeView: View {
                 // plan card showed (Lucas 2026-10-15).
                 if !(store.firstWeekSteps == nil && !store.isPlannedRestDay && !store.isWorkoutLoggedToday) {
                     planFollowUps
+                }
+
+                // The first-run hint sits UNDER the plan so Start stays above
+                // the fold on a 6.1" phone (night audit 2026-10-16, #4).
+                if store.loggedWorkoutCount == 0 {
+                    GuideHint(
+                        key: "home.welcome",
+                        text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
+                    )
                 }
 
                 // Showing up, counted (Lucas 2026-10-04): days in a row the
@@ -415,16 +403,6 @@ struct HomeView: View {
             await store.refreshAppointments()
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
-        // The streak sticker (Lucas 2026-10-16): a fridge magnet the user
-        // can hold and drag anywhere on the page; opens the week's read.
-        // It floats over the scroll view, not in it, and parks in the
-        // top-right quarter on every launch — right of the centered
-        // greeting, under the icon row, over nothing.
-        .overlay(alignment: .topLeading) {
-            if store.dailyStreakDays >= 1 {
-                StreakSticker()
-            }
-        }
         .onAppear { store.recordAppOpen() }
         .sheet(isPresented: $showGoalsEditor) {
             TodayGoalsSheet()
@@ -2836,6 +2814,11 @@ private struct TodayIdentityStrip: View {
     @State private var rolled = false
     @State private var glow = false
     @State private var showCheckIn = false
+    @State private var showStreak = false
+
+    private var dot: some View {
+        Text("·").foregroundStyle(MorpheTheme.textMuted)
+    }
 
     private var checkIn: MorpheAppStore.DailyRecoveryEntry? { store.todayRecoveryEntry }
     private var level: Int { store.currentLevelNumber }
@@ -2846,26 +2829,50 @@ private struct TodayIdentityStrip: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(MorpheTheme.accent)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: MorpheTheme.accent.opacity(glow ? 0.9 : 0.2), radius: glow ? 6 : 1)
-                Text("MORPHE ONLINE")
-                    .font(MorpheTheme.microLabel(10)).tracking(2.2)
-                    .foregroundStyle(MorpheTheme.accentText)
-                if !store.profileShowcase.username.isEmpty {
-                    Text("·  @\(store.profileShowcase.username)")
-                        .font(MorpheTheme.microLabel(10)).tracking(1.2)
-                        .foregroundStyle(MorpheTheme.textMuted)
+            // One centered line, one font: MORPHE ONLINE · @handle · N days
+            // logged (Lucas 2026-10-16). The days opens the week's read.
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(MorpheTheme.accent)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: MorpheTheme.accent.opacity(glow ? 0.9 : 0.2), radius: glow ? 6 : 1)
+                    Text("MORPHE ONLINE")
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
+                if !store.profileShowcase.username.isEmpty {
+                    dot
+                    Text("@\(store.profileShowcase.username)")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .electricSweep(armed: appeared)
+                }
+                dot
+                Button {
+                    showStreak = true
+                    Haptics.selection()
+                } label: {
+                    Text("\(store.loggedWorkoutCount) DAY\(store.loggedWorkoutCount == 1 ? "" : "S") LOGGED")
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .contentTransition(.numericText())
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(store.loggedWorkoutCount) days logged. Opens the week's read.")
             }
+            .font(MorpheTheme.microLabel(10))
+            .tracking(1.4)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity)
             HStack(spacing: 8) {
-                tile("READINESS", value: checkIn == nil ? "—" : "\(shown[0])", unit: checkIn == nil ? "check in" : "/ 100",
+                tile("READINESS", value: checkIn == nil ? "Check in" : "\(shown[0])", unit: checkIn == nil ? "20 seconds" : "/ 100",
                      tint: checkIn.map { $0.score >= 80 ? MorpheTheme.accent : ($0.score >= 60 ? MorpheTheme.accentAlt : MorpheTheme.warning) } ?? MorpheTheme.textMuted,
                      index: 0) { showCheckIn = true }
-                tile("SCORE", value: "\(shown[1])", unit: store.clientProfile.health.tier.rawValue.lowercased(), tint: MorpheTheme.accent, index: 1) { store.openProgress() }
-                tile("ENERGY", value: checkIn == nil ? "—" : "\(shown[2] / 10)", unit: checkIn == nil ? "check in" : "/ 10",
+                tile("SCORE", value: store.loggedWorkoutCount == 0 ? "Day 1" : "\(shown[1])",
+                     unit: store.loggedWorkoutCount == 0 ? "first log starts it" : store.clientProfile.health.tier.rawValue.lowercased(),
+                     tint: MorpheTheme.accent, index: 1) { store.openProgress() }
+                tile("ENERGY", value: checkIn == nil ? "—" : "\(shown[2] / 10)", unit: checkIn == nil ? "after check-in" : "/ 10",
                      tint: checkIn == nil ? MorpheTheme.textMuted : MorpheTheme.accentAlt, index: 2) { showCheckIn = true }
                 tile("LEVEL", value: "\(shown[3])", unit: rank.lowercased(), tint: MorpheTheme.accent, index: 3) { store.showClientProfile = true }
             }
@@ -2884,6 +2891,13 @@ private struct TodayIdentityStrip: View {
             RecoveryCheckInSheet(recovery: store.recovery)
                 .environment(store)
                 .presentationDetents([.medium, .large])
+                .presentationCornerRadius(28)
+        }
+        .sheet(isPresented: $showStreak) {
+            StreakStickerSheet()
+                .environment(store)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
                 .presentationCornerRadius(28)
         }
     }
@@ -2915,7 +2929,7 @@ private struct TodayIdentityStrip: View {
                     .font(MorpheTheme.microLabel(9)).tracking(1.4)
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(value)
-                    .font(.system(size: 26, weight: .black, design: .monospaced))
+                    .font(.system(size: value.count > 3 ? 15 : 26, weight: .black, design: value.count > 3 ? .rounded : .monospaced))
                     .monospacedDigit()
                     .foregroundStyle(tint)
                     .contentTransition(.numericText())
@@ -2949,166 +2963,12 @@ private struct TodayIdentityStrip: View {
 }
 
 
-// MARK: - Streak sticker (Lucas 2026-10-16)
-
-/// A small fridge magnet: calendar, flame, the days-in-a-row number. Hold
-/// and drag it anywhere on Today; it keeps its spot for the session and
-/// parks top-right on the next launch. Tap opens the week's read.
-private struct StreakSticker: View {
-    @Environment(MorpheAppStore.self) private var store
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var position: CGPoint? = nil
-    @State private var dragStart: CGPoint? = nil
-    @State private var lifted = false
-    @State private var showSheet = false
-    private let size = CGSize(width: 46, height: 50)
-
-    var body: some View {
-        GeometryReader { geo in
-            // Top-right, level with the greeting; the greeting block keeps
-            // a 56pt gutter on both sides so a long @handle never runs
-            // under it (user audit 2026-10-16 PM).
-            let home = CGPoint(x: geo.size.width - size.width / 2 - 10,
-                               y: MorpheTheme.Spacing.pageTopToday + size.height / 2 - 2)
-            let point = position ?? home
-            magnet
-                .scaleEffect(lifted && !reduceMotion ? 1.12 : 1)
-                .rotationEffect(.degrees(lifted && !reduceMotion ? -4 : 0))
-                .shadow(color: .black.opacity(lifted ? 0.3 : 0.16), radius: lifted ? 12 : 5, y: lifted ? 8 : 3)
-                .position(point)
-                .animation(.spring(response: 0.28, dampingFraction: 0.65), value: lifted)
-                .gesture(
-                    DragGesture(minimumDistance: 6)
-                        .onChanged { value in
-                            if dragStart == nil { dragStart = point; lifted = true; Haptics.impact(.light) }
-                            let origin = dragStart ?? point
-                            let x = min(max(origin.x + value.translation.width, size.width / 2 + 8), geo.size.width - size.width / 2 - 8)
-                            let y = min(max(origin.y + value.translation.height, size.height / 2 + 8), geo.size.height - size.height / 2 - 8)
-                            position = CGPoint(x: x, y: y)
-                        }
-                        .onEnded { _ in
-                            dragStart = nil; lifted = false
-                            Haptics.impact(.medium)
-                        }
-                )
-                .onTapGesture { showSheet = true; Haptics.selection() }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Streak sticker, \(store.dailyStreakDays) day\(store.dailyStreakDays == 1 ? "" : "s") in a row. Opens the week's read.")
-                .accessibilityAddTraits(.isButton)
-        }
-        .allowsHitTesting(true)
-        .sheet(isPresented: $showSheet) {
-            StreakStickerSheet()
-                .environment(store)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(28)
-        }
-    }
-
-    /// The magnet is a calendar tile in the glass-bubble idiom (Lucas
-    /// 2026-10-16): an accent header band carrying the robot arm, the day
-    /// count on a frosted body, one highlight — the Watch calendar
-    /// complication, in Morphe's colors. Every color is the user's
-    /// palette (accent / onFill / ink), so it follows the app's theme.
-    private var magnet: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                LinearGradient(colors: [MorpheTheme.accent, MorpheTheme.accent.opacity(0.78)],
-                               startPoint: .top, endPoint: .bottom)
-                RobotArmFlex()
-                    .fill(MorpheTheme.onFill(MorpheTheme.accent))
-                    .frame(width: 18, height: 12)
-                    .symbolEffectCompat(trigger: store.dailyStreakDays)
-            }
-            .frame(height: 16)
-            ZStack {
-                (MorpheTheme.isLight ? Color.white.opacity(0.78) : MorpheTheme.inkAlt.opacity(0.82))
-                Text("\(store.dailyStreakDays)")
-                    .font(.system(size: 20, weight: .black, design: .rounded).monospacedDigit())
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .contentTransition(.numericText())
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                    .padding(.horizontal, 4)
-            }
-        }
-        .frame(width: size.width, height: size.height)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay(
-            // The bubble highlight.
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(LinearGradient(colors: [Color.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center))
-                .allowsHitTesting(false)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .stroke(MorpheTheme.accent.opacity(0.6), lineWidth: 1)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-    }
-}
-
-/// A flexing robot arm, drawn (no emoji, no SF symbol exists): angular
-/// upper arm, forearm curled up, a boxy fist, two joint pins.
-private struct RobotArmFlex: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        let w = r.width, h = r.height
-        let t = h * 0.3                                    // limb thickness
-        let elbow = CGPoint(x: r.minX + w * 0.62, y: r.minY + h * 0.72)
-        // Upper arm: shoulder (left) to the elbow.
-        p.addRoundedRect(in: CGRect(x: r.minX, y: elbow.y - t / 2, width: w * 0.62, height: t),
-                         cornerSize: CGSize(width: t / 2, height: t / 2))
-        // Bicep: the bulge on top of the upper arm — the flex.
-        p.addEllipse(in: CGRect(x: r.minX + w * 0.16, y: elbow.y - t / 2 - h * 0.26, width: w * 0.34, height: h * 0.34))
-        // Forearm: from the elbow up and back over the upper arm (a curl).
-        var fore = Path()
-        fore.addRoundedRect(in: CGRect(x: -t / 2, y: -h * 0.72, width: t, height: h * 0.76),
-                            cornerSize: CGSize(width: t / 2, height: t / 2))
-        p.addPath(fore.applying(CGAffineTransform(translationX: elbow.x, y: elbow.y).rotated(by: 0.55)))
-        // Fist: a box at the top of the forearm.
-        p.addRoundedRect(in: CGRect(x: r.minX + w * 0.70, y: r.minY, width: w * 0.30, height: h * 0.34),
-                         cornerSize: CGSize(width: 2, height: 2))
-        // Joint pins, cut out — the mechanical tell.
-        var pins = Path()
-        pins.addEllipse(in: CGRect(x: elbow.x - t * 0.2, y: elbow.y - t * 0.2, width: t * 0.4, height: t * 0.4))
-        pins.addEllipse(in: CGRect(x: r.minX + t * 0.3, y: elbow.y - t * 0.2, width: t * 0.4, height: t * 0.4))
-        return p.subtracting(pins)
-    }
-}
-
-private extension View {
-    /// A one-shot pop when the number changes; plain on Reduce Motion.
-    @ViewBuilder
-    func symbolEffectCompat(trigger: Int) -> some View {
-        self.modifier(PopOnChange(trigger: trigger))
-    }
-}
-
-private struct PopOnChange: ViewModifier {
-    let trigger: Int
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pop = false
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(pop ? 1.25 : 1)
-            .onChange(of: trigger) { _, _ in
-                guard !reduceMotion else { return }
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) { pop = true }
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(220))
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { pop = false }
-                }
-            }
-    }
-}
+// MARK: - Streak (Lucas 2026-10-16)
 
 /// The week behind the number — good and bad on one card, every line
 /// from the log: sessions hit vs the target, days shown up, short days,
 /// missed training days, the best streak.
-private struct StreakStickerSheet: View {
+struct StreakStickerSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
@@ -3142,9 +3002,9 @@ private struct StreakStickerSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
-                RobotArmFlex()
-                    .fill(MorpheTheme.accent)
-                    .frame(width: 30, height: 20)
+                Image(systemName: "calendar")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accentText)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(store.dailyStreakDays) day\(store.dailyStreakDays == 1 ? "" : "s") in a row")
                         .font(.title3.weight(.bold))
@@ -3176,7 +3036,7 @@ private struct StreakStickerSheet: View {
             .padding(14)
             .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panel))
 
-            Text("Every line comes from your log. Drag the sticker anywhere on Today.")
+            Text("Every line comes from your log.")
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textMuted)
             Spacer(minLength: 0)

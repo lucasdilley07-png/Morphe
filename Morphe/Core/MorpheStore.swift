@@ -8734,10 +8734,13 @@ final class MorpheAppStore {
         sessionUserNote = ""
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
+        let wasOnTrain = selectedClientTab == .train
         showTrainTab()
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner {
             showToast("Today's workout is ready with \(partner.name).")
-        } else {
+        } else if !wasOnTrain {
+            // Already looking at Train: the console says it (night audit
+            // 2026-10-16, #5).
             showToast("Today's workout is ready in Train.")
         }
     }

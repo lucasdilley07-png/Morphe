@@ -533,6 +533,9 @@ struct WorkoutView: View {
                     VoiceSetLogBar(controller: voiceSetLogger) { utterance in
                         logSpokenSet(utterance)
                     }
+                    // Clears the floating Morphe AI orb (night audit
+                    // 2026-10-16, #7).
+                    .padding(.trailing, 56)
                 }
 
                 // The session voice (moments engine): short derived lines
@@ -3164,7 +3167,11 @@ private struct ActiveWorkoutTrackerCard: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
                     Spacer()
-                    MetricPill(label: unit.plural, value: "\(completedSets)/\(totalSets)")
+                    // One unit of one is a fact the summary line already
+                    // states (night audit 2026-10-16, #6).
+                    if totalSets > 1 {
+                        MetricPill(label: unit.plural, value: "\(completedSets)/\(totalSets)")
+                    }
                 }
                 // Seed the first load for a movement with no history (U2).
                 // A beat after the owner resets the weight for the new
@@ -3395,7 +3402,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Spacer()
                                 }
                                 if holdRunning {
-                                    Button(unit == .hold ? "Stop · log \(holdElapsed)s" : "End \(unit.singular.lowercased()) early · log \(holdElapsed)s") {
+                                    Button((unit == .hold || unit == .flow) ? "Stop · log \(holdElapsed)s" : "End \(unit.singular.lowercased()) early · log \(holdElapsed)s") {
                                         stopHold()
                                         if holdElapsed > 0 { onLogHold(holdElapsed, unit.label(seconds: holdElapsed)); holdElapsed = 0 }
                                     }
@@ -3409,7 +3416,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                             .frame(width: 88)
                                     }
                                 } else {
-                                    Button(unit == .hold ? "Start hold" : "Start \(unit.singular.lowercased()) \(completedSets + 1)") { startHold() }
+                                    Button(unit == .hold ? "Start hold" : (unit == .flow ? "Start the clock" : "Start \(unit.singular.lowercased()) \(completedSets + 1)")) { startHold() }
                                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                                 }
                             }
@@ -3823,7 +3830,9 @@ private struct VoiceSetLogBar: View {
                          ? (controller.transcript.isEmpty ? "Listening — say \"\(setExample)\"…" : controller.transcript)
                          : (store.heyMorphe.state == .passive
                             ? "Hands free: \"Hey Morphe, \(setExample)\" — or tap"
-                            : "Say your \(unitWord) — \"\(setExample)\""))
+                            : ((activeUnit == .hold || activeUnit == .flow)
+                                ? "Say \"done\" to stop the clock"
+                                : "Say your \(unitWord) — \"\(setExample)\"")))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)

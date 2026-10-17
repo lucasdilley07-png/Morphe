@@ -827,3 +827,24 @@ Network is deliberately left alone.
   every 2–3 min at random while Today is on screen; a soft tap with it;
   nothing under Reduce Motion. Verified by burst capture (the band reads
   through "in" and "Verif").
+
+## Sticker DAY tile + night audit 2–8 (2026-10-16)
+
+- Sticker: the header reads DAY, the number is the user's accent — no arm,
+  no symbol; the week sheet's icon is a calendar glyph in accent.
+- Night audit (`docs/AUDIT-USER-2026-10-16-NIGHT.md`) 2–8: the Lose-weight
+  review no longer promises steps or a weigh-in the app doesn't do; the
+  day-one strip reads "Check in · 20 seconds" / "Day 1" / "— · after
+  check-in" instead of dashes and a zero; the first-run hint sits under the
+  plan card; no "ready in Train" toast when Train is already up; mobility
+  work is a `flow` unit (counts up, "Start the clock") and the unit pill
+  hides when the target is 1; the voice bar keeps 56pt clear of the AI orb;
+  holds/flows say "Say "done" to stop the clock".
+- The "Good evening, name" line is gone from Today (Lucas: it moves to the
+  welcome pop-up); the page opens on MORPHE ONLINE · @handle, and the
+  electric sweep now runs through the handle.
+- The streak sticker is gone (Lucas): the strip's kicker is one centered
+  line in one font — MORPHE ONLINE · @handle · N DAYS LOGGED — where the
+  days count (sessions logged, from the log) opens the week's read sheet.
+- "What workout would you like to start today?" left Today too (Lucas):
+  strip → plan card. `homePrompt` still feeds the day pop-up bubble.

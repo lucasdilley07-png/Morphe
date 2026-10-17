@@ -4365,7 +4365,7 @@ enum MorpheDemoContent {
     ]
 
     static let goalTranslations: [GoalTranslation] = [
-        GoalTranslation(goal: "Lose weight", weeklyActions: ["3 workouts per week", "7,000 steps per day", "Protein goal", "2 nutrition logs per day", "Weekly weigh-in", "1 recovery day"]),
+        GoalTranslation(goal: "Lose weight", weeklyActions: ["3 workouts per week", "Protein goal", "2 nutrition logs per day", "Log your weight in Profile", "1 recovery day"]),
         GoalTranslation(goal: "Gain muscle", weeklyActions: ["4 strength sessions", "Progressive overload on main lifts", "Daily protein goal", "2 mobility blocks", "Weekly progress check-in"]),
         GoalTranslation(goal: "Improve sport performance", weeklyActions: ["2 sport-specific sessions", "1 strength session", "1 mobility session", "An evening check-in on training days"]),
         GoalTranslation(goal: "Build consistency", weeklyActions: ["3 short training sessions", "2 recovery check-ins", "1 simple nutrition habit", "Minimum Win backup plan"]),
@@ -4377,7 +4377,7 @@ enum MorpheDemoContent {
 
     static let roadmap: [RoadmapPhase] = [
         RoadmapPhase(title: "Assessment", focus: "Baseline movement, schedule, and confidence.", weeklyActions: ["Complete check-ins", "Try 2 simple sessions"], milestone: "Baseline captured", status: "Done"),
-        RoadmapPhase(title: "Build Consistency", focus: "Repeat small wins until training feels normal.", weeklyActions: ["3 workouts", "7,000 steps", "2 nutrition logs"], milestone: "5-day streak", status: "Current"),
+        RoadmapPhase(title: "Build Consistency", focus: "Repeat small wins until training feels normal.", weeklyActions: ["3 workouts", "2 nutrition logs", "Log your weight"], milestone: "5-day streak", status: "Current"),
         RoadmapPhase(title: "Build Strength / Skill", focus: "Add stable progress to strength or sport work.", weeklyActions: ["1 progression each week", "1 form review"], milestone: "Repeatable form under fatigue", status: "Up Next"),
         RoadmapPhase(title: "Improve Conditioning", focus: "Raise work capacity without losing recovery.", weeklyActions: ["2 conditioning blocks", "1 recovery session"], milestone: "Higher work output", status: "Locked"),
         RoadmapPhase(title: "Performance / Transformation", focus: "Push targeted outcomes with cleaner planning.", weeklyActions: ["Sport metrics review", "Weekly coach feedback"], milestone: "Performance phase", status: "Locked"),
