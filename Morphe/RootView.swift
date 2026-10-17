@@ -437,6 +437,7 @@ struct RootView: View {
         // Away (Lucas 2026-10-10): the popup sat untouched for 2½ minutes.
         .overlay {
             morpheNewsCover
+            launchCurtainView
             if store.isAway {
                 AwayOverlay()
                     .environment(store)
@@ -506,7 +507,7 @@ struct RootView: View {
             // Never over the "hello, name" beat either (audit 2026-10-15).
             // And it slides off while the chats have the stage (Lucas
             // 2026-10-16): the list, an open thread, the search board.
-            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage && !store.isAway && !store.showMorpheNews {
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage && !store.isAway && !store.showMorpheNews && !store.launchCurtainMounted {
                 if store.aiButtonParked {
                     // Swiped off (Lucas 2026-10-17): a small accent chevron
                     // marks its place; a tap or a swipe left brings it back.
@@ -822,6 +823,31 @@ private extension View {
     }
 }
 
+/// Between the loading screen and the app (Lucas 2026-10-17): a solid
+/// curtain in the appearance's extreme (black / white) carrying the Morphe
+/// wordmark where the pages' header puts it — the same 13 pt mark, the
+/// same text color, centred 26 pt under the safe area — so the app's own
+/// wordmark is already "there" when the curtain lifts.
+private struct LaunchCurtain: View {
+    @Environment(\.colorScheme) private var scheme
+    var opacity: Double
+    var showsWordmark: Bool
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            (scheme == .dark ? Color.black : Color.white)
+                .ignoresSafeArea()
+            MorpheWordmark(height: 13, glows: false)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .frame(height: 44)
+                .padding(.top, 4)
+                .opacity(showsWordmark ? 1 : 0)
+        }
+        .opacity(opacity)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct ClientPinnedHeader: View {
     @Environment(MorpheAppStore.self) private var store
 
@@ -1111,6 +1137,17 @@ struct MorpheNewsRow: View {
 private extension RootView {
     /// Morphe news (Lucas 2026-10-17), as its own view so the body's
     /// modifier chain stays type-checkable.
+    /// The launch curtain (Lucas 2026-10-17): black in dark mode, white in
+    /// light, the wordmark at the header's spot while it is solid. Lives
+    /// in the covers overlay so the body's chain stays type-checkable.
+    @ViewBuilder var launchCurtainView: some View {
+        if store.launchCurtainMounted {
+            LaunchCurtain(opacity: store.launchCurtainOpacity, showsWordmark: store.launchCurtainWordmark)
+                .allowsHitTesting(store.launchCurtainOpacity > 0.5)
+                .zIndex(9)
+        }
+    }
+
     var morpheNewsCover: some View {
         ZStack(alignment: .top) {
             if store.showMorpheNews {
@@ -1284,6 +1321,9 @@ private struct FloatingAIAgentButton: View {
     /// dims and sinks a touch; lifted rises with a deeper shadow.
     var pressing = false
     var lifted = false
+    /// The tap flash (Lucas 2026-10-17): the orb lights up and glows for
+    /// a beat when tapped.
+    @State private var flash = false
     /// The idle hop (Lucas 2026-10-13): every 2–3 minutes, at random, the
     /// button jumps once so the app feels alive. Never under Reduce Motion,
     /// mid "Hey Morphe" exchange, with the AI open, or in the background.
@@ -1322,7 +1362,12 @@ private struct FloatingAIAgentButton: View {
 
     var body: some View {
         Button {
+            withAnimation(.easeOut(duration: 0.12)) { flash = true }
             store.openAIAgent()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(420))
+                withAnimation(.easeInOut(duration: 0.5)) { flash = false }
+            }
         } label: {
             Group {
                 if isCompact {
@@ -1333,20 +1378,14 @@ private struct FloatingAIAgentButton: View {
                     // The side-view helmet bubble (Lucas 2026-10-09: back
                     // to the original for the chat door; the live orb
                     // belongs to Hey Morphe and the popup). 44pt target.
-                    Image("MorpheAIButtonMark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 40, height: 40)
+                    orbMark(40)
                         .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
-                        .shadow(color: MorpheTheme.accent.opacity(0.25), radius: 12, y: 0)
+                        .shadow(color: MorpheTheme.accent.opacity(flash ? 0.9 : 0.25), radius: flash ? 22 : 12, y: 0)
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 } else {
                     HStack(spacing: 8) {
-                        Image("MorpheAIButtonMark")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 20)
+                        orbMark(20)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
@@ -1358,7 +1397,9 @@ private struct FloatingAIAgentButton: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(GlowPressStyle())
+        .brightness(flash ? 0.18 : 0)
+        .shadow(color: MorpheTheme.accent.opacity(flash ? 0.6 : 0), radius: flash ? 18 : 0)
         .offset(y: hop)
         .scaleEffect(lifted ? 1.16 : (pressing ? 0.94 : 1))
         .opacity(pressing ? 0.8 : 1)
@@ -1373,6 +1414,22 @@ private struct FloatingAIAgentButton: View {
         // prompts sit at the top of the chat.)
     }
 
+    /// The side-view helmet in its glass, with the orb's waves moving
+    /// behind it (Lucas 2026-10-17): the ribbons ride over the mark on a
+    /// screen blend, clipped to the glass, so the dark interior carries
+    /// them while the bright helmet stays in front.
+    private func orbMark(_ side: CGFloat) -> some View {
+        Image("MorpheAIButtonMark")
+            .resizable()
+            .scaledToFit()
+            .overlay {
+                OrbWavesLayer(level: flash ? 0.6 : 0.18, speed: 0.9)
+                    .opacity(0.75)
+                    .clipShape(Circle().inset(by: side * 0.06))
+            }
+            .frame(width: side, height: side)
+    }
+
     private var buttonBackground: some View {
         // Flat HUD capsule: solid ink so it stays legible over any scroll
         // content, one accent hairline as the identity.
@@ -1382,6 +1439,18 @@ private struct FloatingAIAgentButton: View {
                 Capsule(style: .continuous)
                     .stroke(MorpheTheme.accent.opacity(0.55), lineWidth: 1)
             )
+    }
+}
+
+/// The press itself lights the button (Lucas 2026-10-17): while the
+/// finger is down it brightens and the accent glow comes up.
+private struct GlowPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .brightness(configuration.isPressed ? 0.15 : 0)
+            .shadow(color: MorpheTheme.accent.opacity(configuration.isPressed ? 0.7 : 0), radius: configuration.isPressed ? 16 : 0)
+            .scaleEffect(configuration.isPressed ? 1.06 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

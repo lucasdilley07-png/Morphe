@@ -898,10 +898,8 @@ struct WorkoutView: View {
         return ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                // The page title in the tabs grammar (Lucas 2026-10-17):
-                // TRAIN underlined like FITNESS / EXPLORE, one line under it.
-                MonoSectionTabs(items: [(id: 0, title: "Train")], selection: .constant(0))
-                    .padding(.top, -8)
+                // (The TRAIN title is gone, Lucas 2026-10-17: the page opens
+                // on Morphe's line.)
                 // Morphe's line for Train (Lucas 2026-10-17): a tip, a task
                 // or a logged number, changing daily.
                 MorpheDirectiveLine(text: store.hasCompletedWorkoutFlow

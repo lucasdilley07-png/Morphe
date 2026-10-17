@@ -1381,3 +1381,23 @@ Network is deliberately left alone.
   text in UserDefaults, pruned daily); otherwise the line renders still.
 - The wide "Morphe AI" pill is pulled inward on the track by half its
   extra width, so its edge distance matches the 44 pt circle's.
+- Launch curtain (Lucas 2026-10-17): `finishLaunchSequence` fades a
+  `LaunchCurtain` (black in dark, white in light) over the loading
+  screen in 0.22 s, swaps the loading view out underneath with no
+  animation, fades the wordmark on (header spot: 13 pt, textPrimary,
+  centred 26 pt under the safe area), holds ~0.5 s, lifts the curtain in
+  0.45 s onto the app whose header wordmark sits in the same place.
+  `launchSettled` now lands ~1.8 s after finish. The TRAIN page title is
+  gone; Train opens on Morphe's line.
+- Today: Morphe's line moved into `TodayIdentityStrip`, between the
+  kicker (@handle · ONLINE · days) and the LEVEL/SCORE tiles (Lucas
+  2026-10-17).
+- Chatbot button (Lucas 2026-10-17): `OrbWavesLayer` (the big orb's
+  ribbons via the now-internal `MorpheOrbView.drawRibbons`) rides over
+  the mark on a screen blend, clipped to the glass — waves moving behind
+  the helmet. `GlowPressStyle` brightens and glows while pressed; a tap
+  flashes (brightness + accent glow, waves surge) for ~0.9 s.
+- Loading screen embers (Lucas 2026-10-17): `LoadingEmbers` — 70 blue
+  sparks born at the bottom that climb, wobble, flicker and burn out
+  (white-blue core, electric halo, short tail), additive over the art,
+  under the motes and the live bar; nothing under Reduce Motion.

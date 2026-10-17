@@ -50,19 +50,15 @@ struct HomeView: View {
                     // Morphe introduces the athlete to themselves (Lucas
                     // 2026-10-16): readiness, score, energy, level — the
                     // numbers roll up on arrival — then the question.
-                    TodayIdentityStrip(appeared: greetingAppeared)
+                    TodayIdentityStrip(appeared: greetingAppeared, directive: store.morpheDirective())
                         .padding(.top, 6)
                     // The question under the strip moved to the welcome
                     // pop-up with the greeting (Lucas 2026-10-16). The plan
                     // card is the next thing on the page.
                     // Morphe's directive (Lucas 2026-10-16): one short
                     // command from the user's own state, rotating hourly.
-                    if let directive = store.morpheDirective() {
-                        // The same animated line as every other page
-                        // (Lucas 2026-10-17): star pops, words type in.
-                        MorpheDirectiveLine(text: directive)
-                            .padding(.top, 4)
-                    }
+                    // (Morphe's line now sits inside the strip, above the
+                    // tiles — Lucas 2026-10-17.)
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
                     if let recap = store.mondayRecapLine {
@@ -2824,6 +2820,8 @@ private struct TodayIdentityStrip: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let appeared: Bool
+    /// Morphe's daily line, shown between the kicker and the tiles.
+    var directive: String? = nil
     @State private var shown: [Int] = [0, 0, 0, 0]
     @State private var rolled = false
     @State private var glow = false
@@ -2878,6 +2876,12 @@ private struct TodayIdentityStrip: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity)
+            // Morphe's line (Lucas 2026-10-17): under the handle and the
+            // days logged, above the tiles.
+            if let directive {
+                MorpheDirectiveLine(text: directive)
+                    .padding(.vertical, 2)
+            }
             // LEVEL · SCORE · ENERGY · READINESS (Lucas 2026-10-17: level and
             // the check-in swapped places).
             HStack(spacing: 8) {

@@ -68,6 +68,11 @@ struct LaunchSequenceView: View {
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: loadFrame)
 
                 if !reduceMotion {
+                    // Blue fire (Lucas 2026-10-17): embers rising from the
+                    // bottom through the field, flickering and fading out.
+                    LoadingEmbers()
+                        .blendMode(.plusLighter)
+                        .scaleEffect(entering ? Self.enterZoom : 1.0)
                     LoadingMotes(isLight: false)
                         .blendMode(.plusLighter)
                         .scaleEffect(entering ? Self.enterZoom : 1.0)
@@ -163,6 +168,52 @@ private struct LoadingActivatedMotion: View {
                         .position(x: w * 0.5, y: h * 0.39)
                 }
                 .blendMode(.plusLighter)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Blue fire embers (Lucas 2026-10-17): sparks born low on the screen
+/// that climb, wobble, flicker and burn out — a white-blue core with an
+/// electric-blue halo and a short tail. Deterministic per ember so the
+/// field reads as one fire, not noise.
+private struct LoadingEmbers: View {
+    private struct Ember { let x, speed, size, phase, wobble, life: Double }
+    private static let embers: [Ember] = (0..<70).map { _ in
+        var g = SystemRandomNumberGenerator()
+        return Ember(x: .random(in: 0...1, using: &g), speed: .random(in: 0.09...0.22, using: &g),
+                     size: .random(in: 1.4...4.2, using: &g), phase: .random(in: 0...(2 * .pi), using: &g),
+                     wobble: .random(in: 6...22, using: &g), life: .random(in: 0.55...1.0, using: &g))
+    }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            Canvas { context, size in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                for ember in Self.embers {
+                    // Progress 0 (born at the bottom) → 1 (gone), looping.
+                    let cycle = t * ember.speed + ember.phase
+                    let p = cycle - floor(cycle)
+                    guard p < ember.life else { continue }
+                    let rise = p / ember.life                        // 0…1 of its climb
+                    let py = size.height * (1.05 - rise * 1.1)
+                    let px = ember.x * size.width + sin(t * 1.7 + ember.phase) * ember.wobble * rise
+                    let flicker = 0.55 + 0.45 * sin(t * 9 + ember.phase * 3)
+                    let fade = rise < 0.12 ? rise / 0.12 : (1 - rise) * 1.15   // in fast, out slow
+                    let alpha = max(0, min(1, fade)) * flicker
+                    let r = ember.size * (1 - rise * 0.45)
+                    // Tail.
+                    var tail = Path(); tail.move(to: CGPoint(x: px, y: py))
+                    tail.addLine(to: CGPoint(x: px - sin(t * 1.7 + ember.phase) * 2, y: py + r * 5))
+                    context.stroke(tail, with: .color(Color(red: 0.2, green: 0.45, blue: 1).opacity(0.35 * alpha)), style: StrokeStyle(lineWidth: r * 0.8, lineCap: .round))
+                    // Halo and core.
+                    context.fill(Path(ellipseIn: CGRect(x: px - r * 2.2, y: py - r * 2.2, width: r * 4.4, height: r * 4.4)),
+                                 with: .color(Color(red: 0.2, green: 0.5, blue: 1).opacity(0.22 * alpha)))
+                    context.fill(Path(ellipseIn: CGRect(x: px - r / 2, y: py - r / 2, width: r, height: r)),
+                                 with: .color(Color(red: 0.8, green: 0.92, blue: 1).opacity(0.95 * alpha)))
+                }
             }
         }
         .allowsHitTesting(false)

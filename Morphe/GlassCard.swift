@@ -464,6 +464,33 @@ struct MorpheHelmetMark: View {
     }
 }
 
+/// The orb's moving waves on their own (Lucas 2026-10-17): the same
+/// ribbons the big orb draws, for the small chatbot button — laid over
+/// the mark with a screen blend so they read as inside the glass, behind
+/// the helmet. Reduce Motion pauses them on one frame.
+struct OrbWavesLayer: View {
+    var level: Double = 0.15
+    var speed: Double = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private final class Phase { var value: Double = 0; var last: Double? }
+    @State private var phase = Phase()
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+            Canvas { context, size in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                let dt = min(max(t - (phase.last ?? t), 0), 0.2)
+                phase.last = t
+                phase.value += dt * speed * (1.1 + level * 3.2)
+                MorpheOrbView.drawRibbons(context: context, size: size, time: phase.value, level: level)
+            }
+        }
+        .blendMode(.screen)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
     var size: CGFloat = 170
@@ -686,7 +713,7 @@ struct MorpheOrbView: View {
     /// Two blue ribbons crossing the lower half of the bubble, each a
     /// soft band, a sharp core, and a dotted trace along its crest — the
     /// image's frequency design, moving.
-    private static func drawRibbons(context: GraphicsContext, size: CGSize, time: Double, level: Double) {
+    static func drawRibbons(context: GraphicsContext, size: CGSize, time: Double, level: Double) {
         let w = size.width, h = size.height
         drawLiquid(context: context, size: size, time: time, level: level)
         let bands: [(y: CGFloat, amp: CGFloat, waves: Double, phase: Double, width: CGFloat, alpha: Double)] = [

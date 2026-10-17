@@ -7500,6 +7500,11 @@ final class MorpheAppStore {
     /// loading screen and be there the instant it cleared).
     private(set) var launchSettled = false
 
+    /// The launch curtain's state (Lucas 2026-10-17).
+    var launchCurtainMounted = false
+    var launchCurtainOpacity: Double = 0
+    var launchCurtainWordmark = false
+
     func finishLaunchSequence() {
         armResumeWorkoutPromptIfNeeded(coldLaunch: true)
         armDayPopupForThisOpen()
@@ -7507,13 +7512,27 @@ final class MorpheAppStore {
         // 2026-10-17) even when the pop-up sits this open out.
         resetSectionDefaults()
         refreshMorpheInbox()
-        withAnimation(.easeInOut(duration: 0.3)) {
-            isShowingLaunchSequence = false
-        }
-        Task { [weak self] in
-            // The 0.3s fade, then a breath on the page before the greeting.
-            try? await Task.sleep(for: .milliseconds(650))
-            self?.launchSettled = true
+        // The curtain (Lucas 2026-10-17): the loading screen fades to black
+        // (dark) or white (light); the Morphe wordmark appears on the solid
+        // curtain at its header spot — never over the loading art — then
+        // the curtain lifts onto the app, whose header wordmark sits in
+        // exactly the same place.
+        launchCurtainMounted = true
+        withAnimation(.easeIn(duration: 0.22)) { launchCurtainOpacity = 1 }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: .milliseconds(240))
+            var noAnimation = Transaction(); noAnimation.disablesAnimations = true
+            withTransaction(noAnimation) { self.isShowingLaunchSequence = false }
+            withAnimation(.easeOut(duration: 0.25)) { self.launchCurtainWordmark = true }
+            try? await Task.sleep(for: .milliseconds(520))
+            withAnimation(.easeInOut(duration: 0.45)) { self.launchCurtainOpacity = 0 }
+            try? await Task.sleep(for: .milliseconds(470))
+            self.launchCurtainMounted = false
+            self.launchCurtainWordmark = false
+            // A breath on the page before the greeting.
+            try? await Task.sleep(for: .milliseconds(300))
+            self.launchSettled = true
         }
         // A profile lives on this device AND is signed in (a signed-out
         // Gold-era device must not toast over the sign-in wall): settled.
