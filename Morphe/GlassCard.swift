@@ -315,8 +315,11 @@ struct MorpheDirectiveLine: View {
     /// audit #13); nil for fixed lines.
     var feedbackKey: String? = nil
     /// The star's pop (Lucas 2026-10-17): grows in with a bounce, then
-    /// the line types in quickly beside it. Re-runs when the line changes.
+    /// the line types in quickly beside it. Plays once per line, then
+    /// again only 15 minutes after the user last saw it (Lucas
+    /// 2026-10-17); in between the line is simply there.
     @State private var popped = false
+    @State private var animating = false
 
     var body: some View {
         if !text.isEmpty {
@@ -324,17 +327,19 @@ struct MorpheDirectiveLine: View {
                 Image(systemName: "sparkle")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(MorpheTheme.accentText)
-                    .scaleEffect(popped || reduceMotion ? 1 : 0.01)
-                    .rotationEffect(.degrees(popped || reduceMotion ? 0 : -90))
+                    .scaleEffect(popped || !animating || reduceMotion ? 1 : 0.01)
+                    .rotationEffect(.degrees(popped || !animating || reduceMotion ? 0 : -90))
                     .animation(.spring(response: 0.38, dampingFraction: 0.45), value: popped)
                 // The full line lays out invisibly so the star never shifts
                 // while the words type in over it.
                 Text(text)
                     .multilineTextAlignment(.center)
-                    .opacity(0)
+                    .opacity(animating ? 0 : 1)
                     .overlay(alignment: .topLeading) {
-                        TypewriterText(text: text, charactersPerSecond: 48, startDelay: 0.22, showsCaret: false)
-                            .multilineTextAlignment(.center)
+                        if animating {
+                            TypewriterText(text: text, charactersPerSecond: 48, startDelay: 0.22, showsCaret: false)
+                                .multilineTextAlignment(.center)
+                        }
                     }
                     .accessibilityHidden(true)
             }
@@ -342,6 +347,8 @@ struct MorpheDirectiveLine: View {
             .foregroundStyle(MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .task(id: text) {
+                animating = DirectiveAnimationGate.shouldAnimate(text)
+                guard animating else { popped = true; return }
                 popped = false
                 try? await Task.sleep(for: .milliseconds(40))
                 popped = true
@@ -356,6 +363,26 @@ struct MorpheDirectiveLine: View {
             .accessibilityHint(feedbackKey == nil ? "" : "Long press for more or less of this")
         }
     }
+}
+
+/// Once per line, then every 15 minutes (Lucas 2026-10-17): remembers
+/// when each line last animated, keyed by its text, so a line the user
+/// just saw stays still on the next page visit.
+enum DirectiveAnimationGate {
+    static let interval: TimeInterval = 15 * 60
+    private static let key = "morphe.directive.animatedAt"
+
+    static func shouldAnimate(_ text: String, now: Date = .now) -> Bool {
+        var table = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
+        if let last = table[text], now.timeIntervalSince1970 - last < interval { return false }
+        // Keep the table small: drop entries older than a day.
+        table = table.filter { now.timeIntervalSince1970 - $0.value < 86_400 }
+        table[text] = now.timeIntervalSince1970
+        UserDefaults.standard.set(table, forKey: key)
+        return true
+    }
+
+    static func reset() { UserDefaults.standard.removeObject(forKey: key) }
 }
 
 struct SectionTitleView: View {

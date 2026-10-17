@@ -1368,3 +1368,16 @@ Network is deliberately left alone.
   copy of the full line so nothing shifts. Re-runs when the line
   changes (`task(id: text)`); Reduce Motion shows it at once. Today
   now uses the same view.
+- AI button track (Lucas 2026-10-17): `AIButtonTrack` is a rectangle
+  inset 42 pt from the sides, 96 from the top and dock clearance + 22
+  from the bottom; `aiButtonTrackT` (0…1, nil = bottom-right default)
+  places the button. `AIButtonTrackHost` owns the gestures: the
+  editor's 2 s hold (press feedback → buzz → lift at 116%) then a drag
+  projected onto the track, release persists; a quick swipe right still
+  parks. Editor mode hides the button (slides toward its own edge) and
+  it returns after Done. Separate from editor mode by design.
+- `DirectiveAnimationGate` (Lucas 2026-10-17): a line's pop + typing
+  plays once, then again only 15 minutes after it last played (keyed by
+  text in UserDefaults, pruned daily); otherwise the line renders still.
+- The wide "Morphe AI" pill is pulled inward on the track by half its
+  extra width, so its edge distance matches the 44 pt circle's.

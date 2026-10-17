@@ -9779,6 +9779,38 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertTrue(store.chatsHaveTheStage, "an open chat surface hides the floating button")
     }
 
+    /// Morphe's line animates once, then stays still until 15 minutes
+    /// have passed (Lucas 2026-10-17).
+    func testDirectiveAnimationPlaysOnceEveryFifteenMinutes() {
+        DirectiveAnimationGate.reset()
+        let now = Date()
+        XCTAssertTrue(DirectiveAnimationGate.shouldAnimate("Train today.", now: now))
+        XCTAssertFalse(DirectiveAnimationGate.shouldAnimate("Train today.", now: now.addingTimeInterval(60)))
+        XCTAssertTrue(DirectiveAnimationGate.shouldAnimate("Log lunch.", now: now), "a different line plays right away")
+        XCTAssertTrue(DirectiveAnimationGate.shouldAnimate("Train today.", now: now.addingTimeInterval(15 * 60 + 1)))
+        DirectiveAnimationGate.reset()
+    }
+
+    /// The AI button's edge track (Lucas 2026-10-17): t = 0 is the
+    /// bottom-right corner, the loop runs up, left, down and back, and a
+    /// finger anywhere projects onto the nearest spot.
+    func testAIButtonTrackLoopsAtEqualDistance() {
+        let track = AIButtonTrack(rect: CGRect(x: 40, y: 100, width: 300, height: 600))
+        XCTAssertEqual(track.point(at: 0), CGPoint(x: 340, y: 700))
+        XCTAssertEqual(track.point(at: 1), CGPoint(x: 340, y: 700), "the loop wraps")
+        let top = track.point(at: track.nearestT(to: CGPoint(x: 190, y: 20)))
+        XCTAssertEqual(top.y, 100); XCTAssertEqual(top.x, 190, accuracy: 0.01)
+        let left = track.point(at: track.nearestT(to: CGPoint(x: 0, y: 400)))
+        XCTAssertEqual(left.x, 40); XCTAssertEqual(left.y, 400, accuracy: 0.01)
+        XCTAssertEqual(AIButtonTrack.edge(at: 0), .trailing)
+        XCTAssertEqual(AIButtonTrack.edge(at: 0.6), .leading)
+        let store = freshStore()
+        XCTAssertNil(store.aiButtonTrackT, "the default spot is the corner it always had")
+        store.setAIButtonTrack(1.3)
+        XCTAssertEqual(store.aiButtonTrackT ?? -1, 0.3, accuracy: 0.0001)
+        store.aiButtonTrackT = nil
+    }
+
     /// A new account opens on the essentials (Lucas 2026-10-17): two boxes
     /// on every page that has more, and no page can hide below two.
     func testFreshAccountStartsMinimalAndKeepsTwoSections() {

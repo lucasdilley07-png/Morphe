@@ -514,12 +514,12 @@ struct RootView: View {
                         .padding(.bottom, aiButtonDockClearance)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 } else {
-                FloatingAIAgentButton()
-                    .padding(.trailing, 20)
-                    // Clears the floating glass capsule (~57pt + 6pt inset),
-                    // growing with the dock's labels at accessibility sizes.
-                    .padding(.bottom, aiButtonDockClearance)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                // On its edge track (Lucas 2026-10-17): the default spot is
+                // the bottom-right corner it always had; hold to lift and
+                // drag it anywhere along the loop. It slides off toward
+                // its own edge for editor mode and back after Done.
+                AIButtonTrackHost(dockClearance: aiButtonDockClearance)
+                    .transition(.move(edge: AIButtonTrack.edge(at: store.aiButtonTrackT ?? AIButtonTrack.defaultT)).combined(with: .opacity))
                 }
             }
         }
@@ -1147,16 +1147,147 @@ private struct HeaderCircleButton: View {
     }
 }
 
+/// The edge track the Morphe AI button rides (Lucas 2026-10-17): one
+/// rectangle inset the same distance from every screen edge, so the
+/// button never crowds an edge wherever it is dropped. t runs 0…1 from
+/// the bottom-right corner up the right edge, along the top, down the
+/// left and back along the bottom.
+struct AIButtonTrack: Equatable {
+    var rect: CGRect
+
+    /// The bottom-right corner — where the button has always lived.
+    static let defaultT: Double = 0
+
+    init(size: CGSize, top: CGFloat, bottom: CGFloat, side: CGFloat) {
+        rect = CGRect(x: side, y: top, width: max(1, size.width - side * 2), height: max(1, size.height - top - bottom))
+    }
+    init(rect: CGRect) { self.rect = rect }
+
+    private var perimeter: CGFloat { 2 * (rect.width + rect.height) }
+
+    func point(at t: Double) -> CGPoint {
+        let wrapped = ((t.truncatingRemainder(dividingBy: 1)) + 1).truncatingRemainder(dividingBy: 1)
+        var d = CGFloat(wrapped) * perimeter
+        if d < rect.height { return CGPoint(x: rect.maxX, y: rect.maxY - d) }          // right edge, up
+        d -= rect.height
+        if d < rect.width { return CGPoint(x: rect.maxX - d, y: rect.minY) }           // top, leftward
+        d -= rect.width
+        if d < rect.height { return CGPoint(x: rect.minX, y: rect.minY + d) }          // left edge, down
+        d -= rect.height
+        return CGPoint(x: rect.minX + d, y: rect.maxY)                                  // bottom, rightward
+    }
+
+    /// The closest spot on the loop to a finger.
+    func nearestT(to p: CGPoint) -> Double {
+        let h = rect.height, w = rect.width
+        let candidates: [(dist: CGFloat, d: CGFloat)] = [
+            (abs(p.x - rect.maxX), h - min(max(p.y - rect.minY, 0), h)),                 // right edge
+            (abs(p.y - rect.minY), h + (w - min(max(p.x - rect.minX, 0), w))),           // top
+            (abs(p.x - rect.minX), h + w + min(max(p.y - rect.minY, 0), h)),              // left
+            (abs(p.y - rect.maxY), h + w + h + min(max(p.x - rect.minX, 0), w))           // bottom
+        ]
+        let best = candidates.min { $0.dist < $1.dist }!
+        return Double(best.d / perimeter)
+    }
+
+    /// Which screen edge a spot belongs to — the side it slides off toward.
+    static func edge(at t: Double) -> Edge {
+        let wrapped = ((t.truncatingRemainder(dividingBy: 1)) + 1).truncatingRemainder(dividingBy: 1)
+        switch wrapped {
+        case ..<0.25: return .trailing
+        case ..<0.5: return .top
+        case ..<0.75: return .leading
+        default: return .bottom
+        }
+    }
+}
+
+/// Positions the button on its track and owns the hold-and-drag (Lucas
+/// 2026-10-17): the editor's two-second hold lifts it (press feedback,
+/// then a buzz and a lift), the finger then slides it along the loop,
+/// release keeps the spot. A quick swipe toward the right edge still
+/// parks it. Separate from editor mode, which hides the button entirely.
+private struct AIButtonTrackHost: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let dockClearance: CGFloat
+    @State private var pressing = false
+    @State private var lifted = false
+    @State private var dragT: Double?
+    @State private var parkPull: CGFloat = 0
+    /// The button's real width (the wide "Morphe AI" pill before the
+    /// first opens): the track is laid out for the 44 pt circle, so a
+    /// wider button is pulled inward to keep the same edge distance.
+    @State private var buttonWidth: CGFloat = 44
+
+    var body: some View {
+        GeometryReader { geo in
+            let track = AIButtonTrack(size: geo.size, top: 96, bottom: dockClearance + 22, side: 42)
+            let t = dragT ?? store.aiButtonTrackT ?? AIButtonTrack.defaultT
+            let raw = track.point(at: t)
+            let inset = max(0, (buttonWidth - 44) / 2)
+            let spot = CGPoint(x: min(max(raw.x, track.rect.minX + inset), track.rect.maxX - inset), y: raw.y)
+            FloatingAIAgentButton(pressing: pressing, lifted: lifted)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { buttonWidth = $0 }
+                .offset(x: parkPull)
+                .position(spot)
+                .animation(dragT == nil || reduceMotion ? .spring(response: 0.35, dampingFraction: 0.8) : .interactiveSpring(response: 0.18, dampingFraction: 0.8), value: spot)
+                // Hold, then drag along the track.
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: HoldDragOverlay.holdSeconds, maximumDistance: 14)
+                        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("aiTrack")))
+                        .onChanged { value in
+                            switch value {
+                            case .first(true):
+                                if !pressing { withAnimation(.easeOut(duration: 0.15)) { pressing = true } }
+                            case .second(true, let drag):
+                                if !lifted {
+                                    Haptics.impact(.medium)
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { lifted = true; pressing = false }
+                                }
+                                if let drag { dragT = track.nearestT(to: drag.location) }
+                            default: break
+                            }
+                        }
+                        .onEnded { _ in
+                            if lifted, let dragT { store.setAIButtonTrack(dragT) }
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { lifted = false; pressing = false }
+                            dragT = nil
+                        }
+                )
+                // The quick park swipe (not while lifted).
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 12)
+                        .onChanged { value in
+                            guard !lifted, !pressing else { return }
+                            parkPull = max(0, value.translation.width)
+                        }
+                        .onEnded { value in
+                            defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { parkPull = 0 } }
+                            guard !lifted, !pressing else { return }
+                            if value.translation.width > 44 || value.predictedEndTranslation.width > 120 {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.parkAIButton() }
+                            }
+                        }
+                )
+        }
+        .coordinateSpace(name: "aiTrack")
+        .ignoresSafeArea(.keyboard)
+    }
+}
+
 private struct FloatingAIAgentButton: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// Hold feedback from the track host (Lucas 2026-10-17): pressed
+    /// dims and sinks a touch; lifted rises with a deeper shadow.
+    var pressing = false
+    var lifted = false
     /// The idle hop (Lucas 2026-10-13): every 2–3 minutes, at random, the
     /// button jumps once so the app feels alive. Never under Reduce Motion,
     /// mid "Hey Morphe" exchange, with the AI open, or in the background.
     @State private var hop: CGFloat = 0
-    /// The finger's pull to the right while swiping it off.
-    @State private var dragX: CGFloat = 0
 
     private var label: String { "Morphe AI" }
 
@@ -1228,42 +1359,18 @@ private struct FloatingAIAgentButton: View {
             }
         }
         .buttonStyle(.plain)
-        .offset(x: dragX, y: hop)
-        // Hold and swipe it off the right edge (Lucas 2026-10-17); not
-        // while it is mid-hop. The drag wins over the tap once it moves.
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 12)
-                .onChanged { value in
-                    guard hop == 0 else { return }
-                    dragX = max(0, value.translation.width)
-                }
-                .onEnded { value in
-                    guard hop == 0 else { dragX = 0; return }
-                    if value.translation.width > 44 || value.predictedEndTranslation.width > 120 {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.parkAIButton() }
-                        dragX = 0
-                    } else {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { dragX = 0 }
-                    }
-                }
-        )
+        .offset(y: hop)
+        .scaleEffect(lifted ? 1.16 : (pressing ? 0.94 : 1))
+        .opacity(pressing ? 0.8 : 1)
+        .shadow(color: MorpheTheme.accent.opacity(lifted ? 0.5 : 0), radius: lifted ? 22 : 0, y: lifted ? 8 : 0)
+        .allowsHitTesting(!lifted)
         // Restarts when the gates change, so the loop never reads a stale
         // copy of Reduce Motion or the scene phase.
         .task(id: "\(reduceMotion)-\(scenePhase == .active)") { await idleHops() }
         .accessibilityLabel(Text("Open \(label)"))
-        .contextMenu {
-            ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in
-                Button(prompt) {
-                    // Open FIRST, then send: navigation actions close the
-                    // sheet in the same transaction (never presents), while
-                    // conversational replies AND action declines ("you have
-                    // an unlogged session…") stay visible. The old
-                    // open-on-false logic swallowed declines entirely.
-                    store.openAIAgent()
-                    store.sendAIAgentPrompt(prompt)
-                }
-            }
-        }
+        // (The long-press quick-prompt menu is retired, Lucas 2026-10-17:
+        // the hold now lifts the button onto its track, and the same
+        // prompts sit at the top of the chat.)
     }
 
     private var buttonBackground: some View {

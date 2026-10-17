@@ -11019,6 +11019,22 @@ final class MorpheAppStore {
     func parkAIButton() { aiButtonParked = true; Haptics.impact(.light) }
     func unparkAIButton() { aiButtonParked = false; Haptics.impact(.light) }
 
+    /// Where the button sits on its edge track (Lucas 2026-10-17): 0…1
+    /// along a rectangle inset from the screen edges, nil = the default
+    /// bottom-right spot. Hold the button (the editor's two-second hold)
+    /// to lift it, drag along the track, release to keep the spot.
+    static let aiButtonTrackKey = "morphe.aiButton.track"
+    var aiButtonTrackT: Double? = UserDefaults.standard.object(forKey: MorpheAppStore.aiButtonTrackKey) as? Double {
+        didSet {
+            if let aiButtonTrackT { UserDefaults.standard.set(aiButtonTrackT, forKey: Self.aiButtonTrackKey) }
+            else { UserDefaults.standard.removeObject(forKey: Self.aiButtonTrackKey) }
+        }
+    }
+    func setAIButtonTrack(_ t: Double) {
+        aiButtonTrackT = ((t.truncatingRemainder(dividingBy: 1)) + 1).truncatingRemainder(dividingBy: 1)
+        Haptics.impact(.light)
+    }
+
     // MARK: - Chats have the stage (Lucas 2026-10-16)
 
     /// Counts the chat surfaces on screen (the chats list, an open thread,
