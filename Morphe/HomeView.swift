@@ -109,7 +109,7 @@ struct HomeView: View {
                 // Week one keeps its own copy further down, by the checklist.
                 if store.firstWeekSteps == nil,
                    !store.isPlannedRestDay, !store.isWorkoutLoggedToday {
-                    nextMoveCard
+                    doorsGrid
                     planFollowUps
                 }
 
@@ -227,7 +227,7 @@ struct HomeView: View {
                     // button must not sit a screen and a half below the
                     // greeting that asks what they'd like to start.
                     if store.firstWeekSteps != nil {
-                        nextMoveCard
+                        doorsGrid
                     }
                 }
 
@@ -474,6 +474,42 @@ struct HomeView: View {
                 onOpenNutrition: { store.openHub(.nutrition) },
                 onOpenProgress: { store.openProgress() }
             )
+        }
+    }
+
+    /// Four doors where the plan card was (Lucas 2026-10-16): Train,
+    /// Nutrition, Network, Learn. Morphe says nothing here — the strip
+    /// above already spoke; each card is one tap to its page.
+    private var doorsGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            HomeLinkTile(
+                systemImage: "figure.strengthtraining.traditional",
+                title: "Train",
+                detail: "\(store.currentWorkout.name) · \(store.currentWorkout.durationMinutes) min",
+                detailIsMuted: false,
+                accessibilityLabel: "Train — \(store.currentWorkout.name), \(store.currentWorkout.durationMinutes) minutes"
+            ) { store.showTrainTab() }
+            HomeLinkTile(
+                systemImage: "fork.knife",
+                title: "Nutrition",
+                detail: store.nutritionTargets.isStarter ? "Log a meal or a plate" : "\(store.nutrition.caloriesConsumed) of \(store.nutritionTargets.calories) cal",
+                detailIsMuted: store.nutritionTargets.isStarter,
+                accessibilityLabel: "Nutrition"
+            ) { store.openHub(.nutrition) }
+            HomeLinkTile(
+                systemImage: "person.3.fill",
+                title: "Network",
+                detail: store.networkBadgeCount > 0 ? "\(store.networkBadgeCount) new" : "Feed, boards, partners",
+                detailIsMuted: store.networkBadgeCount == 0,
+                accessibilityLabel: "Network"
+            ) { store.openCommunity(.forYou) }
+            HomeLinkTile(
+                systemImage: "book.fill",
+                title: "Learn",
+                detail: "Today's quiz, lessons, the library",
+                detailIsMuted: true,
+                accessibilityLabel: "Learn"
+            ) { store.openHub(.learn) }
         }
     }
 

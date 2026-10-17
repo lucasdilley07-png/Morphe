@@ -874,3 +874,7 @@ Network is deliberately left alone.
   `LayoutEditorSheet`) are no longer presented; code kept for now.
 - "Your typical session runs about N minutes" is gone from the learned
   line under the greeting.
+- The "Here's what I've got for you" plan card on Today is replaced by four
+  doors (`doorsGrid`): Train (today's workout name · minutes), Nutrition,
+  Network, Learn — Morphe says nothing there. `nextMoveCard` stays for the
+  rest-day / logged states only.
