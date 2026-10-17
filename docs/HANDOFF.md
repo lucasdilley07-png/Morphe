@@ -1270,3 +1270,17 @@ Network is deliberately left alone.
   (primary, secondary, pop-up choices) are rounded rectangles
   (`MorpheTheme.buttonRadius = 14`) instead of pills; chips, pills and the
   composer stay capsules.
+- Away screen (Lucas 2026-10-17): the activated Spartan with a soft accent
+  glow, Morphe's bubble carrying "Nobody touched the screen, so Morphe
+  stopped listening." + "Tap anywhere to come back…" in the accent with the
+  dots walking 1 → 2 → 3; the AWAY label is gone; the floating AI button
+  slides off while away (`!store.isAway`). `-MorpheAwayPreview` (local
+  mode) enters away mode four seconds after launch.
+- Lightning (Lucas 2026-10-17): `LightningLayer` (GlassCard.swift) — a
+  TimelineView Canvas firing 2–3 jagged brand-blue/white bolts from the
+  helmet toward the glass in ~140 ms bursts every ~0.9 s with a random
+  offset, re-jittered each frame, additive blend; nothing under Reduce
+  Motion. It rides `MorpheOrbView` only when `frame == .activated` (the
+  pop-up before the tap, the Hey Morphe first command, the away screen,
+  the wake's activated beat) and the loading screen's Activated frame
+  (centered on the art's helmet at 38.5% height).

@@ -53,6 +53,13 @@ struct LaunchSequenceView: View {
                     Image("LoadingScreenActivated")
                         .resizable().interpolation(.high).scaledToFill()
                         .opacity(loadFrame == 1 ? 1 : 0)
+                    // Electricity on the activated frame (Lucas 2026-10-17),
+                    // centered on the helmet in the art.
+                    if loadFrame == 1 {
+                        LightningLayer(size: geo.size.width * 0.6)
+                            .frame(width: geo.size.width * 0.6, height: geo.size.width * 0.6)
+                            .position(x: geo.size.width / 2, y: geo.size.height * 0.385)
+                    }
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
                 .scaleEffect(entering ? Self.enterZoom : 1.0)

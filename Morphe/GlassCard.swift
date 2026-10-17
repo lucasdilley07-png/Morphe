@@ -354,6 +354,73 @@ struct MorpheVoiceRingHost: View {
 /// ribbons flow at the voice's own pace and a light runs along the rim;
 /// the whole bubble breathes with the level. Reduce Motion: one still
 /// frame.
+/// Lightning for the activated Spartan (Lucas 2026-10-17): two or three
+/// jagged bolts from the helmet toward the glass, in bursts — a bolt lives
+/// ~120 ms, bursts come every ~0.9 s with a random gap, each frame
+/// re-jittered so it flickers. Brand-blue core, white hot line, additive.
+/// Nothing under Reduce Motion.
+struct LightningLayer: View {
+    var size: CGFloat
+    var tint: Color = MorpheTheme.brandBlue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            EmptyView()
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                Canvas { ctx, sz in
+                    let t = context.date.timeIntervalSinceReferenceDate
+                    // Burst schedule: a bolt window opens for 0.14 s out of
+                    // every 0.9 s, shifted by a per-cycle random offset.
+                    let cycle = floor(t / 0.9)
+                    var rng = Self.rng(seed: UInt64(cycle) &* 2654435761)
+                    let offset = Double(rng.next() % 600) / 1000.0
+                    let phase = t - cycle * 0.9
+                    guard phase > offset, phase < offset + 0.14 else { return }
+                    let frameSeed = UInt64(floor(t * 36))
+                    var jitter = Self.rng(seed: frameSeed &* 1099511628211)
+                    let c = CGPoint(x: sz.width / 2, y: sz.height * 0.5)
+                    let bolts = 2 + Int(rng.next() % 2)
+                    ctx.blendMode = .plusLighter
+                    for _ in 0..<bolts {
+                        let angle = Double(jitter.next() % 628) / 100.0
+                        let start = CGPoint(x: c.x + cos(angle) * sz.width * 0.14, y: c.y + sin(angle) * sz.height * 0.16)
+                        let end = CGPoint(x: c.x + cos(angle) * sz.width * 0.46, y: c.y + sin(angle) * sz.height * 0.46)
+                        var path = Path(); path.move(to: start)
+                        let steps = 6
+                        for i in 1...steps {
+                            let f = CGFloat(i) / CGFloat(steps)
+                            var p = CGPoint(x: start.x + (end.x - start.x) * f, y: start.y + (end.y - start.y) * f)
+                            if i < steps {
+                                let j = (CGFloat(jitter.next() % 100) / 100 - 0.5) * sz.width * 0.09
+                                p.x += -sin(angle) * j; p.y += cos(angle) * j
+                            }
+                            path.addLine(to: p)
+                            // A short fork halfway.
+                            if i == 3, jitter.next() % 2 == 0 {
+                                var fork = Path(); fork.move(to: p)
+                                fork.addLine(to: CGPoint(x: p.x + cos(angle + 0.6) * sz.width * 0.08, y: p.y + sin(angle + 0.6) * sz.height * 0.08))
+                                ctx.stroke(fork, with: .color(tint.opacity(0.9)), lineWidth: 1.2)
+                            }
+                        }
+                        ctx.stroke(path, with: .color(tint.opacity(0.85)), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
+                        ctx.stroke(path, with: .color(.white.opacity(0.95)), style: StrokeStyle(lineWidth: 1.1, lineCap: .round, lineJoin: .round))
+                    }
+                }
+                .blur(radius: 0.4)
+                .allowsHitTesting(false)
+            }
+            .accessibilityHidden(true)
+        }
+    }
+
+    /// A tiny deterministic generator so every frame's jitter is stable
+    /// within the frame and different across frames.
+    struct LCG { var state: UInt64; mutating func next() -> UInt64 { state = state &* 6364136223846793005 &+ 1442695040888963407; return state >> 33 } }
+    static func rng(seed: UInt64) -> LCG { LCG(state: seed ^ 0x9E3779B97F4A7C15) }
+}
+
 struct MorpheOrbView: View {
     /// 0…1 voice energy; the idle breath lives above 0.
     var level: Double
@@ -395,6 +462,13 @@ struct MorpheOrbView: View {
                     .id(frame)
                 innerGlow(size)
                 if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)).opacity(0.5) }
+                // Electricity on the activated Spartan only (Lucas
+                // 2026-10-17): short bolts jolting out of the helmet in
+                // bursts, the same layer wherever the activated design shows.
+                if live, frame == .activated {
+                    LightningLayer(size: size)
+                        .clipShape(Circle().inset(by: size * 0.03))
+                }
                 if live { rimLight(size) }
             }
             // One compositing group: the ribbons' screen blend stays
