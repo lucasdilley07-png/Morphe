@@ -171,6 +171,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let beforeID = store.clientProfile.id
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertNotEqual(store.clientProfile.id, beforeID,
                           "onboarding must mint a brand-new identity")
@@ -181,6 +182,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertTrue(store.workoutLogs.isEmpty, "no inherited workout logs")
         XCTAssertTrue(store.workoutHistory.isEmpty, "no inherited history")
@@ -195,6 +197,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         let userID = store.clientProfile.id
 
         store.startTodayWorkout()
@@ -210,6 +213,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         let id = store.clientProfile.id
 
         // Simulate a relaunch.
@@ -227,6 +231,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.weightUnit = .kilograms
         store.selectSportMode(.strength)
 
@@ -239,6 +244,7 @@ final class OnboardingIdentityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.startTodayWorkout()
         store.completeTrackedSet(reps: 8, weight: 135)
         store.hasCompletedWorkoutFlow = true
@@ -268,11 +274,15 @@ final class WorkoutBuilderTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
+        // The activation welcome shows once in the real UI; tests start
+        // past it, in the standard state (Lucas 2026-10-16).
+        store.clearActivationWelcome()
         return store
     }
 
@@ -339,6 +349,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -831,10 +842,14 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
-        XCTAssertTrue(store.showHelloBeat, "a fresh account gets the hello")
-        XCTAssertFalse(store.showWelcomeExperience,
-                       "the welcome sheet waits for the hello to finish")
-        store.showHelloBeat = false
+        // First run rebuilt (Lucas 2026-10-16): no hello beat and no
+        // welcome sheet — the loading screen plays, then the one-time
+        // activation pop-up.
+        XCTAssertFalse(store.showHelloBeat, "the hello beat is retired")
+        XCTAssertFalse(store.showWelcomeExperience, "the welcome sheet is a pop-up door now")
+        XCTAssertTrue(store.isShowingLaunchSequence, "the Morphe loading screen plays")
+        XCTAssertTrue(store.activationWelcomePending)
+        store.clearActivationWelcome()
 
         let reloaded = MorpheAppStore()
         XCTAssertFalse(reloaded.showHelloBeat, "relaunch never replays it")
@@ -1758,6 +1773,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore(debriefService: mock)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
@@ -2240,6 +2256,7 @@ final class WorkoutSessionTests: XCTestCase {
         store.onboardingDraft.injuries = "Shoulder impingement, avoid overhead press"
         store.onboardingDraft.equipment = "Kettlebells only"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.clientProfile.limitations, "Shoulder impingement, avoid overhead press",
                        "the user's typed injuries must be saved — this is safety data")
@@ -2256,6 +2273,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.clientProfile.level.currentXP, 0, "no inherited demo XP")
         XCTAssertEqual(store.clientProfile.level.currentTitle, "Level 1")
@@ -2265,6 +2283,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let quiz = store.quizzes.first!
         store.answerQuiz(quiz, with: quiz.correctIndex)
@@ -2282,6 +2301,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let quiz = store.quizzes.first!
         let wrongIndex = quiz.correctIndex == 0 ? 1 : 0
@@ -2307,6 +2327,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Earn enough XP to cross at least one level boundary.
         for quiz in store.quizzes.prefix(12) {
@@ -2331,6 +2352,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Fresh baseline: Level 1, 0/100. Ten correct quizzes (10-12 XP each)
         // must cross into Level 2 instead of clamping at the bar.
@@ -2346,6 +2368,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Every library exercise with ANY resolvable alternative must swap —
         // several list a dangling FIRST alternative (e.g. Shoulder Press ->
@@ -2426,6 +2449,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let template = store.catalogWorkouts.first!
         store.saveCatalogWorkout(template)
@@ -2442,6 +2466,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let template = store.catalogWorkouts.first!
         store.startCatalogWorkout(template)
@@ -2455,6 +2480,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.updateBodyMetrics(height: "5'10\"", weight: "172 lb")
         store.updateExperienceLevel(.advanced)
@@ -2473,6 +2499,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.sendAIAgentPrompt("Start my workout")
         XCTAssertTrue(store.isWorkoutSessionActive, "'start my workout' actually starts the session")
@@ -2501,6 +2528,7 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Lucas"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         XCTAssertEqual(store.profileShowcase.username, "lucas")
 
         store.updateDisplayName("Maria Lopez")
@@ -2524,6 +2552,7 @@ final class WorkoutSessionTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.injuries = "Wrist pain on push-ups"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertTrue(store.sportMetrics.isEmpty, "no fabricated sport metrics for a real user")
         XCTAssertEqual(store.personalRules.count, 1, "personal rules derive from the user's own injuries")
@@ -2543,6 +2572,7 @@ final class WorkoutSessionTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.trainingDaysPerWeek = 4
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.clientProfile.trainingDaysPerWeek, 4)
 
@@ -2622,6 +2652,7 @@ final class TodayExperienceTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.loggedWorkoutCount, 0)
         XCTAssertEqual(store.todayExperienceTier, 0, "a brand-new user gets the minimal Today screen")
@@ -2637,6 +2668,7 @@ final class TodayExperienceTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.workoutLogs.append(makeLog(athleteID: UUID(), name: "Someone Else"))
 
@@ -2697,6 +2729,7 @@ final class BookingTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Riley"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertTrue(store.sessionBookings.isEmpty, "a new account starts with no purchased sessions")
         XCTAssertTrue(store.trainingPackages.isEmpty, "a new account has no seeded coach offerings")
@@ -2790,6 +2823,7 @@ final class StyleProfileTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -3143,6 +3177,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Strong recovery.
         store.submitRecoveryCheckIn(sleepHours: 8, energy: 9, soreness: 1, mood: 9, pain: false)
@@ -3162,6 +3197,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.clientProfile.health.score, 0, "a new user starts at zero, not the seeded 76")
         XCTAssertEqual(store.clientProfile.level.streak, 0)
@@ -3182,6 +3218,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Start a Discover workout WITHOUT saving it — on relaunch its
         // template exists only in the bundled catalog, and the restore used
@@ -3204,6 +3241,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // A persisted session pointing at a workout that no longer exists
         // anywhere (not in templates, not in the catalog).
@@ -3236,6 +3274,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.toggleTask(store.todayTasks[0])
         store.activateMinimumWinMode()
@@ -3258,6 +3297,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.toggleTask(store.todayTasks[0])
         store.handleDayRolloverIfNeeded()
@@ -3269,6 +3309,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let task = store.todayTasks[0]
         store.toggleTask(task)
@@ -3289,6 +3330,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.todaysQuiz?.id, store.quizzes.first?.id,
                        "the line starts at quiz 1")
@@ -3302,6 +3344,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let quiz = store.quizzes.first!
         store.answerQuiz(quiz, with: quiz.correctIndex)
@@ -3320,6 +3363,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.startTodayWorkout()
         store.completeTrackedSet(reps: 8, weight: 95)
@@ -3338,6 +3382,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.weightUnit, .pounds)
         store.sendAIAgentPrompt("I lifted 100 kg today")
@@ -3361,6 +3406,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Saving the recommendation stores a seeded template — those ids
         // re-mint every launch, so this save used to silently vanish.
@@ -3379,6 +3425,7 @@ final class MetricsTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.selectedSports = [.boxing]
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.saveGoodForTodayRecommendation()
         store.duplicateSavedWorkout(store.savedWorkouts.first!)
@@ -3399,6 +3446,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let stagedID = store.currentWorkout.id
         store.cycleWorkout()
@@ -3411,6 +3459,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let first = store.catalogWorkouts[0]
         let second = store.catalogWorkouts[1]
@@ -3433,6 +3482,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let only = store.catalogWorkouts[0]
         store.saveCatalogWorkout(only)
@@ -3453,6 +3503,7 @@ final class MetricsTests: XCTestCase {
         store.onboardingDraft.selectedSports = [.boxing]
         store.onboardingDraft.experienceLevel = .advanced
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // Today's plan now draws from the 348-workout catalog, matched to the
         // user's LEVEL. The generated catalog is sport-agnostic (sport-specific
@@ -3468,6 +3519,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // The first staged workout must be a real session — the recovery
         // pivot and the 15-minute fallback used to win on array order.
@@ -3481,6 +3533,7 @@ final class MetricsTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.selectedSports = [.boxing]
         store.completeOnboarding()
+        store.clearActivationWelcome()
         let stagedName = store.currentWorkout.name
 
         // Seeded template ids re-mint every launch — the persisted name is
@@ -3494,6 +3547,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertFalse(store.recommendedWorkoutDiffers,
                        "before any logs, the staged workout is the recommendation")
@@ -3513,6 +3567,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // A protected day must show up in the summary streak — the number
         // Progress and Profile display — not only in Learn's scoreboard.
@@ -3526,6 +3581,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.updateTrainingDaysPerWeek(5)
         let athleteID = store.clientProfile.id
 
@@ -3553,6 +3609,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.startTodayWorkout()
         store.hasCompletedWorkoutFlow = true
@@ -3575,6 +3632,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         // 75 XP from logging; closing the rest of the day's tasks crosses
         // the 100-XP boundary into Level 2.
@@ -3598,6 +3656,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let template = store.catalogWorkouts[0]
         store.saveCatalogWorkout(template)
@@ -3613,6 +3672,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.toggleMinimumWinTask(store.minimumWinTasks[0])
         XCTAssertEqual(store.clientProfile.level.streak, 1)
@@ -3626,6 +3686,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         let exercise = store.exerciseDatabase[0]
         store.createCustomWorkout(name: "Leg Day", sport: .generalFitness,
@@ -3645,6 +3706,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.updateTrainingDaysPerWeek(3)
         let athleteID = store.clientProfile.id
 
@@ -3679,6 +3741,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertEqual(store.clientProfile.level.streak, 0)
         store.toggleMinimumWinTask(store.minimumWinTasks[0])
@@ -3696,6 +3759,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.sendAIAgentPrompt("open discover")
         // Discover is its own tab again (Lucas 2026-08-26).
@@ -3706,6 +3770,7 @@ final class MetricsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.sendAIAgentPrompt("stop procrastinating and start my workout")
         XCTAssertTrue(store.isWorkoutSessionActive, "'…and start my workout' is a start, not a discard")
@@ -3734,6 +3799,7 @@ final class AuditFixRegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -4005,6 +4071,7 @@ final class Audit4RegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -4132,6 +4199,7 @@ final class CleanupRegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -4729,6 +4797,7 @@ final class DailyPlanTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.experienceLevel = level
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -4822,6 +4891,7 @@ final class ProgressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -4908,6 +4978,7 @@ final class PersonalizationEngineTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -5523,6 +5594,7 @@ final class DifficultyEngineTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.onboardingDraft.experienceLevel = level
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -5683,6 +5755,7 @@ final class TrainTogetherTests: XCTestCase {
         let store = MorpheAppStore(partyService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
         return store
     }
@@ -5707,6 +5780,7 @@ final class TrainTogetherTests: XCTestCase {
         let store = MorpheAppStore(partyService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = nil
 
         let started = await store.startTrainTogether(mode: .inPerson)
@@ -5794,6 +5868,7 @@ final class TrainTogetherLiveSyncTests: XCTestCase {
         let store = MorpheAppStore(partyService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
         _ = await store.startTrainTogether(mode: .virtualSession)
         store.startTodayWorkout()
@@ -5844,6 +5919,7 @@ final class TrainTogetherLiveSyncTests: XCTestCase {
         let store = MorpheAppStore(partyService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.startTodayWorkout()
         store.completeTrackedSet(reps: 10)
@@ -5894,6 +5970,7 @@ final class GroupClassTests: XCTestCase {
         let store = MorpheAppStore(partyService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
         return store
     }
@@ -6029,6 +6106,7 @@ final class IdentityAndTermsTests: XCTestCase {
 
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         XCTAssertEqual(store.profileShowcase.username, "sarah_lifts",
                        "the profile carries the reserved username, not a name-derived handle")
     }
@@ -6049,6 +6127,7 @@ final class IdentityAndTermsTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         _ = await store.checkAndReserveUsername("sarahlifts")
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
 
         let changed = await store.changeUsername(to: "ironsarah")
@@ -6073,6 +6152,7 @@ final class IdentityAndTermsTests: XCTestCase {
         let store = makeStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.updateDisplayName("Sarah D")
         XCTAssertEqual(store.profileShowcase.displayName, "Sarah D", "the first change is free")
@@ -6091,6 +6171,7 @@ final class IdentityAndTermsTests: XCTestCase {
         let store = makeStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertTrue(store.needsTermsAcceptance, "the gate follows onboarding")
         XCTAssertFalse(store.showWelcomeExperience, "the celebration waits behind the gate")
@@ -6108,6 +6189,7 @@ final class IdentityAndTermsTests: XCTestCase {
         let store = makeStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
 
         store.declineTerms()
@@ -6193,6 +6275,7 @@ final class SocialFeedTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(
             id: "uid-test", email: "t@morphe.app", role: .athlete,
             displayName: "Sarah", createdAt: .now
@@ -6307,6 +6390,7 @@ final class SocialFeedTests: XCTestCase {
                                    referralService: spy)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(
             id: "uid-test", email: "t@morphe.app", role: .athlete,
             displayName: "Sarah", createdAt: .now
@@ -6441,6 +6525,7 @@ final class StrengthAnalyticsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -6785,6 +6870,7 @@ final class ModerationTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(
             id: "uid-test", email: "t@morphe.app", role: .athlete,
             displayName: "Sarah", createdAt: .now
@@ -6870,6 +6956,7 @@ final class ModerationTests: XCTestCase {
         // showing must not hide it (audit 2026-10-10, P0).
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.acceptTerms()
         store.finishLaunchSequence()
         let before = store.shouldShowDayPopup
@@ -6907,6 +6994,7 @@ final class ModerationTests: XCTestCase {
         store.onboardingDraft.name = "Age Test"
         store.onboardingDraft.birthYear = year - 30
         store.completeOnboarding()
+        store.clearActivationWelcome()
         XCTAssertEqual(store.clientProfile.age, 30, "the answered year becomes the profile age, not a placeholder")
     }
 
@@ -6952,6 +7040,7 @@ final class ModerationTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.acceptTerms()
         store.refreshMorpheInbox()
         let news = store.morpheInbox.filter { $0.kind == .news }
@@ -7041,6 +7130,7 @@ final class ModerationTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.acceptTerms()
         XCTAssertEqual(store.acceptedTermsVersion, MorpheAppStore.currentTermsVersion)
         XCTAssertFalse(store.termsChangedSinceAcceptance)
@@ -7107,6 +7197,7 @@ final class DepthSprintTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -7239,6 +7330,7 @@ final class CoachShareTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(
             id: "uid-athlete", email: "s@morphe.app", role: .athlete,
             displayName: "Sarah", createdAt: .now
@@ -7289,6 +7381,7 @@ final class BacklogBatchTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // The hello beat and welcome sheet run their course in the real UI —
         // tests start past them (audit 13: the day takeover now yields to
         // both, so leaving them raised would suppress the popup here).
@@ -7388,6 +7481,7 @@ final class TelemetryTests: XCTestCase {
         let store = MorpheAppStore(telemetryService: spy)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // Fresh uid every run — the day-active dedupe key is per-uid in
         // UserDefaults and must not leak across test invocations.
         let uid = "uid-\(UUID().uuidString)"
@@ -7428,6 +7522,7 @@ final class TelemetryTests: XCTestCase {
         let store = MorpheAppStore(telemetryService: spy)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         // Signed out: nothing to attribute, nothing recorded.
         store.trackDayActiveIfNeeded()
         store.beginLiveWorkout(store.workoutTemplates.first!)
@@ -7452,6 +7547,7 @@ final class MessagingDoorTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -7559,6 +7655,7 @@ final class ThreadReadStateTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me-uid", email: "sarah@morphe.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         return store
@@ -7625,6 +7722,7 @@ final class AuthorHeadlineTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -7704,6 +7802,7 @@ final class FeedReadDietTests: XCTestCase {
         let store = MorpheAppStore(feedService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         return store
@@ -7756,6 +7855,7 @@ final class AIAgentCommandTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -7817,6 +7917,7 @@ final class CustomizationTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -7907,6 +8008,7 @@ final class AuditFixTests: XCTestCase {
         let store = MorpheAppStore(feedService: service)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         return store
@@ -7945,6 +8047,7 @@ final class AuditFixTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.activateMinimumWinMode()
         XCTAssertTrue(store.minimumWinModeEnabled)
@@ -7958,6 +8061,7 @@ final class AuditFixTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.beginLiveWorkout(store.workoutTemplates.first!)
 
         XCTAssertTrue(store.sendAIAgentPrompt("log bench press 3x10 at 135"))
@@ -7978,6 +8082,7 @@ final class AIParityTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -8033,6 +8138,7 @@ final class BackupHealthTests: XCTestCase {
         let store = MorpheAppStore(cloudBackup: backup)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         return store
@@ -8070,6 +8176,7 @@ final class BackupHealthTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         XCTAssertFalse(store.cloudBackupActive)
         await store.flushLogBackupNow()
         XCTAssertEqual(store.logBackupState, .idle,
@@ -8086,6 +8193,7 @@ final class SimplificationTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         store.beginLiveWorkout(store.workoutTemplates.first!)
         store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
@@ -8151,6 +8259,7 @@ final class ActivityDiffTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         UserDefaults.standard.removeObject(
@@ -8181,6 +8290,7 @@ final class RestDayTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertFalse(store.plannedRestDay(), "empty set = feature off, never a rest day")
 
@@ -8206,6 +8316,7 @@ final class AIChatUITests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         XCTAssertFalse(store.sendAIAgentPrompt("what's the meaning of life"))
         let reply = store.athleteAIAgentConversation.last?.text ?? ""
@@ -8220,6 +8331,7 @@ final class AIChatUITests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         _ = store.sendAIAgentPrompt("open progress")
         XCTAssertGreaterThan(store.athleteAIAgentConversation.count, 1)
@@ -8238,6 +8350,7 @@ final class AITranscriptPrivacyTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
 
         _ = store.sendAIAgentPrompt("what's my goal")
         XCTAssertGreaterThan(store.athleteAIAgentConversation.count, 1)
@@ -8309,6 +8422,7 @@ final class SnapNetworkTests: XCTestCase {
         let store = MorpheAppStore(messagingService: messaging, feedService: feed)
         store.onboardingDraft.name = "Me"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: myUid, email: "me@m.app", role: .athlete,
                                  displayName: "Me", createdAt: .now)
         return store
@@ -8380,6 +8494,7 @@ final class UXPsychologyTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -8445,6 +8560,7 @@ final class LaunchHardeningTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -8536,6 +8652,7 @@ final class AuditSeamTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         store.liveThreads = [
@@ -8553,6 +8670,7 @@ final class AuditSeamTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.authUser = AppUser(id: "me", email: "s@m.app", role: .athlete,
                                  displayName: "Sarah", createdAt: .now)
         store.blockAccount(uid: "bad-uid", name: "Bad Actor")
@@ -8572,6 +8690,7 @@ final class SpartanLoreTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         return store
     }
 
@@ -8797,6 +8916,7 @@ final class ConnectionsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         return store
@@ -8940,6 +9060,7 @@ final class OnlineAITests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         store.setOnlineAI(enabled: false)
@@ -9040,6 +9161,7 @@ final class OnlineAITests: XCTestCase {
         let store = MorpheAppStore(cloudBackup: spy)
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
@@ -9084,6 +9206,7 @@ final class OnlineAIDoorTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
@@ -9174,6 +9297,7 @@ final class AIWaveZeroTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         return store
@@ -9336,6 +9460,7 @@ final class FoodCheckWaveThreeTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
 
@@ -9416,6 +9541,7 @@ final class MorpheRemembersTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         store.showHelloBeat = false
         store.dismissWelcomeExperience()
         store.forgetAIMemory()
@@ -9544,6 +9670,7 @@ final class MorpheRemembersTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        store.clearActivationWelcome()
         let generated = store.todayTasks
         XCTAssertFalse(generated.isEmpty)
 
@@ -9681,6 +9808,52 @@ final class MorpheRemembersTests: XCTestCase {
         let reply = store.athleteAIAgentConversation.last?.text ?? ""
         XCTAssertTrue(reply.contains(store.currentWorkout.name), "the plan reply names the next session: \(reply)")
         XCTAssertFalse(reply.contains("No logged sets"), "not the load note")
+    }
+
+    /// First run (Lucas 2026-10-16): the intro's handle and birthday seed
+    /// the draft, Get started completes onboarding with safe defaults, and
+    /// the one-time activation pop-up offers tour / profile / Train / Other
+    /// until it is answered.
+    func testIntroQuickStartActivatesWithTheWelcomePopup() async {
+        let store = MorpheAppStore()
+        store.completeIntro(username: "FreshStart", birthYear: 2000, choice: .quickStart)
+        XCTAssertTrue(store.hasSeenIntro)
+        XCTAssertEqual(store.introChoice, .quickStart)
+        XCTAssertTrue(store.introSuppliedIdentity)
+        await store.quickStartOnboarding()
+        XCTAssertTrue(store.hasCompletedOnboarding)
+        XCTAssertNil(store.introChoice)
+        XCTAssertEqual(store.profileShowcase.username, "freshstart")
+        XCTAssertTrue(store.hasAcceptedTerms, "continuing past the intro agreed to the terms")
+        XCTAssertTrue(store.isShowingLaunchSequence, "the Morphe loading screen plays before the app")
+        XCTAssertTrue(store.activationWelcomePending)
+        XCTAssertEqual(store.homeGreeting, "Welcome, freshstart.")
+        XCTAssertEqual(store.dayPopupQuestion(evening: false), "Thanks for activating me. Now we can get to work.")
+        XCTAssertEqual(store.dayPopupChoices(evening: true).map(\.label), ["Take the tour", "Edit my profile", "Train", "Other…"])
+        store.answerDayPopup(.tour)
+        XCTAssertFalse(store.activationWelcomePending, "answered once, gone for good")
+        XCTAssertTrue(store.showWelcomeExperience && store.welcomeIsReplay, "the tour is the full replay form")
+        store.dismissWelcomeExperience()
+        XCTAssertTrue(store.dayPopupChoices(evening: false).first?.label.hasPrefix("Train ") == true, "the standard state after that")
+        store.clearActivationWelcome()
+        UserDefaults.standard.removeObject(forKey: MorpheAppStore.introSeenKey)
+    }
+
+    /// Chat mode on the Hey Morphe stage (Lucas 2026-10-16): a typed
+    /// message lands in the one conversation, the bubble shows Morphe's
+    /// reply, and closing clears the stage state.
+    func testVoiceChatModeSharesTheConversation() {
+        let store = freshStore()
+        store.openVoiceChat()
+        XCTAssertTrue(store.voiceChatOpen)
+        XCTAssertNil(store.voiceChatReplyLine)
+        store.sendVoiceChatMessage("What should I train tomorrow?")
+        XCTAssertEqual(store.voiceChatUserTurns.map(\.text), ["What should I train tomorrow?"])
+        XCTAssertTrue(store.voiceChatReplyLine?.contains(store.currentWorkout.name) == true)
+        XCTAssertTrue(store.morpheConversation.contains { $0.text == "What should I train tomorrow?" }, "the Network chat sees it too")
+        store.closeVoiceChat()
+        XCTAssertFalse(store.voiceChatOpen)
+        XCTAssertTrue(store.voiceChatUserTurns.isEmpty)
     }
 }
 

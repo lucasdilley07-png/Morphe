@@ -469,6 +469,88 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: First run (Lucas 2026-10-16)
+
+    /// Build my profile (the onboarding questions) or Get started (straight
+    /// in with safe defaults).
+    enum IntroChoice: String { case buildProfile, quickStart }
+
+    static let introSeenKey = "morphe.intro.seen"
+    static let introChoiceKey = "morphe.intro.choice"
+    static let activationPendingKey = "morphe.activation.pending"
+
+    /// True once this install has been through [ TAP TO BEGIN ] → Morphe.
+    private(set) var hasSeenIntro: Bool = UserDefaults.standard.bool(forKey: MorpheAppStore.introSeenKey)
+    /// The door picked on the intro, kept until onboarding resolves it.
+    private(set) var introChoice: IntroChoice? = UserDefaults.standard.string(forKey: MorpheAppStore.introChoiceKey).flatMap(IntroChoice.init(rawValue:))
+    /// True from activation (onboarding done or Get started) until the
+    /// one-time welcome pop-up is answered or dismissed.
+    var activationWelcomePending = false {
+        didSet { UserDefaults.standard.set(activationWelcomePending, forKey: Self.activationPendingKey) }
+    }
+
+    /// The intro supplied the handle and the birth year, so the profile
+    /// flow skips those steps.
+    var introSuppliedIdentity: Bool {
+        hasSeenIntro && !onboardingDraft.username.isEmpty && onboardingDraft.birthYear != nil
+    }
+
+    /// Local-mode launches skip the intro.
+    func markIntroSeen() {
+        hasSeenIntro = true
+        UserDefaults.standard.set(true, forKey: Self.introSeenKey)
+    }
+
+    func completeIntro(username: String, birthYear: Int, choice: IntroChoice) {
+        onboardingDraft.username = UsernameRules.normalize(username)
+        onboardingDraft.birthYear = birthYear
+        // The intro states the terms under its buttons; continuing agrees.
+        onboardingDraft.agreedToTerms = true
+        introChoice = choice
+        UserDefaults.standard.set(choice.rawValue, forKey: Self.introChoiceKey)
+        markIntroSeen()
+    }
+
+    /// Get started: the account with safe defaults — the handle from the
+    /// intro, general fitness, beginner, three days a week. Everything else
+    /// keeps its Profile home. Ends on the loading screen, then the app.
+    func quickStartOnboarding() async {
+        guard !hasCompletedOnboarding else { return }
+        if onboardingDraft.name.trimmingCharacters(in: .whitespaces).isEmpty {
+            let fromAuth = authUser?.displayName.trimmingCharacters(in: .whitespaces) ?? ""
+            onboardingDraft.name = fromAuth.isEmpty ? onboardingDraft.username : fromAuth
+        }
+        if onboardingDraft.selectedGoals.isEmpty { onboardingDraft.selectedGoals = [.buildConsistency] }
+        if onboardingDraft.selectedSports.isEmpty { onboardingDraft.selectedSports = [.generalFitness] }
+        onboardingDraft.agreedToTerms = true
+        if !onboardingDraft.username.isEmpty {
+            // A collision here is rare (the handle was typed a minute
+            // ago); the name-derived fallback in completeOnboarding covers it.
+            if await checkAndReserveUsername(onboardingDraft.username) != nil {
+                onboardingDraft.username = ""
+            }
+        }
+        introChoice = nil
+        UserDefaults.standard.removeObject(forKey: Self.introChoiceKey)
+        completeOnboarding()
+    }
+
+    /// Build my profile resolved the choice.
+    func clearIntroChoice() {
+        introChoice = nil
+        UserDefaults.standard.removeObject(forKey: Self.introChoiceKey)
+    }
+
+    /// Tests and tools: the activation welcome has been seen.
+    func clearActivationWelcome() { activationWelcomePending = false }
+
+    /// The Morphe loading screen again — after onboarding or Get started
+    /// (Lucas 2026-10-16) — then the app; its finish re-arms the pop-up.
+    func relaunchLoadingSequence() {
+        launchSettled = false
+        isShowingLaunchSequence = true
+    }
+
     // MARK: In-place layout editor (Lucas 2026-10-16)
 
     /// The page in editor mode, if any. No pop-up: the page itself edits.
@@ -1734,6 +1816,11 @@ final class MorpheAppStore {
         if hasCompletedOnboarding, hasAcceptedTerms,
            UserDefaults.standard.bool(forKey: Self.welcomePendingKey) {
             showWelcomeExperience = true
+        }
+        // The activation welcome survives a kill the same way (Lucas
+        // 2026-10-16): it shows once, on the first open that reaches Today.
+        if hasCompletedOnboarding, UserDefaults.standard.bool(forKey: Self.activationPendingKey) {
+            activationWelcomePending = true
         }
 
         // WatchConnectivity activates at LAUNCH, not first-foreground
@@ -7208,7 +7295,10 @@ final class MorpheAppStore {
         // and every onboarding mints a fresh account id, so that IS once
         // per account lifetime. (A per-id UserDefaults guard here could
         // never fire and left an unpurged key; audit 11, P2-9/P2-8.)
-        showHelloBeat = true
+        // The hello beat and the welcome sheet are retired from first run
+        // (Lucas 2026-10-16): the Morphe loading screen plays, then the
+        // activation pop-up greets them with the tour as one of its doors.
+        showHelloBeat = false
         if firstWeekStart == nil {
             firstWeekStart = .now
         }
@@ -7259,20 +7349,23 @@ final class MorpheAppStore {
         // catches accounts that never agreed (pre-toggle restores).
         // The welcome debt lands on disk BEFORE the hello plays (audit 13,
         // P2): a kill during the beat must not lose the celebration.
-        UserDefaults.standard.set(true, forKey: Self.welcomePendingKey)
         if onboardingDraft.agreedToTerms {
             hasAcceptedTerms = true
             acceptedTermsVersion = Self.currentTermsVersion
-            // The hello beat plays FIRST (audit 11, P0-1): the welcome
-            // sheet presents above every overlay, so raising both at once
-            // hid the hello behind it forever. HelloBeatOverlay's
-            // completion raises the sheet instead.
-            if !showHelloBeat {
-                showWelcomeExperience = true
-            }
         } else {
+            // Accounts that never agreed in-flow (pre-intro restores) face
+            // the terms wall; accepting it releases the welcome.
             welcomeAwaitsTermsAcceptance = true
         }
+        // The activation welcome (Lucas 2026-10-16): the next pop-up is
+        // the one-time "thanks for activating me" with the tour, the
+        // profile, Train and Other as its doors. It waits on disk so a
+        // kill before it lands still shows it.
+        activationWelcomePending = true
+        // The takeover no longer sits out the first open — it IS the
+        // first open. The Morphe loading screen plays first.
+        dayPopupSessionDismissed = false
+        relaunchLoadingSequence()
         // First real save of the account — and push it to the cloud
         // immediately: the rate limit is for routine edits, not for the
         // moment the account starts existing. (The actual write happens in
@@ -10429,6 +10522,63 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: - Chat mode on the Hey Morphe stage (Lucas 2026-10-16)
+
+    /// True while the stage's text bar has been opened: the orb at the
+    /// top, the voice silent, the mic off until its button is tapped.
+    var voiceChatOpen = false
+    private var voiceChatOpenedAt: Date?
+
+    func openVoiceChat() {
+        guard !voiceChatOpen else { return }
+        // Any answer still streaming is dropped and nothing is spoken.
+        voiceReplyGeneration += 1
+        voiceStreamTask?.cancel()
+        voiceStreamTask = nil
+        voiceExchangeClearTask?.cancel()
+        voiceExchangeClearTask = nil
+        lastVoiceExchange = nil
+        heyMorphe.muteForChat()
+        voiceChatOpenedAt = .now
+        voiceChatOpen = true
+        Haptics.impact(.light)
+    }
+
+    /// Closes the chat and hands the mic back (if Hey Morphe was on).
+    func closeVoiceChat() {
+        guard voiceChatOpen else { return }
+        voiceChatOpen = false
+        voiceChatOpenedAt = nil
+        heyMorphe.resumeFromChat()
+        Haptics.impact(.light)
+    }
+
+    /// A typed message: the same brain and the same conversation as the
+    /// floating chat and the Network thread, no speech.
+    func sendVoiceChatMessage(_ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        if ContentModeration.containsBlockedTerm(clean) {
+            showToast(ContentModeration.refusalMessage, isError: true); return
+        }
+        sendAIAgentPrompt(clean)
+        Haptics.selection()
+    }
+
+    /// The user's turns since the chat opened (the stage lists them).
+    var voiceChatUserTurns: [ThreadMessage] {
+        guard let since = voiceChatOpenedAt else { return [] }
+        return athleteAIAgentConversation.filter { $0.sender == .user && ($0.sentAt ?? .distantPast) >= since.addingTimeInterval(-1) }
+    }
+
+    /// Morphe's latest reply in this chat, for the bubble under the orb.
+    var voiceChatReplyLine: String? {
+        guard let since = voiceChatOpenedAt,
+              let last = athleteAIAgentConversation.last(where: { $0.sender == .ai && ($0.sentAt ?? .distantPast) >= since.addingTimeInterval(-1) })
+        else { return nil }
+        return last.text == "\u{2026}" ? "Thinking…" : last.text
+    }
+
     // MARK: - Chats have the stage (Lucas 2026-10-16)
 
     /// Counts the chat surfaces on screen (the chats list, an open thread,
@@ -13474,6 +13624,15 @@ final class MorpheAppStore {
 
     private func presentVoiceExchange(heard: String, answer: String) {
         lastVoiceExchange = (heard: heard, answer: answer)
+        // The exchange lands in the one Morphe conversation (Lucas
+        // 2026-10-16) — the Network chat and the floating chat show it.
+        // The online path already recorded the ask; never twice.
+        if athleteAIAgentConversation.last(where: { $0.sender == .user })?.text != heard {
+            athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: heard, timestamp: "Now", sentAt: .now))
+        }
+        if athleteAIAgentConversation.last?.text != answer {
+            athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now", sentAt: .now))
+        }
         heyMorphe.speak(Self.spokenForm(of: answer))
         voiceExchangeClearTask?.cancel()
         voiceExchangeClearTask = Task { [weak self] in
@@ -15133,6 +15292,7 @@ final class MorpheAppStore {
     }
 
     var homeGreeting: String {
+        if activationWelcomePending { return "Welcome, \(greetingName)." }
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
         case 5..<12: return "Good morning, \(greetingName)."
@@ -15400,6 +15560,9 @@ final class MorpheAppStore {
         case otherWorkout
         /// Straight to Fuel to log a meal (Lucas 2026-10-16).
         case logMeal
+        /// Activation pop-up only (Lucas 2026-10-16).
+        case tour
+        case editProfile
         case other
     }
 
@@ -15478,7 +15641,7 @@ final class MorpheAppStore {
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
               !dayPopupSessionDismissed,
-              !dayPopupThrottledThisOpen
+              !dayPopupThrottledThisOpen || activationWelcomePending
         else { return false }
         return true
     }
@@ -15523,6 +15686,9 @@ final class MorpheAppStore {
 
     /// Clock-independent form for tests (same pattern as the choices).
     func dayPopupQuestion(evening: Bool) -> String {
+        if activationWelcomePending {
+            return "Thanks for activating me. Now we can get to work."
+        }
         if isWorkoutLoggedToday {
             return "Today's in the books, \(greetingName) — anything else?"
         }
@@ -15553,6 +15719,15 @@ final class MorpheAppStore {
     /// Clock-independent form for tests.
     func dayPopupChoices(evening: Bool) -> [DayPopupChoice] {
         var choices: [DayPopupChoice]
+        if activationWelcomePending {
+            // Once, after activation (Lucas 2026-10-16).
+            return [
+                DayPopupChoice(kind: .tour, label: "Take the tour", symbol: "map.fill"),
+                DayPopupChoice(kind: .editProfile, label: "Edit my profile", symbol: "person.crop.circle"),
+                DayPopupChoice(kind: .start, label: "Train", symbol: "figure.strengthtraining.traditional"),
+                DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill")
+            ]
+        }
         if isWorkoutLoggedToday {
             // The day's work is done — the popup becomes a launcher, and
             // none of these overwrite the day's spoken reply.
@@ -15591,7 +15766,19 @@ final class MorpheAppStore {
         // it re-offers on the next foreground return).
         dayPopupSessionDismissed = true
         morpheAskRefresh += 1
+        // Any answer settles the activation welcome — it shows once.
+        activationWelcomePending = false
         switch kind {
+        case .tour:
+            // The full stop-by-stop tour (the replay form).
+            welcomeIsReplay = true
+            showWelcomeExperience = true
+            Haptics.selection()
+            return
+        case .editProfile:
+            openClientProfile()
+            Haptics.selection()
+            return
         case .startCoach:
             // Legacy chip kind from the coach era — no assignments exist
             // in the one-account world; treated as a plain start.
@@ -15646,6 +15833,7 @@ final class MorpheAppStore {
 
     func dismissDayPopupForSession() {
         dayPopupSessionDismissed = true
+        activationWelcomePending = false
         morpheAskRefresh += 1
     }
 

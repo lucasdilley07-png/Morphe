@@ -139,7 +139,7 @@ struct RootView: View {
     /// answering).
     private var voiceHasTheStage: Bool {
         let state = store.heyMorphe.state
-        return state == .active || state == .thinking || state == .speaking
+        return state == .active || state == .thinking || state == .speaking || store.voiceChatOpen
     }
 
     private var shellAnimation: Animation {
@@ -169,6 +169,12 @@ struct RootView: View {
             Group {
                 if store.isShowingLaunchSequence {
                     LaunchSequenceView()
+                } else if !store.hasSeenIntro && !store.hasCompletedOnboarding {
+                    // First run (Lucas 2026-10-16): [ TAP TO BEGIN ] → the
+                    // light → Morphe asks for a handle and a birthday. Before
+                    // the account, and before onboarding on any install
+                    // that has not been through it.
+                    IntroView()
                 } else if FeatureFlags.accountsEnabled && store.authUser == nil {
                     AuthView()
                 } else if store.cloudRestoreBlocked, !store.hasCompletedOnboarding {
@@ -445,7 +451,7 @@ struct RootView: View {
             // with Morphe's words above it and the user's below. Any
             // touch ends the exchange (Lucas 2026-10-05).
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
-                || store.heyMorphe.state == .thinking {
+                || store.heyMorphe.state == .thinking || store.voiceChatOpen {
                 HeyMorpheStage()
                     .environment(store)
                     .transition(.opacity)
@@ -2216,6 +2222,29 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// Dictation and video capture call these so exactly one engine owns
     /// the mic at a time (audit 12, P0-3). Flag set AFTER stop() — stop
     /// clears it.
+    /// Chat mode on the stage (Lucas 2026-10-16): no speech, no listening
+    /// — the mic comes back only from the mic button.
+    private(set) var mutedForChat = false
+    private var wasListeningBeforeChat = false
+
+    func muteForChat() {
+        wasListeningBeforeChat = state != .off
+        if state != .off {
+            synthesizer.stopSpeaking(at: .immediate)
+            stop()
+        }
+        mutedForChat = true
+    }
+
+    func resumeFromChat() {
+        guard mutedForChat else { return }
+        mutedForChat = false
+        guard wasListeningBeforeChat else { return }
+        restartAttempts = 0
+        state = .passive
+        beginListening()
+    }
+
     func pauseForExternalAudio() {
         externalAudioActive = true
         guard state != .off else { return }
@@ -5258,9 +5287,14 @@ private struct VoiceGlass<S: InsettableShape>: ViewModifier {
 private struct HeyMorpheStage: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     @State private var arrived = false
+    @State private var draft = ""
+    @FocusState private var composing: Bool
+    @Namespace private var orbSpace
 
     private var engine: HeyMorpheEngine { store.heyMorphe }
+    private var chat: Bool { store.voiceChatOpen }
 
     /// Morphe's line: the answer once there is one, else the assist prompt.
     private var morpheLine: String? {
@@ -5281,36 +5315,183 @@ private struct HeyMorpheStage: View {
         ZStack {
             // The wash (Lucas 2026-10-16): the page darkens in light mode
             // and lightens in dark mode behind the orb. Takes the touch
-            // that ends the exchange (Lucas 2026-10-05).
-            (MorpheTheme.isLight ? Color.black.opacity(0.42) : Color.white.opacity(0.24))
+            // that ends the exchange (Lucas 2026-10-05) — or, in chat
+            // mode, closes the chat and hands the mic back.
+            // Read from the environment (the shared appearance flag can
+            // lag the first frame of an overlay).
+            (scheme == .light ? Color.black.opacity(0.42) : Color.white.opacity(0.24))
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { _ in
-                    store.cancelVoiceExchange()
+                    if chat { composing = false; store.closeVoiceChat() } else { store.cancelVoiceExchange() }
                 })
-                .accessibilityLabel("Hey Morphe is listening. Tap anywhere to stop.")
+                .accessibilityLabel(chat ? "Chat with Morphe. Tap outside to close." : "Hey Morphe is listening. Tap anywhere to stop.")
                 .accessibilityAddTraits(.isButton)
 
             VoiceEdgeGlowHost()
                 .allowsHitTesting(false)
 
-            column
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Rides a little high, like the day popup: the eye lands
-                // on the orb, not the dock.
-                .padding(.bottom, 48)
-                .allowsHitTesting(false)
-                .scaleEffect(arrived || reduceMotion ? 1 : 0.92)
-                .opacity(arrived || reduceMotion ? 1 : 0)
+            VStack(spacing: 0) {
+                if chat {
+                    // Chat mode (Lucas 2026-10-16): the Spartan at the top,
+                    // its bubble tucked under it, the user's messages
+                    // stacking up from the bar and fading under the orb.
+                    chatHeader
+                        .padding(.top, 8)
+                    messages
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Spacer(minLength: 0)
+                    column
+                        .padding(.bottom, 24)
+                        .allowsHitTesting(false)
+                        .scaleEffect(arrived || reduceMotion ? 1 : 0.92)
+                        .opacity(arrived || reduceMotion ? 1 : 0)
+                    Spacer(minLength: 0)
+                }
+                composer
+                    .padding(.horizontal, 20)
+                    // Clears the tab bar under the wash; the keyboard
+                    // lifts it further on its own.
+                    .padding(.bottom, 66)
+            }
+            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: chat)
         }
         .onAppear {
             guard !arrived else { return }
             if reduceMotion { arrived = true; return }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
         }
-        .onDisappear { arrived = false }
+        .onDisappear { arrived = false; composing = false }
+        .onChange(of: composing) { _, focused in
+            // Tapping the bar opens chat mode: the orb slides up, the
+            // mic and the voice stop.
+            if focused, !chat { store.openVoiceChat() }
+        }
         .accessibilityAddTraits(.isModal)
     }
+
+    // MARK: Chat mode
+
+    private var chatHeader: some View {
+        VStack(spacing: 10) {
+            MorpheVoiceRingHost(size: 110)
+                .frame(width: 110, height: 110)
+                .matchedGeometryEffect(id: "orb", in: orbSpace)
+            Text(store.voiceChatReplyLine ?? "Chat active…")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(store.voiceChatReplyLine == nil ? MorpheTheme.textSecondary : MorpheTheme.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(6)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .frame(maxWidth: 340)
+                .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous)))
+                .contentTransition(.opacity)
+                .animation(.easeOut(duration: 0.2), value: store.voiceChatReplyLine)
+                .accessibilityLabel("Morphe: \(store.voiceChatReplyLine ?? "Chat active")")
+        }
+        .padding(.horizontal, 24)
+    }
+
+    /// The user's messages this chat: newest at the bottom, rising as
+    /// more come, dissolving under the orb.
+    private var messages: some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .trailing, spacing: 8) {
+                    Spacer(minLength: 0)
+                    ForEach(store.voiceChatUserTurns) { turn in
+                        Text(turn.text)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.trailing)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), tint: MorpheTheme.accent.opacity(0.22)))
+                            .frame(maxWidth: 320, alignment: .trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .id(turn.id)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 60)
+                .padding(.bottom, 8)
+                .frame(maxWidth: .infinity, minHeight: 10)
+            }
+            .defaultScrollAnchor(.bottom)
+            .scrollDismissesKeyboard(.interactively)
+            .mask(
+                LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.28)],
+                               startPoint: .top, endPoint: .bottom)
+            )
+            .onChange(of: store.voiceChatUserTurns.count) { _, _ in
+                if let last = store.voiceChatUserTurns.last {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+            }
+        }
+    }
+
+    /// The short bar at the bottom (Lucas 2026-10-16): type to Morphe, the
+    /// mic to its right. Short and out of the way until it is tapped.
+    private var composer: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "text.bubble")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(chat ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                TextField(chat ? "Message Morphe" : "Type to Morphe", text: $draft, axis: .vertical)
+                    .lineLimit(1...4)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .focused($composing)
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                if chat, !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button { send() } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(MorpheTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Send")
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .modifier(VoiceGlass(shape: Capsule(style: .continuous)))
+
+            // The mic: lit while Morphe listens; in chat mode a tap hands
+            // the mic back and closes the chat.
+            Button {
+                if chat {
+                    composing = false
+                    store.closeVoiceChat()
+                } else {
+                    Haptics.selection()
+                }
+            } label: {
+                Image(systemName: chat ? "mic.slash.fill" : "mic.fill")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(chat ? MorpheTheme.textMuted : MorpheTheme.onFill(MorpheTheme.accent))
+                    .frame(width: 44, height: 44)
+                    .modifier(VoiceGlass(shape: Circle(), tint: chat ? nil : MorpheTheme.accent))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(chat ? "Turn the microphone back on" : "Microphone is on")
+        }
+    }
+
+    private func send() {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        draft = ""
+        store.sendVoiceChatMessage(text)
+    }
+
+    // MARK: Voice mode
 
     /// No GlassEffectContainer here (Lucas 2026-10-10: the orb rendered
     /// as a solid blue ball on the stage): the container hoists every
@@ -5340,6 +5521,7 @@ private struct HeyMorpheStage: View {
             // with the real mic level while listening.
             MorpheVoiceRingHost(size: 170)
                 .frame(width: 170, height: 170)
+                .matchedGeometryEffect(id: "orb", in: orbSpace)
 
             // The user, below.
             if let line = userLine {

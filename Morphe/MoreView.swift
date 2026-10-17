@@ -1546,6 +1546,7 @@ struct SpartanCodeContent: View {
 /// food; every number is the user's.
 struct FuelLogCard: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var showHistory = false
     @State private var showSearch = false
     @State private var showCamera = false
     @State private var showManual = false
@@ -1561,13 +1562,37 @@ struct FuelLogCard: View {
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Today's Fuel")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Today's Fuel")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Spacer(minLength: 8)
+                        HistoryButton(label: "Fuel history", count: day.meals.filter(\.logged).count) { showHistory = true }
+                    }
                     Text("Search the library or shoot the plate. Every number shows where it came from; photo numbers are estimates.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Three ways to log, above the numbers (Lucas 2026-10-17):
+                // search, photo, enter.
+                HStack(spacing: 10) {
+                    fuelDoor("Search", systemImage: "magnifyingglass", prominent: true) { showSearch = true }
+                    fuelDoor("Photo", systemImage: "camera.fill") {
+                        if !store.intelligenceEnabled { showNeedsKey = true } else { showCamera = true }
+                    }
+                    fuelDoor("Enter", systemImage: "square.and.pencil") { showManual = true }
+                }
+                .disabled(store.foodCheckBusy)
+
+                if store.foodCheckBusy {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Reading the plate…")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
                 }
 
                 // The day against the plan: calories and protein from the
@@ -1599,40 +1624,16 @@ struct FuelLogCard: View {
                     }
                 }
 
-                // The two doors (Lucas 2026-10-10): search and camera.
-                HStack(spacing: 10) {
-                    Button {
-                        showSearch = true
-                    } label: {
-                        Label("Search food", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    Button {
-                        if !store.intelligenceEnabled { showNeedsKey = true } else { showCamera = true }
-                    } label: {
-                        Label("Log a plate", systemImage: "camera.fill").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                }
-                .disabled(store.foodCheckBusy)
-
-                if store.foodCheckBusy {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text("Reading the plate…")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-
-                Button("Enter a label by hand") { showManual = true }
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentText)
-                    .frame(minHeight: 32)
-
-                loggedToday(day.meals.filter(\.logged))
+                // (Today's log and the past days live in the history
+                // pop-up — Lucas 2026-10-17.)
             }
+        }
+        .sheet(isPresented: $showHistory) {
+            FuelHistorySheet()
+                .environment(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
         }
         .sheet(isPresented: $showSearch) {
             FoodSearchSheet()
@@ -1665,6 +1666,28 @@ struct FuelLogCard: View {
         }
     }
 
+    /// One of the three log doors: icon over a word, equal thirds.
+    private func fuelDoor(_ title: String, systemImage: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.semibold))
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(prominent ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 58)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
+                    .fill(prominent ? MorpheTheme.accent : MorpheTheme.panelStrong)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Log by \(title.lowercased())")
+    }
+
     private func presentPendingEstimate() {
         guard let record = pendingEstimate, !showCamera else { return }
         pendingEstimate = nil
@@ -1672,7 +1695,7 @@ struct FuelLogCard: View {
     }
 
     @ViewBuilder
-    private func loggedToday(_ meals: [MealLogEntry]) -> some View {
+    fileprivate func loggedToday(_ meals: [MealLogEntry]) -> some View {
         if meals.isEmpty {
             Text("Nothing logged yet today.")
                 .font(.caption)
@@ -1689,7 +1712,7 @@ struct FuelLogCard: View {
         }
     }
 
-    private func mealSection(_ title: String, _ rows: [MealLogEntry]) -> some View {
+    fileprivate func mealSection(_ title: String, _ rows: [MealLogEntry]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(title.uppercased())
@@ -2477,6 +2500,8 @@ struct FoodCheckCard: View {
     @State private var showCamera = false
     @State private var showPhotoNeedsKey = false
     @State private var selected: FoodCheckRecord?
+    /// Recent checks live in a pop-up now (Lucas 2026-10-17).
+    @State private var showHistory = false
     /// A report found while a scanner/camera sheet is still dismissing
     /// waits here and presents from onDismiss (audit 2026-10-10).
     @State private var pendingReport: FoodCheckRecord?
@@ -2485,10 +2510,14 @@ struct FoodCheckCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Check a Food or Drink")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                        .featureGlimmer()
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Check a Food or Drink")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .featureGlimmer()
+                        Spacer(minLength: 8)
+                        HistoryButton(label: "Food check history", count: store.foodChecks.count) { showHistory = true }
+                    }
                     Text(!store.intelligenceEnabled
                          ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal or drink from a photo and searches the web for the supply chain."
                          : "Scan a barcode or photograph a meal or a drink. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
@@ -2524,53 +2553,17 @@ struct FoodCheckCard: View {
                     }
                 }
 
-                if !store.foodChecks.isEmpty {
-                    Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("RECENT")
-                            .font(MorpheTheme.microLabel(10))
-                            .tracking(1.2)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        ForEach(store.foodChecks.prefix(6)) { record in
-                            Button { selected = record } label: {
-                                HStack(spacing: 10) {
-                                    FoodProcessingBadge(processing: record.processing, compact: true)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(record.displayName)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(MorpheTheme.textPrimary)
-                                            .lineLimit(1)
-                                        Text(record.verdict.isEmpty ? record.origin : record.verdict)
-                                            .font(.caption)
-                                            .foregroundStyle(MorpheTheme.textSecondary)
-                                            .lineLimit(1)
-                                    }
-                                    Spacer()
-                                    if let score = record.nutriScore {
-                                        Text(score)
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(MorpheTheme.textPrimary)
-                                            .frame(width: 24, height: 24)
-                                            .background(Circle().fill(FoodCheckReportSheet.scoreColor(score).opacity(0.25)))
-                                    }
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                }
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    if let memory = store.foodMemorySummary {
-                        Text(memory)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
             }
+        }
+        .sheet(isPresented: $showHistory) {
+            FoodCheckHistorySheet { record in
+                showHistory = false
+                selected = record
+            }
+            .environment(store)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
         }
         .alert("Meal photos need Morphe AI", isPresented: $showPhotoNeedsKey) {
             Button("Scan a barcode instead") { showScanner = true }
@@ -2979,5 +2972,197 @@ extension MiniQuiz {
             order.swapAt(i, Int(seed >> 33) % (i + 1))
         }
         return order
+    }
+}
+
+
+// MARK: - Nutrition history pop-ups (Lucas 2026-10-17)
+
+/// The small, out-of-the-way door to a card's history.
+struct HistoryButton: View {
+    let label: String
+    var count: Int = 0
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.caption.weight(.semibold))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(MorpheTheme.microLabel(10))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(MorpheTheme.textMuted)
+            .padding(.horizontal, 8)
+            .frame(minHeight: 28)
+            .background(Capsule().fill(MorpheTheme.panelStrong))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+/// Today's box at the top, every earlier day below, grouped by date.
+private struct HistoryDayBox<Content: View>: View {
+    let title: String
+    var today: Bool = false
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                .foregroundStyle(today ? MorpheTheme.accentText : MorpheTheme.textMuted)
+            content()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(today ? MorpheTheme.accent.opacity(0.10) : MorpheTheme.panel)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(today ? MorpheTheme.accent.opacity(0.5) : MorpheTheme.stroke, lineWidth: 1)
+                )
+        )
+    }
+}
+
+/// Every food check, today boxed at the top, the rest by day.
+struct FoodCheckHistorySheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let onOpen: (FoodCheckRecord) -> Void
+
+    private var days: [(Date, [FoodCheckRecord])] {
+        let cal = Calendar.current
+        let groups = Dictionary(grouping: store.foodChecks) { cal.startOfDay(for: $0.date) }
+        return groups.keys.sorted(by: >).map { ($0, groups[$0]!.sorted { $0.date > $1.date }) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    let cal = Calendar.current
+                    let todayRows = days.first(where: { cal.isDateInToday($0.0) })?.1 ?? []
+                    HistoryDayBox(title: "Today", today: true) {
+                        if todayRows.isEmpty {
+                            Text("Nothing checked yet today.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        } else {
+                            ForEach(todayRows) { row($0) }
+                        }
+                    }
+                    ForEach(days.filter { !cal.isDateInToday($0.0) }, id: \.0) { day, rows in
+                        HistoryDayBox(title: day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())) {
+                            ForEach(rows) { row($0) }
+                        }
+                    }
+                    if let memory = store.foodMemorySummary {
+                        Text(memory)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground().ignoresSafeArea())
+            .navigationTitle("Food checks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.foregroundStyle(MorpheTheme.textPrimary) } }
+        }
+    }
+
+    private func row(_ record: FoodCheckRecord) -> some View {
+        Button { onOpen(record) } label: {
+            HStack(spacing: 10) {
+                FoodProcessingBadge(processing: record.processing, compact: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(record.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(record.verdict.isEmpty ? record.origin : record.verdict)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                if let score = record.nutriScore {
+                    Text(score)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(FoodCheckReportSheet.scoreColor(score).opacity(0.25)))
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Today's meals boxed at the top (with their remove buttons), the
+/// earlier days below from the nutrition series, grouped by date.
+struct FuelHistorySheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let today = store.nutrition.meals.filter(\.logged)
+        let past = store.nutritionSeries
+            .filter { !Calendar.current.isDateInToday($0.date) }
+            .sorted { $0.date > $1.date }
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    HistoryDayBox(title: "Today", today: true) {
+                        HStack {
+                            Text("\(store.nutrition.caloriesConsumed) of \(store.nutritionTargets.calories) cal · \(store.nutrition.proteinConsumed) of \(store.nutritionTargets.proteinGrams)g protein")
+                                .font(.caption.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                            Spacer()
+                        }
+                        FuelLogCard().loggedToday(today)
+                    }
+                    ForEach(past, id: \.date) { day in
+                        HistoryDayBox(title: day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())) {
+                            HStack(spacing: 12) {
+                                Text("\(day.calories) of \(day.calorieTarget) cal")
+                                Text("·").foregroundStyle(MorpheTheme.textMuted)
+                                Text("\(day.protein) of \(day.proteinTarget)g protein")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        }
+                    }
+                    if past.isEmpty {
+                        Text("Earlier days land here once a day is logged.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground().ignoresSafeArea())
+            .navigationTitle("Fuel history")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.foregroundStyle(MorpheTheme.textPrimary) } }
+        }
     }
 }

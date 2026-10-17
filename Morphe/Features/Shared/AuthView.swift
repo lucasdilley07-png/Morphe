@@ -107,6 +107,9 @@ struct AuthView: View {
         .onChange(of: email) { _, _ in store.authErrorMessage = nil }
         .onChange(of: password) { _, _ in store.authErrorMessage = nil }
         .onChange(of: name) { _, _ in store.authErrorMessage = nil }
+        // The intro's handle seeds the name (Lucas 2026-10-16); they can
+        // still type their real name.
+        .onAppear { if name.isEmpty { name = store.onboardingDraft.username } }
     }
 
     private func submit() async {

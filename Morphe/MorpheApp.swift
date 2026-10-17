@@ -68,6 +68,16 @@ struct MorpheApp: App {
                 }
                 // `-MorpheLocalOnboarded`: a fixed test athlete, so the
                 // main pages can be walked without retyping onboarding.
+                if skipOnboarding { local.markIntroSeen() }
+                // `-MorpheVoiceChatPreview`: opens the stage in chat mode
+                // after launch (no mic in the simulator).
+                if ProcessInfo.processInfo.arguments.contains("-MorpheVoiceChatPreview") {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(4))
+                        local.dismissDayPopupForSession()
+                        local.openVoiceChat()
+                    }
+                }
                 if skipOnboarding, !local.hasCompletedOnboarding {
                     local.onboardingDraft.name = "Verify"
                     local.onboardingDraft.birthYear = 1998

@@ -965,3 +965,54 @@ Network is deliberately left alone.
 - The orb (`MorpheOrbView`) fades on over 0.35 s wherever it mounts live
   (Hey Morphe stage, welcome pop-up) instead of appearing (Lucas
   2026-10-16); still frames (`animates: false`) are untouched.
+- First run rebuilt (Lucas 2026-10-16). Routing, before the account
+  exists: `IntroView` (in OnboardingView.swift) — a black screen with
+  [ TAP TO BEGIN ] slowly flashing; a tap grows a white disc from the
+  center until the screen is white; the orb fades on with a bubble
+  ("Hello there." + a one-line intro, **[DRAFT] — Lucas re-says it**), a
+  @username field, a birthday picker (13+ gate), **Build my profile**
+  (accent, highlighted) and **Get started without a profile** (plain,
+  muted), with the terms line under them. `completeIntro` seeds the draft
+  (username, birth year, agreedToTerms) and persists `hasSeenIntro`
+  (`morphe.intro.seen`) + `introChoice`. Then the Create-account screen
+  (name prefilled with the handle). After auth: Build my profile → the
+  questions minus welcome/username (`introSuppliedIdentity`), the handle
+  reserved on Create Plan (a collision falls back to the username step);
+  Get started → `quickStartOnboarding()` (general fitness, beginner, 3
+  days, the handle reserved) → `completeOnboarding()`. Both end on
+  `relaunchLoadingSequence()` (the Morphe launch loading screen) and then
+  the app. `completeOnboarding` no longer raises the hello beat or the
+  welcome sheet; it sets `activationWelcomePending`
+  (`morphe.activation.pending`, on disk) so the next pop-up is the
+  one-time **"Welcome, name." / "Thanks for activating me. Now we can get
+  to work."** with Take the tour (`.tour` → the full replay tour), Edit my
+  profile, Train, Other…. Answering or dismissing it clears the flag;
+  everything after is the standard pop-up. `-MorpheLocalOnboarded` marks
+  the intro seen; plain `-MorpheLocalMode` walks the intro.
+- Hey Morphe stage chat bar (Lucas 2026-10-16): a short glass bar ("Type
+  to Morphe") with the mic button to its right sits at the bottom of the
+  stage. Focusing the bar → `openVoiceChat()`: any streaming answer is
+  dropped, the engine is muted (`muteForChat` — speech stopped, listening
+  torn down), the orb slides to the top (matchedGeometryEffect) with its
+  bubble under it ("Chat active…" until a reply), and the user's messages
+  stack up from the bar (`voiceChatUserTurns`, since the chat opened)
+  fading under the orb. Typed messages go through `sendAIAgentPrompt` —
+  the one conversation the floating chat and the Network thread render;
+  the bubble shows `voiceChatReplyLine`. The mic button (or a tap on the
+  wash) → `closeVoiceChat()` → `resumeFromChat()` (listening resumes only
+  if it was on). Voice exchanges now also land in the conversation
+  (`presentVoiceExchange` records heard + answer, deduplicated against
+  the online path). The stage mounts while `voiceChatOpen` too.
+- Nutrition (Lucas 2026-10-17): the Check Food card no longer lists recent
+  checks inline and Today's Fuel no longer lists the day's meals inline.
+  Each header has a small `HistoryButton` (clock, count) that opens a
+  pop-up — `FoodCheckHistorySheet` / `FuelHistorySheet` — with **Today**
+  boxed at the top (accent box) and earlier days below grouped by date
+  (`HistoryDayBox`). Today's meals keep their remove buttons in the sheet;
+  earlier days come from `nutritionSeries` (calories / protein vs target).
+  Tapping a food check in the sheet opens its report.
+- `-MorpheVoiceChatPreview` (local mode): opens the stage in chat mode
+  four seconds after launch, for simulator verification.
+- Today's Fuel (Lucas 2026-10-17): three equal log doors — Search (accent),
+  Photo, Enter — sit above the meters; the old Search/Log-a-plate pair and
+  the "Enter a label by hand" link are gone.
