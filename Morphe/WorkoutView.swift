@@ -22,6 +22,7 @@ struct WorkoutView: View {
     private func skipRest() { restRunning = false }
     @State private var swapTarget: WorkoutExercise?
     @State private var isShowingPainFlow = false
+    @State private var showTechniqueLibraryFromTrain = false
     /// Payload for the set logger sheet: nil editIndex = log a new/extra set.
     private struct RepLoggerContext: Identifiable, Equatable {
         let id = UUID()
@@ -422,6 +423,16 @@ struct WorkoutView: View {
                     detail: progressCardDetail
                 ) {
                     store.openProgress()
+                }
+        case .technique:
+                // Moved here from Discover (Lucas 2026-10-17): every
+                // movement's setup, cue, fault, easier version, source.
+                TrainLinkCard(
+                    systemImage: "list.bullet.clipboard",
+                    title: "Technique Library",
+                    detail: "\(store.exerciseDatabase.count) exercises and variations. How to set up, what to feel, what goes wrong."
+                ) {
+                    showTechniqueLibraryFromTrain = true
                 }
         }
     }
@@ -1222,6 +1233,16 @@ struct WorkoutView: View {
         .onAppear { revealLibraryIfRequested(proxy) }
         .onChange(of: store.pendingLibraryReveal) { _, _ in
             revealLibraryIfRequested(proxy)
+        }
+        .sheet(isPresented: $showTechniqueLibraryFromTrain) {
+            NavigationStack {
+                TechniqueLibraryView(initialQuery: "")
+                    .environment(store)
+                    .toolbar(.hidden, for: .navigationBar)
+                    .swipeBack { showTechniqueLibraryFromTrain = false }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .alert("Your library is empty", isPresented: $showEmptyLibraryNotice) {
             Button("Browse Discover") { store.showDiscoverTab() }
@@ -2187,8 +2208,10 @@ struct DiscoverScreenView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            // Either direction flips Fitness ↔ Explore (Lucas 2026-10-17);
+            // the styles open on a tap only.
             .inTabPageSwipe(pages: [DiscoverSection.workouts, .feed], selection: Binding(
-                get: { store.selectedDiscoverSection }, set: { store.selectedDiscoverSection = $0 }))
+                get: { store.selectedDiscoverSection }, set: { store.selectedDiscoverSection = $0 }), wraps: true)
             .refreshable {
                 if store.selectedDiscoverSection == .feed { await store.refreshCreatorContent(force: true) }
             }
@@ -5046,7 +5069,6 @@ struct DiscoverCatalogSection: View {
         case .newInLibrary: newThisWeekSection
         case .mostDone: mostDoneSection
         case .families: familiesSection
-        case .technique: techniqueLibraryCard
         }
     }
 
@@ -5074,50 +5096,6 @@ struct DiscoverCatalogSection: View {
         }
     }
 
-    /// The door to the exercise library: every movement's setup, cue,
-    /// common fault, easier version, and the source it was checked against.
-    private var techniqueLibraryCard: some View {
-        Button {
-            showTechniqueLibrary = true
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "list.bullet.clipboard")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentText)
-                    .frame(width: 32)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Technique Library")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("\(store.exerciseDatabase.count) exercises and variations. How to set up, what to feel, what goes wrong.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .accessibilityHidden(true)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(MorpheTheme.panelStrong)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(MorpheTheme.stroke, lineWidth: 1)
-                    )
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens the exercise library")
-    }
 
     /// What Creator Coaches have published (2026-10-05), newest first,
     /// each rebuilt against this app's library and bylined.

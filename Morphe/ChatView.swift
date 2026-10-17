@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import Speech
 
 struct CommunityView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -350,7 +352,6 @@ struct CommunityView: View {
                 realContactScreen
             }
         }
-        .padding(.bottom, 120)
     }
 
     /// THE messaging home for real accounts: the coach-thread inbox. Every
@@ -3507,7 +3508,7 @@ struct ThreadChatView: View {
     @State private var draft = ""
     @State private var showReportDialog = false
     @State private var showBlockConfirm = false
-    @State private var streakExplainerVisible = false
+    @State private var recorder = VoiceMemoRecorder()
 
     private var myUid: String { store.authUser?.id ?? "" }
     private var counterpart: String { thread.counterpartName(for: myUid) }
@@ -3530,119 +3531,35 @@ struct ThreadChatView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                if let onBack {
-                    // Breadcrumb grammar (audit G3): backs NAME where they
-                    // go — the bare circle was one of two dialects in this
-                    // same file.
-                    Button {
-                        onBack()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.subheadline.weight(.bold))
-                            Text("CHATS")
-                                .font(MorpheTheme.microLabel(11))
-                                .tracking(1.4)
-                        }
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .frame(height: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Back to chats")
-                }
-
-                Circle()
-                    .fill(MorpheTheme.panelStrong)
-                    .frame(width: 42, height: 42)
-                    .overlay(
-                        Text(String(counterpart.prefix(1)).uppercased())
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                    )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(counterpart)
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    // A streak needs at least two days to be a streak; day
-                    // one stays quiet instead of celebrating a single hello.
-                    if chatStreak >= 2 {
-                        // A Button, not an onTapGesture (affordance audit
-                        // 2026-09): the tap explainer used to be invisible
-                        // to VoiceOver — no button trait, no reachable
-                        // action — and looked identical to the inert streak
-                        // chips elsewhere. The info glyph signifies it acts.
-                        Button {
-                            streakExplainerVisible = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "flame.fill")
-                                    .font(.caption2.weight(.bold))
-                                Text("STREAK \(chatStreak)")
-                                    .font(MorpheTheme.microLabel(10))
-                                    .tracking(1.2)
-                                Image(systemName: "info.circle")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(MorpheTheme.accentText)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(chatStreak) day chat streak — tap to learn how it works")
-                        .alert("Chat Streak", isPresented: $streakExplainerVisible) {
-                            Button("Got It", role: .cancel) {}
-                        } message: {
-                            Text("\(chatStreak) days in a row you've both sent a message. An unanswered morning doesn't break it — a full silent day does.")
-                        }
-                    } else {
-                        Text("Conversation")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-
-                Spacer()
-
-                // Safety controls IN the conversation (launch audit P0-2):
-                // report and block reach messaging, not just the feed.
-                Menu {
-                    Button("Report \(counterpart)", systemImage: "flag") {
-                        showReportDialog = true
-                    }
-                    Button("Block \(counterpart)", systemImage: "hand.raised", role: .destructive) {
-                        showBlockConfirm = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Conversation options")
-                .confirmationDialog("Report \(counterpart)?", isPresented: $showReportDialog, titleVisibility: .visible) {
-                    ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
-                        Button(reason) {
-                            store.reportUser(uid: counterpartUid, name: counterpart, reason: reason)
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("A human reviews every report.")
-                }
-                .confirmationDialog("Block \(counterpart)?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
-                    Button("Block", role: .destructive) {
-                        store.blockAccount(uid: counterpartUid, name: counterpart)
-                        onBack?()
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("This conversation closes, their posts disappear, and they can't message you. Unblock anytime in Profile.")
-                }
+            // Back · name centered · dots (Lucas 2026-10-17): one header for
+            // every conversation. Report and block live under the dots.
+            ChatPageHeader(
+                title: counterpart,
+                subtitle: chatStreak >= 2 ? "Streak \(chatStreak) · you've both written \(chatStreak) days running" : "Conversation",
+                onBack: onBack
+            ) {
+                Button("Report \(counterpart)", systemImage: "flag") { showReportDialog = true }
+                Button("Block \(counterpart)", systemImage: "hand.raised", role: .destructive) { showBlockConfirm = true }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .confirmationDialog("Report \(counterpart)?", isPresented: $showReportDialog, titleVisibility: .visible) {
+                ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                    Button(reason) {
+                        store.reportUser(uid: counterpartUid, name: counterpart, reason: reason)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("A human reviews every report.")
+            }
+            .confirmationDialog("Block \(counterpart)?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
+                Button("Block", role: .destructive) {
+                    store.blockAccount(uid: counterpartUid, name: counterpart)
+                    onBack?()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This conversation closes, their posts disappear, and they can't message you. Unblock anytime in Profile.")
+            }
 
             Divider()
                 .overlay(MorpheTheme.stroke.opacity(0.8))
@@ -3667,6 +3584,13 @@ struct ThreadChatView: View {
                         }
 
                         ForEach(Array(store.displayedThreadMessages.enumerated()), id: \.element.id) { index, message in
+                            if let memo = VoiceMemoStore.parse(message.text) {
+                                // A voice memo (Lucas 2026-10-17): the clip
+                                // for its sender, the transcript for both.
+                                VoiceMemoBubble(memo: memo, isMine: message.senderUid == myUid)
+                                    .frame(maxWidth: .infinity, alignment: message.senderUid == myUid ? .trailing : .leading)
+                                    .id(message.id)
+                            } else {
                             LiveMessageBubble(
                                 message: message,
                                 isMine: message.senderUid == myUid,
@@ -3676,6 +3600,7 @@ struct ThreadChatView: View {
                                     || store.displayedThreadMessages[index - 1].senderUid != message.senderUid
                             )
                             .id(message.id)
+                            }
                         }
                     }
                     .padding(16)
@@ -3693,34 +3618,25 @@ struct ThreadChatView: View {
             Divider()
                 .overlay(MorpheTheme.stroke.opacity(0.8))
 
-            HStack(spacing: 10) {
-                TextField("Type a message", text: $draft, axis: .vertical)
-                    .lineLimit(1...3)
-                    // Keyboard send (speed audit S0-3): the return key IS
-                    // the send button; with a submit label set, return
-                    // submits and long text still wraps into view.
-                    .submitLabel(.send)
-                    .onSubmit {
-                        let text = draft
-                        draft = ""
-                        Task { if await !store.sendMessage(text), draft.isEmpty { draft = text } }
-                    }
-                    .textFieldStyle(MorpheFieldStyle())
-
-                Button("Send") {
-                    // Clear first so a slow network never eats a retype; a
-                    // refusal (pace, policy, offline) hands the words back.
-                    let text = draft
-                    draft = ""
+            // Return sends (speed audit S0-3); hold the mic for a voice memo
+            // (Lucas 2026-10-17). A refusal hands the words back.
+            VoiceComposer(
+                draft: $draft,
+                placeholder: "Type a message",
+                recorder: recorder,
+                onSend: { text in
                     Task { if await !store.sendMessage(text), draft.isEmpty { draft = text } }
+                },
+                onSendMemo: { memo in
+                    // Text-only wire: the memo travels as its marker +
+                    // transcript; the clip plays on this phone.
+                    Task { _ = await store.sendMessage(VoiceMemoStore.marker(for: memo)) }
                 }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                .frame(width: 96)
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
+            )
             .padding(16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .recordingEdgeGlow(recorder)
         .onAppear {
             store.openThread(thread)
             consumeDraftSeedIfPresent()
@@ -3831,6 +3747,13 @@ struct AthleteInboxView: View {
         Group {
             if let openedThread {
                 ThreadChatView(thread: openedThread, onBack: { self.openedThread = nil })
+            } else if showMorpheThread {
+                // In place, like every conversation (Lucas 2026-10-17): no
+                // slide-up sheet.
+                MorpheThreadView(onBack: {
+                    showMorpheThread = false
+                    store.markMorpheInboxRead()
+                })
             } else {
                 threadList
             }
@@ -3897,6 +3820,9 @@ struct AthleteInboxView: View {
                 }
             }
             .padding(.vertical, 4)
+            // The list clears the floating button; an open conversation
+            // keeps its composer just above the bar (Lucas 2026-10-17).
+            .padding(.bottom, 120)
         }
         .coordinateSpace(name: "chatsScroll")
         // The search row scrolls with the list; a scroll UP slides a pinned
@@ -4006,16 +3932,6 @@ struct AthleteInboxView: View {
                             .padding(.horizontal, -16)
                     }
                     .buttonStyle(.plain)
-                    .sheet(isPresented: $showMorpheThread, onDismiss: { store.markMorpheInboxRead() }) {
-                        MorpheThreadView()
-                            .environment(store)
-                            .onAppear { store.chatSurfaceDepth += 1 }
-                            .onDisappear { store.chatSurfaceDepth = max(0, store.chatSurfaceDepth - 1) }
-                            .presentationDetents([.large])
-                            .presentationDragIndicator(.visible)
-                            .presentationCornerRadius(28)
-                            .sheetToastSurface()
-                    }
                 }
                 if !visibleThreads.isEmpty {
                     Divider().overlay(MorpheTheme.stroke.opacity(0.5)).padding(.leading, 56)
@@ -4316,26 +4232,17 @@ struct MorpheThreadRow: View {
 struct MorpheThreadView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    /// In-place back (Lucas 2026-10-17); nil when presented on its own.
+    var onBack: (() -> Void)? = nil
     @State private var draft = ""
+    @State private var recorder = VoiceMemoRecorder()
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Morphe")
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Weekly reports from your logs · what's new · ask anything")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-                Spacer(minLength: 8)
-                Button("Done") { dismiss() }
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .frame(minWidth: 44, minHeight: 44)
+            ChatPageHeader(title: "Morphe", subtitle: "Reports · news · ask anything", onBack: onBack ?? { dismiss() }) {
+                Button("Mark all read", systemImage: "checkmark.circle") { store.markMorpheInboxRead() }
+                Button("Open Morphe AI", systemImage: "sparkles") { store.openAIAgent() }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
 
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
@@ -4365,28 +4272,19 @@ struct MorpheThreadView: View {
             }
 
             Divider().overlay(MorpheTheme.stroke.opacity(0.8))
-            HStack(spacing: 10) {
-                TextField("Ask Morphe", text: $draft, axis: .vertical)
-                    .lineLimit(1...3)
-                    .submitLabel(.send)
-                    .onSubmit { send() }
-                    .textFieldStyle(MorpheFieldStyle())
-                Button("Send") { send() }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .frame(width: 96)
-                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.morpheReplyInFlight)
-            }
+            VoiceComposer(
+                draft: $draft,
+                placeholder: "Ask Morphe",
+                recorder: recorder,
+                onSend: { text in Task { await store.askMorpheInThread(text) } },
+                onSendMemo: { memo in store.sendMorpheVoiceMemo(memo) }
+            )
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
         .background(PremiumBackground().ignoresSafeArea())
+        .recordingEdgeGlow(recorder)
         .onAppear { store.refreshMorpheInbox() }
-    }
-
-    private func send() {
-        let text = draft
-        draft = ""
-        Task { await store.askMorpheInThread(text) }
     }
 
 }
@@ -4882,4 +4780,541 @@ struct ExploreSearchBar: View {
 struct ChatsScrollOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+
+// MARK: - Conversation chrome (Lucas 2026-10-17)
+
+/// Back chevron top-left, the contact's name centered, the dots top-right.
+struct ChatPageHeader<MenuItems: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var onBack: (() -> Void)? = nil
+    @ViewBuilder let menu: () -> MenuItems
+
+    var body: some View {
+        ZStack {
+            HStack {
+                if let onBack {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back")
+                } else {
+                    Color.clear.frame(width: 44, height: 44)
+                }
+                Spacer()
+                Menu {
+                    menu()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Conversation options")
+            }
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 56)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Voice memos (Lucas 2026-10-17)
+
+/// One recorded clip: the file on this phone, its length, its transcript.
+struct VoiceMemo: Codable, Hashable, Identifiable {
+    let id: String
+    var duration: TimeInterval
+    var transcript: String
+
+    var url: URL { VoiceMemoStore.directory.appendingPathComponent(id + ".m4a") }
+    var hasAudio: Bool { FileManager.default.fileExists(atPath: url.path) }
+    var durationLabel: String {
+        let total = Int(duration.rounded())
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Where memos live (Application Support/MorpheStore/VoiceMemos) and how
+/// one rides a text-only message: `[voice:<id>|0:07] transcript`.
+enum VoiceMemoStore {
+    static var directory: URL {
+        let fm = FileManager.default
+        let base = (try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)) ?? fm.temporaryDirectory
+        let dir = base.appendingPathComponent("MorpheStore/VoiceMemos", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+    private static let indexKey = "morphe.voicememos"
+
+    private static func loadIndex() -> [String: VoiceMemo] {
+        guard let data = UserDefaults.standard.data(forKey: indexKey),
+              let memos = try? JSONDecoder().decode([String: VoiceMemo].self, from: data) else { return [:] }
+        return memos
+    }
+    private static func saveIndex(_ memos: [String: VoiceMemo]) {
+        if let data = try? JSONEncoder().encode(memos) { UserDefaults.standard.set(data, forKey: indexKey) }
+    }
+    static func save(_ memo: VoiceMemo) {
+        var memos = loadIndex(); memos[memo.id] = memo; saveIndex(memos)
+    }
+    static func memo(id: String) -> VoiceMemo? { loadIndex()[id] }
+    static func delete(_ memo: VoiceMemo) {
+        try? FileManager.default.removeItem(at: memo.url)
+        var memos = loadIndex(); memos[memo.id] = nil; saveIndex(memos)
+    }
+
+    static func marker(for memo: VoiceMemo) -> String {
+        "[voice:\(memo.id)|\(memo.durationLabel)] \(memo.transcript)"
+    }
+    /// The memo a message carries, if any — the local one when this phone
+    /// recorded it, else a transcript-only stand-in.
+    static func parse(_ text: String) -> VoiceMemo? {
+        guard text.hasPrefix("[voice:"), let close = text.firstIndex(of: "]") else { return nil }
+        let inner = text[text.index(text.startIndex, offsetBy: 7)..<close]
+        let parts = inner.split(separator: "|", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+        let id = parts[0]
+        let transcript = String(text[text.index(after: close)...]).trimmingCharacters(in: .whitespaces)
+        if let local = memo(id: id) { return local }
+        let pieces = parts[1].split(separator: ":").compactMap { Int($0) }
+        let seconds = pieces.count == 2 ? TimeInterval(pieces[0] * 60 + pieces[1]) : 0
+        return VoiceMemo(id: id, duration: seconds, transcript: transcript)
+    }
+}
+
+/// Hold-to-record: AAC mono to a file, a metered level for the waveform,
+/// then an on-device transcript. Hey Morphe pauses while the mic is ours.
+@MainActor
+@Observable
+final class VoiceMemoRecorder {
+    private(set) var isRecording = false
+    /// 0…1 input level, ~30/s while recording.
+    private(set) var level: Double = 0
+    private(set) var elapsed: TimeInterval = 0
+    /// One-line status for the composer (permission help).
+    private(set) var notice: String?
+
+    private var recorder: AVAudioRecorder?
+    private var meter: Timer?
+    private var startedAt: Date?
+    private var currentID: String?
+
+    func start() async {
+        guard !isRecording else { return }
+        let granted = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            AVAudioApplication.requestRecordPermission { c.resume(returning: $0) }
+        }
+        guard granted else { notice = "Allow the microphone in Settings to record."; return }
+        HeyMorpheEngine.shared.pauseForExternalAudio()
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            notice = "The microphone is busy."; HeyMorpheEngine.shared.resumeAfterExternalAudio(); return
+        }
+        let id = UUID().uuidString
+        let url = VoiceMemoStore.directory.appendingPathComponent(id + ".m4a")
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44_100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        do {
+            let r = try AVAudioRecorder(url: url, settings: settings)
+            r.isMeteringEnabled = true
+            guard r.record() else { throw NSError(domain: "morphe.voice", code: 1) }
+            recorder = r
+        } catch {
+            notice = "Couldn't start recording."; HeyMorpheEngine.shared.resumeAfterExternalAudio(); return
+        }
+        currentID = id
+        startedAt = .now
+        elapsed = 0
+        notice = nil
+        isRecording = true
+        meter = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.tick() }
+        }
+    }
+
+    private func tick() {
+        guard let recorder, isRecording else { return }
+        recorder.updateMeters()
+        let db = Double(recorder.averagePower(forChannel: 0))
+        // -50 dB → 0, 0 dB → 1, eased so speech moves the bars.
+        let linear = max(0, min(1, (db + 50) / 50))
+        level = level * 0.6 + pow(linear, 1.4) * 0.4
+        elapsed = startedAt.map { Date.now.timeIntervalSince($0) } ?? 0
+    }
+
+    /// Stops, transcribes, saves. Nil when nothing usable was captured.
+    func stop() async -> VoiceMemo? {
+        guard isRecording, let recorder, let id = currentID else { return nil }
+        meter?.invalidate(); meter = nil
+        recorder.stop()
+        let duration = startedAt.map { Date.now.timeIntervalSince($0) } ?? recorder.currentTime
+        isRecording = false
+        level = 0
+        self.recorder = nil
+        currentID = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        HeyMorpheEngine.shared.resumeAfterExternalAudio()
+        let url = VoiceMemoStore.directory.appendingPathComponent(id + ".m4a")
+        guard duration >= 0.6, FileManager.default.fileExists(atPath: url.path) else {
+            try? FileManager.default.removeItem(at: url)
+            return nil
+        }
+        let transcript = await Self.transcribe(url)
+        let memo = VoiceMemo(id: id, duration: duration, transcript: transcript)
+        VoiceMemoStore.save(memo)
+        return memo
+    }
+
+    /// On-device speech-to-text for a saved clip; empty when denied or
+    /// nothing was recognized. Bounded so a stalled recognizer never hangs
+    /// the composer.
+    static func transcribe(_ url: URL) async -> String {
+        let status = await withCheckedContinuation { (c: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
+            SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
+        }
+        guard status == .authorized, let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else { return "" }
+        let request = SFSpeechURLRecognitionRequest(url: url)
+        request.shouldReportPartialResults = false
+        if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+        return await withTaskGroup(of: String.self) { group in
+            group.addTask {
+                await withCheckedContinuation { (c: CheckedContinuation<String, Never>) in
+                    var done = false
+                    recognizer.recognitionTask(with: request) { result, error in
+                        guard !done else { return }
+                        if let result, result.isFinal { done = true; c.resume(returning: result.bestTranscription.formattedString) }
+                        else if error != nil { done = true; c.resume(returning: "") }
+                    }
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(15))
+                return ""
+            }
+            let first = await group.next() ?? ""
+            group.cancelAll()
+            return first
+        }
+    }
+}
+
+/// One player for every memo bubble; the playing id drives the icons.
+@MainActor
+@Observable
+final class VoiceMemoPlayer: NSObject, AVAudioPlayerDelegate {
+    static let shared = VoiceMemoPlayer()
+    private(set) var playingID: String?
+    private var player: AVAudioPlayer?
+
+    func toggle(_ memo: VoiceMemo) {
+        if playingID == memo.id { player?.stop(); player = nil; playingID = nil; return }
+        player?.stop()
+        guard memo.hasAudio, let p = try? AVAudioPlayer(contentsOf: memo.url) else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        p.delegate = self
+        player = p
+        playingID = memo.id
+        p.play()
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in self.playingID = nil; self.player = nil }
+    }
+}
+
+/// The text field with the mic beside it. Return sends; holding the mic
+/// records (buzz, waveform in the field, the mic lights); letting go
+/// parks the clip above the field with its length and an ×, and return
+/// sends it as audio.
+struct VoiceComposer: View {
+    @Binding var draft: String
+    var placeholder: String
+    var recorder: VoiceMemoRecorder
+    let onSend: (String) -> Void
+    let onSendMemo: (VoiceMemo) -> Void
+
+    @State private var pendingMemo: VoiceMemo?
+    @State private var holding = false
+    @State private var finishing = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            if let memo = pendingMemo {
+                VoiceMemoBubble(memo: memo, isMine: true, onDelete: {
+                    VoiceMemoStore.delete(memo)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { pendingMemo = nil }
+                    Haptics.impact(.light)
+                })
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if let notice = recorder.notice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.warning)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack(spacing: 10) {
+                ZStack {
+                    if recorder.isRecording {
+                        RecordingWaveform(level: recorder.level, elapsed: recorder.elapsed)
+                            .transition(.opacity)
+                    } else if finishing {
+                        HStack(spacing: 8) {
+                            SwiftUI.ProgressView().tint(MorpheTheme.accent)
+                            Text("Writing it down…")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                            Spacer()
+                        }
+                    } else {
+                        TextField(pendingMemo == nil ? placeholder : "Return sends the clip", text: $draft, axis: .vertical)
+                            .lineLimit(1...4)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .submitLabel(.send)
+                            .onSubmit { submit() }
+                            .focused($focused)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 46)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+                .animation(.easeInOut(duration: 0.2), value: recorder.isRecording)
+
+                // Dark when idle, lit while recording.
+                Image(systemName: "mic.fill")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(recorder.isRecording ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
+                    .frame(width: 46, height: 46)
+                    .background(Circle().fill(recorder.isRecording ? MorpheTheme.accent : MorpheTheme.panelStrong))
+                    .scaleEffect(recorder.isRecording ? 1.08 : 1)
+                    .shadow(color: MorpheTheme.accent.opacity(recorder.isRecording ? 0.45 : 0), radius: 12)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: recorder.isRecording)
+                    .contentShape(Circle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                guard !holding, !finishing else { return }
+                                holding = true
+                                focused = false
+                                Haptics.impact(.medium)
+                                Task { await recorder.start() }
+                            }
+                            .onEnded { _ in
+                                guard holding else { return }
+                                holding = false
+                                finishing = true
+                                Task {
+                                    let memo = await recorder.stop()
+                                    finishing = false
+                                    if let memo {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { pendingMemo = memo }
+                                        Haptics.impact(.light)
+                                    }
+                                }
+                            }
+                    )
+                    .accessibilityLabel(recorder.isRecording ? "Recording — release to stop" : "Hold to record a voice memo")
+            }
+        }
+    }
+
+    private func submit() {
+        if let memo = pendingMemo {
+            onSendMemo(memo)
+            withAnimation { pendingMemo = nil }
+        }
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        draft = ""
+        onSend(text)
+    }
+}
+
+/// The bars that move with the voice while a memo records.
+struct RecordingWaveform: View {
+    var level: Double
+    var elapsed: TimeInterval
+    @State private var history: [Double] = Array(repeating: 0.08, count: 28)
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle().fill(Color.red).frame(width: 8, height: 8)
+                .opacity(Int(elapsed * 2) % 2 == 0 ? 1 : 0.3)
+            HStack(spacing: 3) {
+                ForEach(Array(history.enumerated()), id: \.offset) { _, h in
+                    Capsule()
+                        .fill(MorpheTheme.accent)
+                        .frame(width: 3, height: 4 + 22 * h)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
+                .font(MorpheTheme.microLabel(11)).monospacedDigit()
+                .foregroundStyle(MorpheTheme.textSecondary)
+        }
+        .onChange(of: level) { _, now in
+            history.removeFirst()
+            history.append(max(0.08, now))
+        }
+    }
+}
+
+/// A sent (or pending) clip: play, a still waveform, the length bottom-left;
+/// an × top-right while pending; a subtle chevron bottom-right that opens
+/// the transcript.
+struct VoiceMemoBubble: View {
+    let memo: VoiceMemo
+    var isMine: Bool
+    /// Inside another bubble's chrome (the Morphe AI row) — no padding or
+    /// background of its own.
+    var inline: Bool = false
+    var onDelete: (() -> Void)? = nil
+    @State private var showTranscript = false
+    private var player: VoiceMemoPlayer { VoiceMemoPlayer.shared }
+
+    /// A still waveform shaped by the id, so the same clip always looks the same.
+    private var bars: [CGFloat] {
+        var seed = memo.id.unicodeScalars.reduce(UInt64(1469598103934665603)) { ($0 ^ UInt64($1.value)) &* 1099511628211 }
+        return (0..<22).map { _ in
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return 0.25 + CGFloat((seed >> 33) % 100) / 100 * 0.75
+        }
+    }
+
+    var body: some View {
+        let content = VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Button {
+                    player.toggle(memo)
+                } label: {
+                    Image(systemName: player.playingID == memo.id ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(memo.hasAudio ? MorpheTheme.accent : MorpheTheme.textMuted)
+                }
+                .buttonStyle(.plain)
+                .disabled(!memo.hasAudio)
+                .accessibilityLabel(player.playingID == memo.id ? "Pause voice memo" : "Play voice memo")
+                HStack(spacing: 2) {
+                    ForEach(Array(bars.enumerated()), id: \.offset) { _, h in
+                        Capsule().fill(MorpheTheme.accent.opacity(0.7)).frame(width: 3, height: 6 + 18 * h)
+                    }
+                }
+            }
+            if showTranscript {
+                Text(memo.transcript.isEmpty ? "No words were recognized in this clip." : memo.transcript)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
+            HStack {
+                Text(memo.durationLabel)
+                    .font(MorpheTheme.microLabel(10)).monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Spacer(minLength: 24)
+            }
+        }
+        .frame(minWidth: 160, alignment: .leading)
+
+        Group {
+            if inline {
+                content
+            } else {
+                content
+                    .padding(12)
+                    .padding(.trailing, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(isMine ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
+                    )
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            // The subtle door to the words.
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showTranscript.toggle() }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .rotationEffect(.degrees(showTranscript ? 180 : 0))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(2)
+            .accessibilityLabel(showTranscript ? "Hide transcript" : "Show transcript")
+        }
+        .overlay(alignment: .topTrailing) {
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(MorpheTheme.accent))
+                }
+                .buttonStyle(.plain)
+                .offset(x: 8, y: -8)
+                .accessibilityLabel("Delete the recording")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Voice memo, \(memo.durationLabel)")
+    }
+}
+
+/// The screen's edge lights while a memo records (the Hey Morphe cue
+/// without the Spartan or the bubbles).
+struct RecordingEdgeGlowModifier: ViewModifier {
+    var recorder: VoiceMemoRecorder
+    func body(content: Content) -> some View {
+        content.overlay {
+            if recorder.isRecording {
+                VoiceEdgeGlow(level: recorder.level)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: recorder.isRecording)
+    }
+}
+
+extension View {
+    func recordingEdgeGlow(_ recorder: VoiceMemoRecorder) -> some View {
+        modifier(RecordingEdgeGlowModifier(recorder: recorder))
+    }
 }

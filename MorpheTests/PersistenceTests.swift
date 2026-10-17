@@ -1479,8 +1479,8 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         XCTAssertEqual(store.trainCardLayout, TrainCardID.defaultOrder)
         store.setTrainLayout(order: ["progress", "bogus", "library"], hidden: ["partner"])
-        XCTAssertEqual(store.trainCardLayout, [.progress, .builder, .library, .program, .partner], "missing cards append; the builder slots above the library")
-        XCTAssertEqual(store.visibleTrainCards, [.progress, .builder, .library, .program])
+        XCTAssertEqual(store.trainCardLayout, [.progress, .builder, .library, .program, .partner, .technique], "missing cards append; the builder slots above the library")
+        XCTAssertEqual(store.visibleTrainCards, [.progress, .builder, .library, .program, .technique])
         let json = try! JSONEncoder().encode(store.styleProfile)
         let back = try! JSONDecoder().decode(UserStyleProfile.self, from: json)
         XCTAssertEqual(back.trainCardOrder, ["progress", "bogus", "library"])
@@ -5076,8 +5076,8 @@ final class PersonalizationEngineTests: XCTestCase {
     func testDiscoverAndLearnLayoutsPersistAndResolve() {
         let store = freshStore()
         XCTAssertEqual(store.discoverCardLayout, DiscoverCardID.defaultOrder)
-        store.setDiscoverLayout(order: ["technique", "families"], hidden: ["coaches"])
-        XCTAssertEqual(store.discoverCardLayout.prefix(2), [.technique, .families], "saved order leads")
+        store.setDiscoverLayout(order: ["mostDone", "families"], hidden: ["coaches"])
+        XCTAssertEqual(store.discoverCardLayout.prefix(2), [.mostDone, .families], "saved order leads")
         XCTAssertEqual(store.discoverCardLayout.count, DiscoverCardID.allCases.count, "the rest append")
         XCTAssertFalse(store.visibleDiscoverCards.contains(.coaches))
 
@@ -7098,7 +7098,7 @@ final class ModerationTests: XCTestCase {
     func testTrainCardOrderInsertsNewCardsWhereTheDefaultPutsThem() {
         // A saved order from before the builder existed.
         let order = TrainCardID.resolvedOrder(from: ["library", "program", "progress", "partner"])
-        XCTAssertEqual(order, [.builder, .library, .program, .progress, .partner], "the builder lands above the library it precedes by default")
+        XCTAssertEqual(order, [.builder, .library, .program, .progress, .partner, .technique], "the builder lands above the library it precedes by default; the new Technique card appends")
         XCTAssertEqual(TrainCardID.resolvedOrder(from: []), TrainCardID.defaultOrder)
     }
 

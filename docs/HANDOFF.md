@@ -1062,3 +1062,46 @@ Network is deliberately left alone.
   thumb); after the intro the name step no longer re-asks the birth year
   and the counter reads N OF 5; "Take the tour" presents after the pop-up
   cover has left.
+- Conversations (Lucas 2026-10-17): every chat page (a user's thread, the
+  Morphe chat) renders in place — the Morphe chat is no longer a sheet —
+  with `ChatPageHeader` (back chevron, the name centered, dots menu with
+  report/block or mark-read/open-AI). `VoiceComposer` at the bottom: the
+  text field, no send button, return sends; the mic beside it is
+  hold-to-record (`VoiceMemoRecorder`: buzz, AAC file under Application
+  Support/MorpheStore/VoiceMemos, metered level → `RecordingWaveform` in
+  the field, the mic lights accent, `VoiceEdgeGlow` on the screen's edge;
+  Hey Morphe pauses meanwhile). Release → an on-device transcript
+  (`SFSpeechURLRecognitionRequest`, 15 s cap) and the clip parks above the
+  field as a `VoiceMemoBubble` (play, still waveform, length bottom-left,
+  × top-right); return sends it. A sent clip shows a subtle chevron
+  bottom-right that opens the transcript. Morphe chat: the memo rides the
+  turn (`ThreadMessage.voiceMemoID`) and the brain answers the transcript.
+  User threads: the wire is text-only, so the message is
+  `[voice:<id>|m:ss] transcript` — the sender plays the clip, the other
+  side reads the transcript (`VoiceMemoStore.parse`). Deleting the pending
+  clip with the keyboard's delete key is not wired (SwiftUI's TextField
+  cannot see a backspace on an empty field); the × does it.
+- Hey Morphe stage (Lucas 2026-10-17): the mic is hold-to-record there too
+  (`VoiceMemoRecorder`, waveform in the bar, lit mic, edge glow); release
+  sends the clip into the chat (`sendVoiceChatMemo` — opens chat mode if
+  needed, the brain answers the transcript, the clip shows in the turn
+  list). Swipe down on the bar (or drag the mic down without recording) →
+  `closeChatSequence()`: keyboard down, messages slide up behind the orb,
+  then `closeVoiceChat()` brings the orb and bubble home while the bar
+  stretches to full width and the mic slides off; then a buzz, Morphe
+  says "Chat inactive" and the bubble reads "Voice active…" for 4 s. In
+  voice mode the bar is full width with no mic. `startVoiceIfEnabled`
+  refuses while `mutedForChat` so a recording's resume cannot restart
+  listening mid-chat. A swipe over the keyboard itself dismisses the
+  keyboard (iOS); the bar swipe is what closes the chat.
+- Technique Library moved from Discover → Train, under Progress
+  (`TrainCardID.technique`, a `TrainLinkCard` opening `TechniqueLibraryView`
+  in a sheet); Discover's card and `DiscoverCardID.technique` are gone
+  (saved orders drop the unknown id). Discover's page swipe wraps: either
+  direction flips Fitness ↔ Explore; styles open on a tap only; the ALL
+  STYLES chevron pops the pushed category page (`selection = nil`) and a
+  right swipe there does the same (Lucas 2026-10-17).
+- `voiceStageHold` keeps the Hey Morphe stage mounted through the
+  close-chat sequence and the 4 s "Voice active…" beat even when the voice
+  engine is off (the stage otherwise unmounts the instant chat closes);
+  with the engine off, "Chat inactive" is spoken by `PopupNarrator`.

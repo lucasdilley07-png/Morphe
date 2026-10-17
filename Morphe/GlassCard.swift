@@ -3008,6 +3008,9 @@ struct MorpheWordmark: View {
 struct InTabPageSwipe<Page: Hashable>: ViewModifier {
     let pages: [Page]
     @Binding var selection: Page
+    /// Past the last page a swipe comes back around (Discover's two pages:
+    /// either direction flips, Lucas 2026-10-17).
+    var wraps = false
     /// Areas that scroll sideways on their own (rails, chip rows): a drag
     /// that STARTS in one belongs to it, never to the page (2026-10-15 —
     /// swiping "New this week" flipped Discover to the Feed).
@@ -3025,8 +3028,9 @@ struct InTabPageSwipe<Page: Hashable>: ViewModifier {
                     guard !exemptFrames.contains(where: { $0.contains(start) }) else { return }
                     guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
                           let index = pages.firstIndex(of: selection) else { return }
-                    let next = dx < 0 ? index + 1 : index - 1
-                    guard pages.indices.contains(next) else { return }
+                    var next = dx < 0 ? index + 1 : index - 1
+                    if wraps, !pages.indices.contains(next) { next = (next + pages.count) % pages.count }
+                    guard pages.indices.contains(next), next != index else { return }
                     Haptics.selection()
                     withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
                 }
@@ -3175,8 +3179,8 @@ struct SwipeBack: ViewModifier {
 }
 
 extension View {
-    func inTabPageSwipe<Page: Hashable>(pages: [Page], selection: Binding<Page>) -> some View {
-        modifier(InTabPageSwipe(pages: pages, selection: selection))
+    func inTabPageSwipe<Page: Hashable>(pages: [Page], selection: Binding<Page>, wraps: Bool = false) -> some View {
+        modifier(InTabPageSwipe(pages: pages, selection: selection, wraps: wraps))
     }
 
     func swipeBack(_ action: @escaping () -> Void) -> some View {

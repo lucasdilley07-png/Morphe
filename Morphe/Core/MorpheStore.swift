@@ -10527,6 +10527,19 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// A voice memo to Morphe (Lucas 2026-10-17): the memo rides the turn,
+    /// the transcript is what the brain answers.
+    func sendMorpheVoiceMemo(_ memo: VoiceMemo) {
+        let transcript = memo.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = transcript.isEmpty ? "(voice memo — no words recognized)" : transcript
+        if ContentModeration.containsBlockedTerm(text) {
+            showToast(ContentModeration.refusalMessage, isError: true); return
+        }
+        sendAIAgentPrompt(text, voiceMemoID: memo.id)
+        markMorpheInboxRead()
+        Haptics.impact(.light)
+    }
+
     /// Stable ids for inbox items rendered as chat turns.
     private var inboxTurnIDs: [String: UUID] = [:]
 
@@ -10613,6 +10626,9 @@ final class MorpheAppStore {
     /// top, the voice silent, the mic off until its button is tapped.
     var voiceChatOpen = false
     private var voiceChatOpenedAt: Date?
+    /// Keeps the stage on screen through the close-chat sequence and the
+    /// "Voice active…" beat even when the voice engine is off.
+    var voiceStageHold = false
 
     func openVoiceChat() {
         guard !voiceChatOpen else { return }
@@ -10647,6 +10663,19 @@ final class MorpheAppStore {
             showToast(ContentModeration.refusalMessage, isError: true); return
         }
         sendAIAgentPrompt(clean)
+        Haptics.selection()
+    }
+
+    /// A voice memo typed-by-voice on the stage (Lucas 2026-10-17): the
+    /// same conversation, the transcript answered, the clip on the turn.
+    func sendVoiceChatMemo(_ memo: VoiceMemo) {
+        if !voiceChatOpen { openVoiceChat() }
+        let transcript = memo.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = transcript.isEmpty ? "(voice memo — no words recognized)" : transcript
+        if ContentModeration.containsBlockedTerm(text) {
+            showToast(ContentModeration.refusalMessage, isError: true); return
+        }
+        sendAIAgentPrompt(text, voiceMemoID: memo.id)
         Haptics.selection()
     }
 
@@ -11688,12 +11717,12 @@ final class MorpheAppStore {
     /// and lives in the chat — callers use this to decide whether opening the
     /// chat sheet would help or just flash and close.
     @discardableResult
-    func sendAIAgentPrompt(_ text: String) -> Bool {
+    func sendAIAgentPrompt(_ text: String, voiceMemoID: String? = nil) -> Bool {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return false }
 
         do {
-            athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now", sentAt: .now))
+            athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now", sentAt: .now, voiceMemoID: voiceMemoID))
             // Actions first: if the ask maps to something Morphe AI can DO
             // (start a workout, open a screen, change a setting), do it and
             // confirm — otherwise fall back to the coaching reply.
@@ -13558,7 +13587,10 @@ final class MorpheAppStore {
         // Only inside the real app shell (audit 13, P1): the scene-phase
         // restart used to arm the mic on the auth wall and the terms gate.
         guard heyMorpheEnabled, hasCompletedOnboarding, !needsTermsAcceptance,
-              (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
+              (!FeatureFlags.accountsEnabled || authUser != nil),
+              // Chat mode on the stage keeps the mic off until its own
+              // button hands it back (Lucas 2026-10-17).
+              !heyMorphe.mutedForChat else { return }
         heyMorphe.onWake = { [weak self] in
             // The gym is eyes-free (Siri audit): every wake gets a felt
             // AND heard confirmation — haptic plus a soft two-note cue in

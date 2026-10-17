@@ -139,7 +139,7 @@ struct RootView: View {
     /// answering).
     private var voiceHasTheStage: Bool {
         let state = store.heyMorphe.state
-        return state == .active || state == .thinking || state == .speaking || store.voiceChatOpen
+        return state == .active || state == .thinking || state == .speaking || store.voiceChatOpen || store.voiceStageHold
     }
 
     private var shellAnimation: Animation {
@@ -451,7 +451,7 @@ struct RootView: View {
             // with Morphe's words above it and the user's below. Any
             // touch ends the exchange (Lucas 2026-10-05).
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
-                || store.heyMorphe.state == .thinking || store.voiceChatOpen {
+                || store.heyMorphe.state == .thinking || store.voiceChatOpen || store.voiceStageHold {
                 HeyMorpheStage()
                     .environment(store)
                     .transition(.opacity)
@@ -1414,7 +1414,11 @@ struct AIAgentMessageRow: View {
                 }
 
                 Group {
-                    if !isUser && message.text == "\u{2026}" {
+                    if let memoID = message.voiceMemoID, let memo = VoiceMemoStore.memo(id: memoID) {
+                        // A spoken turn (Lucas 2026-10-17): the clip, with
+                        // its transcript behind the chevron.
+                        VoiceMemoBubble(memo: memo, isMine: isUser, inline: true)
+                    } else if !isUser && message.text == "\u{2026}" {
                         // Morphe is thinking — the placeholder breathes
                         // instead of sitting as dead dots (feedback pass
                         // 2026-09); reduceMotion falls back to static.
@@ -5371,12 +5375,25 @@ private struct HeyMorpheStage: View {
     @State private var draft = ""
     @FocusState private var composing: Bool
     @Namespace private var orbSpace
+    /// Hold the mic to record (Lucas 2026-10-17).
+    @State private var recorder = VoiceMemoRecorder()
+    @State private var holdingMic = false
+    @State private var finishingMemo = false
+    /// The close-chat sequence: the messages leave first, then the orb
+    /// comes home while the bar stretches and the mic slides off.
+    @State private var messagesOut = false
+    @State private var closingChat = false
+    /// "Voice active…" in Morphe's bubble right after the chat closes.
+    @State private var voiceActiveLine: String?
 
     private var engine: HeyMorpheEngine { store.heyMorphe }
     private var chat: Bool { store.voiceChatOpen }
+    /// The bar fills the bottom and the mic is gone in voice mode.
+    private var stretched: Bool { !chat }
 
     /// Morphe's line: the answer once there is one, else the assist prompt.
     private var morpheLine: String? {
+        if let voiceActiveLine { return voiceActiveLine }
         if let prompt = engine.promptLine { return prompt }
         if let answer = store.lastVoiceExchange?.answer, !answer.isEmpty { return answer }
         return nil
@@ -5419,6 +5436,9 @@ private struct HeyMorpheStage: View {
                         .padding(.top, 8)
                     messages
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .offset(y: messagesOut ? -520 : 0)
+                        .opacity(messagesOut ? 0 : 1)
+                        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.42, dampingFraction: 0.9), value: messagesOut)
                 } else {
                     Spacer(minLength: 0)
                     column
@@ -5441,7 +5461,8 @@ private struct HeyMorpheStage: View {
             if reduceMotion { arrived = true; return }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
         }
-        .onDisappear { arrived = false; composing = false }
+        .onDisappear { arrived = false; composing = false; voiceActiveLine = nil }
+        .recordingEdgeGlow(recorder)
         .onChange(of: composing) { _, focused in
             // Tapping the bar opens chat mode: the orb slides up, the
             // mic and the voice stop.
@@ -5481,17 +5502,25 @@ private struct HeyMorpheStage: View {
                 VStack(alignment: .trailing, spacing: 8) {
                     Spacer(minLength: 0)
                     ForEach(store.voiceChatUserTurns) { turn in
-                        Text(turn.text)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.trailing)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), tint: MorpheTheme.accent.opacity(0.22)))
-                            .frame(maxWidth: 320, alignment: .trailing)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .id(turn.id)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        Group {
+                            if let memoID = turn.voiceMemoID, let memo = VoiceMemoStore.memo(id: memoID) {
+                                VoiceMemoBubble(memo: memo, isMine: true, inline: true)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                            } else {
+                                Text(turn.text)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .multilineTextAlignment(.trailing)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                        }
+                        .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), tint: MorpheTheme.accent.opacity(0.22)))
+                        .frame(maxWidth: 320, alignment: .trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .id(turn.id)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .padding(.horizontal, 24)
@@ -5513,53 +5542,113 @@ private struct HeyMorpheStage: View {
         }
     }
 
-    /// The short bar at the bottom (Lucas 2026-10-16): type to Morphe, the
-    /// mic to its right. Short and out of the way until it is tapped.
+    /// The bar at the bottom (Lucas 2026-10-16/17): type to Morphe, return
+    /// sends; hold the mic to record a memo (buzz, waveform, lit mic, the
+    /// edge glow). In voice mode the bar fills the bottom and the mic is
+    /// off screen. Swipe down on the bar to close the chat.
     private var composer: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: stretched ? 0 : 10) {
             HStack(spacing: 8) {
-                Image(systemName: "text.bubble")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(chat ? MorpheTheme.accentText : MorpheTheme.textMuted)
-                TextField(chat ? "Message Morphe" : "Type to Morphe", text: $draft, axis: .vertical)
-                    .lineLimit(1...4)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .focused($composing)
-                    .submitLabel(.send)
-                    .onSubmit { send() }
-                if chat, !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Button { send() } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(MorpheTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Send")
+                if recorder.isRecording {
+                    RecordingWaveform(level: recorder.level, elapsed: recorder.elapsed)
+                        .transition(.opacity)
+                } else if finishingMemo {
+                    SwiftUI.ProgressView().tint(MorpheTheme.accent)
+                    Text("Writing it down…")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Spacer()
+                } else {
+                    Image(systemName: "text.bubble")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(chat ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                    TextField(chat ? "Message Morphe" : "Type to Morphe", text: $draft, axis: .vertical)
+                        .lineLimit(1...4)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .focused($composing)
+                        .submitLabel(.send)
+                        .onSubmit { send() }
                 }
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .modifier(VoiceGlass(shape: Capsule(style: .continuous)))
+            .animation(.easeInOut(duration: 0.2), value: recorder.isRecording)
+            .simultaneousGesture(
+                // Swipe down on the bar: close the chat (Lucas 2026-10-17).
+                DragGesture(minimumDistance: 24)
+                    .onEnded { value in
+                        guard chat, value.translation.height > 40, value.translation.height > abs(value.translation.width) else { return }
+                        closeChatSequence()
+                    }
+            )
 
-            // The mic: lit while Morphe listens; in chat mode a tap hands
-            // the mic back and closes the chat.
-            Button {
-                if chat {
-                    composing = false
-                    store.closeVoiceChat()
-                } else {
-                    Haptics.selection()
-                }
-            } label: {
-                Image(systemName: chat ? "mic.slash.fill" : "mic.fill")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(chat ? MorpheTheme.textMuted : MorpheTheme.onFill(MorpheTheme.accent))
-                    .frame(width: 44, height: 44)
-                    .modifier(VoiceGlass(shape: Circle(), tint: chat ? nil : MorpheTheme.accent))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(chat ? "Turn the microphone back on" : "Microphone is on")
+            // The mic: hold to record; slides off in voice mode.
+            Image(systemName: "mic.fill")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(recorder.isRecording ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
+                .frame(width: 44, height: 44)
+                .modifier(VoiceGlass(shape: Circle(), tint: recorder.isRecording ? MorpheTheme.accent : nil))
+                .scaleEffect(recorder.isRecording ? 1.08 : 1)
+                .shadow(color: MorpheTheme.accent.opacity(recorder.isRecording ? 0.45 : 0), radius: 12)
+                .contentShape(Circle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            guard !holdingMic, !finishingMemo else { return }
+                            holdingMic = true
+                            composing = false
+                            Haptics.impact(.medium)
+                            Task { await recorder.start() }
+                        }
+                        .onEnded { value in
+                            guard holdingMic else { return }
+                            holdingMic = false
+                            if value.translation.height > 40, chat, !recorder.isRecording {
+                                closeChatSequence(); return
+                            }
+                            finishingMemo = true
+                            Task {
+                                let memo = await recorder.stop()
+                                finishingMemo = false
+                                if let memo { store.sendVoiceChatMemo(memo) }
+                            }
+                        }
+                )
+                .frame(width: stretched ? 0 : 44)
+                .offset(x: stretched ? 120 : 0)
+                .opacity(stretched ? 0 : 1)
+                .accessibilityLabel(recorder.isRecording ? "Recording — release to send" : "Hold to record a voice memo")
+                .accessibilityHidden(stretched)
+        }
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: stretched)
+    }
+
+    /// Keyboard down, bar to the bottom, messages up behind the orb; then
+    /// the orb and bubble come home while the bar stretches and the mic
+    /// slides off; then a buzz, Morphe says "Chat inactive", the bubble
+    /// reads "Voice active…".
+    private func closeChatSequence() {
+        guard chat, !closingChat else { return }
+        closingChat = true
+        composing = false
+        store.voiceStageHold = true
+        Haptics.impact(.light)
+        messagesOut = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 150 : 420))
+            store.closeVoiceChat()          // the orb comes home, the bar stretches
+            messagesOut = false
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 150 : 480))
+            Haptics.impact(.medium)
+            voiceActiveLine = "Voice active…"
+            if engine.state != .off { engine.speak("Chat inactive") } else { PopupNarrator.shared.speak("Chat inactive", after: 0) }
+            closingChat = false
+            try? await Task.sleep(for: .seconds(4))
+            if voiceActiveLine == "Voice active…" { voiceActiveLine = nil }
+            withAnimation(.easeOut(duration: 0.3)) { store.voiceStageHold = false }
         }
     }
 
@@ -5645,7 +5734,7 @@ private struct VoiceEdgeGlowHost: View {
 /// The edge glow (the iOS 26 Siri cue, in brand blue instead of rainbow):
 /// a thin stroke and its blurred twin around the screen, brightening with
 /// the voice. Static gradient — the motion is the audio, not a loop.
-private struct VoiceEdgeGlow: View {
+struct VoiceEdgeGlow: View {
     var level: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

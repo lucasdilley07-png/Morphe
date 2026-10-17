@@ -1191,7 +1191,7 @@ extension LayoutCard {
 }
 
 enum DiscoverCardID: String, LayoutCard {
-    case coaches, newInLibrary, mostDone, families, technique
+    case coaches, newInLibrary, mostDone, families
 
     var title: String {
         switch self {
@@ -1199,7 +1199,6 @@ enum DiscoverCardID: String, LayoutCard {
         case .newInLibrary: return "New in the Library"
         case .mostDone: return "Your Most Done"
         case .families: return "Build · Condition · Sport · Recover"
-        case .technique: return "Technique Library"
         }
     }
     var detail: String {
@@ -1208,10 +1207,9 @@ enum DiscoverCardID: String, LayoutCard {
         case .newInLibrary: return "The newest categories, your level first"
         case .mostDone: return "Ranked by your own completions"
         case .families: return "Every category, grouped by what it's for"
-        case .technique: return "Every movement's setup, cue and fault"
         }
     }
-    static let defaultOrder: [DiscoverCardID] = [.coaches, .newInLibrary, .mostDone, .families, .technique]
+    static let defaultOrder: [DiscoverCardID] = [.coaches, .newInLibrary, .mostDone, .families]
 }
 
 enum LearnCardID: String, LayoutCard {
@@ -1330,6 +1328,8 @@ enum TrainCardID: String, CaseIterable, Identifiable {
     case library
     case partner
     case progress
+    /// The Technique Library (moved here from Discover, Lucas 2026-10-17).
+    case technique
 
     var id: String { rawValue }
 
@@ -1340,6 +1340,7 @@ enum TrainCardID: String, CaseIterable, Identifiable {
         case .library: return "My Library"
         case .partner: return "Partner session"
         case .progress: return "Progress"
+        case .technique: return "Technique Library"
         }
     }
 
@@ -1350,10 +1351,11 @@ enum TrainCardID: String, CaseIterable, Identifiable {
         case .library: return "Your saved workouts"
         case .partner: return "A session shared with a training partner"
         case .progress: return "History, records and charts"
+        case .technique: return "Every movement's setup, cue and fault"
         }
     }
 
-    static let defaultOrder: [TrainCardID] = [.program, .builder, .library, .partner, .progress]
+    static let defaultOrder: [TrainCardID] = [.program, .builder, .library, .partner, .progress, .technique]
 
     static func resolvedOrder(from raw: [String]) -> [TrainCardID] {
         var order = raw.compactMap(TrainCardID.init(rawValue:))
@@ -3638,6 +3640,9 @@ struct ThreadMessage: Identifiable, Hashable, Codable {
     /// When it was sent (Lucas 2026-10-16): lets the Morphe chat and the
     /// Morphe AI chat share one timeline. Older saved turns decode nil.
     var sentAt: Date? = nil
+    /// A voice memo's id when this turn was spoken, not typed (Lucas
+    /// 2026-10-17); `text` carries its transcript.
+    var voiceMemoID: String? = nil
 }
 
 struct MessageThread: Identifiable, Hashable {
