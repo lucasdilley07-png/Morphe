@@ -941,7 +941,7 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(choices.count, 4, "three common answers plus Other")
         XCTAssertEqual(choices.last?.label, "Other…", "the fourth choice is always Other")
         XCTAssertTrue(choices.first?.label.hasPrefix("Train ") == true, "the first button names today's workout")
-        XCTAssertEqual(choices.map(\.label)[1...2], ["Other workout", "Log a meal"])
+        XCTAssertEqual(choices.map(\.label)[1...2], ["Log a meal", "Switch workout"])
 
         let evening = store.dayPopupChoices(evening: true)
         XCTAssertEqual(evening.count, 4, "evening keeps the 3+Other shape")

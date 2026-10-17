@@ -1543,9 +1543,9 @@ struct SolidChoiceButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             // Glass bubble over the scrim (Lucas 2026-10-17), tinted with
             // the solid fill so the words never see through.
-            .morpheGlass(Capsule(style: .continuous), tint: fill.opacity(configuration.isPressed ? 0.5 : 0.75))
+            .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.buttonRadius, style: .continuous), tint: fill.opacity(configuration.isPressed ? 0.5 : 0.75))
             .overlay(
-                Capsule(style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.buttonRadius, style: .continuous)
                     .stroke(Color.clear, lineWidth: 0)
             )
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)

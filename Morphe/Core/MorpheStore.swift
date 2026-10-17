@@ -16112,9 +16112,11 @@ final class MorpheAppStore {
             // Train <today's workout> · Other workout · Log a meal · Other
             // (Lucas 2026-10-16).
             choices = [
+                // 1 Train · 2 Log a meal · 3 Switch workout · 4 Other
+                // (Lucas 2026-10-17; the pop-up stacks them bottom-up).
                 DayPopupChoice(kind: .start, label: "Train \(currentWorkout.name)", symbol: "figure.strengthtraining.traditional"),
-                DayPopupChoice(kind: .otherWorkout, label: "Other workout", symbol: "arrow.left.arrow.right"),
-                DayPopupChoice(kind: .logMeal, label: "Log a meal", symbol: "fork.knife")
+                DayPopupChoice(kind: .logMeal, label: "Log a meal", symbol: "fork.knife"),
+                DayPopupChoice(kind: .otherWorkout, label: "Switch workout", symbol: "arrow.left.arrow.right")
             ]
         }
         choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))

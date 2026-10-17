@@ -117,6 +117,8 @@ enum MorpheTheme {
     /// thumbnails): 16pt clamps to a circle on a 28pt frame — 8 keeps the
     /// squircle (post-revamp audit P1-2).
     static let radiusSmall: CGFloat = 8
+    /// The CTA buttons' corner (Lucas 2026-10-17: less egg, more rectangle).
+    static let buttonRadius: CGFloat = 14
 
     /// Chip/badge radius — the deliberate second, tighter knob the small
     /// elements already used as a literal `2` in a dozen places.
@@ -997,7 +999,8 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
             // Tinted glass bubble (Lucas 2026-10-17).
-            .morpheGlass(Capsule(style: .continuous), tint: accent.opacity(configuration.isPressed ? 0.7 : 0.92))
+            // Squarer corners (Lucas 2026-10-17): a rounded rectangle, not a pill.
+            .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.buttonRadius, style: .continuous), tint: accent.opacity(configuration.isPressed ? 0.7 : 0.92))
             // The finger expects give (feedback audit 2026-10-16, F1):
             // Apple's own buttons and both social apps scale on press.
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
@@ -1020,7 +1023,7 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
             // Clear glass bubble (Lucas 2026-10-17).
-            .morpheGlass(Capsule(style: .continuous))
+            .morpheGlass(RoundedRectangle(cornerRadius: MorpheTheme.buttonRadius, style: .continuous))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }

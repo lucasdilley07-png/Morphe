@@ -1265,3 +1265,8 @@ Network is deliberately left alone.
   (`PageSwipeRecognizer`); `inTabPageSwipe` is a pass-through and the
   `pageSwipeExempt` frames post up to the shell. The pan never cancels the
   touch beneath it, so a swipe or scroll cannot fire a button.
+- Welcome pop-up standard order (Lucas 2026-10-17): Train <workout> · Log
+  a meal · Switch workout · Other…, stacked bottom-up. CTA buttons
+  (primary, secondary, pop-up choices) are rounded rectangles
+  (`MorpheTheme.buttonRadius = 14`) instead of pills; chips, pills and the
+  composer stay capsules.
