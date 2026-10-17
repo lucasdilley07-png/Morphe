@@ -679,7 +679,13 @@ private struct QuizCallingCard: View {
 private struct QuizSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let quiz: MiniQuiz
+    /// Game feel (feedback audit 2026-10-16, F2): a miss shakes the card,
+    /// a hit pops it, and the XP counts up.
+    @State private var shake: CGFloat = 0
+    @State private var pop = false
+    @State private var shownXP = 0
 
     var body: some View {
         let answeredIndex = store.quizSelections[quiz.id]
@@ -739,8 +745,11 @@ private struct QuizSheet: View {
                 }
 
                 if isComplete || answeredIndex != nil {
-                    Text("+\(quiz.rewardXP) XP\(isComplete || answeredIndex == quiz.correctIndex ? " earned" : " next time")")
+                    let earned = isComplete || answeredIndex == quiz.correctIndex
+                    Text("+\(earned ? shownXP : quiz.rewardXP) XP\(earned ? " earned" : " next time")")
                         .font(.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText(value: Double(shownXP)))
                         .foregroundStyle(MorpheTheme.accentAlt)
                 }
 
@@ -750,6 +759,42 @@ private struct QuizSheet: View {
                     .padding(.top, 4)
             }
             .padding(24)
+            .scaleEffect(pop ? 1.04 : 1)
+            .offset(x: shake)
+        }
+        .onAppear { if isComplete { shownXP = quiz.rewardXP } }
+        .onChange(of: answeredIndex) { _, answered in
+            guard let answered else { return }
+            if answered == quiz.correctIndex {
+                if !reduceMotion {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { pop = true }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(220))
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { pop = false }
+                    }
+                }
+                countUpXP()
+            } else if !reduceMotion {
+                // Three cycles, 300 ms, horizontal — the Miss tier.
+                Task { @MainActor in
+                    for x in [-10.0, 10, -7, 7, -3, 0] {
+                        withAnimation(.linear(duration: 0.05)) { shake = x }
+                        try? await Task.sleep(for: .milliseconds(50))
+                    }
+                }
+            }
+        }
+    }
+
+    private func countUpXP() {
+        shownXP = 0
+        Task { @MainActor in
+            let steps = max(quiz.rewardXP / 5, 1)
+            for value in stride(from: 0, through: quiz.rewardXP, by: steps) {
+                withAnimation(.easeOut(duration: 0.08)) { shownXP = value }
+                try? await Task.sleep(for: .milliseconds(45))
+            }
+            shownXP = quiz.rewardXP
         }
     }
 

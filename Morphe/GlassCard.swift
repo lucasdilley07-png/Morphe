@@ -3220,3 +3220,132 @@ struct BeatSequence<Content: View>: View {
             }
     }
 }
+
+/// The finish sequence (feedback audit 2026-10-16, F2): the publish moment,
+/// played as beats with hit-stops between them — summary rises (0 ms),
+/// the streak lands (+500), PRs stamp in one by one (+500 each), then it
+/// settles and the record stamp (if any) takes the stage. HUD language:
+/// ink, mono, hairlines; no confetti. Tap anywhere to skip ahead.
+struct FinishSequenceOverlay: View {
+    let moment: FinishSequenceMoment
+    let onDismiss: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// 0 = nothing, 1 = summary, 2 = streak, 3+ = PR rows.
+    @State private var beat = 0
+    @State private var runner: Task<Void, Never>?
+
+    private var totalBeats: Int { 2 + moment.prNames.count }
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.ink.opacity(0.82).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 18) {
+                Text(moment.shortDay ? "SHORT DAY LOGGED" : "SESSION LOGGED")
+                    .font(MorpheTheme.microLabel(11)).tracking(2.2)
+                    .foregroundStyle(MorpheTheme.accentText)
+                Text(moment.workoutName)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(moment.statsLine)
+                    .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if beat >= 2 {
+                    HStack(spacing: 10) {
+                        Image(systemName: "flame.fill")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .symbolEffect(.bounce, value: beat)
+                        Text("\(moment.streakDays)")
+                            .font(.title3.weight(.bold)).monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .contentTransition(.numericText(value: Double(moment.streakDays)))
+                        Text(moment.streakDays == 1 ? "DAY STREAK" : "DAY STREAK")
+                            .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                }
+
+                ForEach(Array(moment.prNames.enumerated()), id: \.offset) { index, name in
+                    if beat >= 3 + index {
+                        HStack(spacing: 10) {
+                            Image(systemName: "trophy.fill")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                            Text("NEW PR · \(name.uppercased())")
+                                .font(MorpheTheme.microLabel(11)).tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
+                        .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
+                    }
+                }
+
+                Button("Continue", action: finish)
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .padding(.top, 6)
+                    .opacity(beat >= totalBeats ? 1 : 0.35)
+            }
+            .padding(24)
+            .frame(maxWidth: 420)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.ink.opacity(0.98))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
+            )
+            .padding(.horizontal, 20)
+            .scaleEffect(beat == 0 && !reduceMotion ? 0.94 : 1)
+            .opacity(beat == 0 ? 0 : 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { if beat < totalBeats { skipToEnd() } }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.38, dampingFraction: 0.78), value: beat)
+        .onAppear(perform: run)
+        .onDisappear { runner?.cancel() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(moment.workoutName) logged. \(moment.statsLine). \(moment.streakDays) day streak."
+                            + (moment.prNames.isEmpty ? "" : " New records: \(moment.prNames.joined(separator: ", "))."))
+    }
+
+    private func run() {
+        runner = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            beat = 1
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            beat = 2
+            Haptics.impact(.medium)
+            for _ in moment.prNames {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { return }
+                beat += 1
+                // The stamp that follows owns the PR chord; here the
+                // row lands with a heavy strike only.
+                Haptics.impact(.heavy)
+            }
+            // Settle, then hand off (the stamp or Today's done card).
+            try? await Task.sleep(for: .seconds(moment.prNames.isEmpty ? 2.2 : 2.8))
+            guard !Task.isCancelled else { return }
+            onDismiss()
+        }
+    }
+
+    private func skipToEnd() {
+        runner?.cancel()
+        beat = totalBeats
+        runner = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            onDismiss()
+        }
+    }
+
+    private func finish() {
+        runner?.cancel()
+        onDismiss()
+    }
+}

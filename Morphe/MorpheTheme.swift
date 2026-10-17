@@ -757,6 +757,10 @@ enum SoundEffects {
         /// two quick notes so the wake is audible eyes-free without
         /// stepping on the user's music (rebuild 2026-08).
         case wake
+        /// A miss (feedback audit 2026-10-16, F2): two falling notes, the
+        /// Duolingo "not quite" — discouraging enough to try again, never
+        /// harsh. Same instrument, same gain class as the wake.
+        case miss
     }
 
     private static var players: [Cue: AVAudioPlayer] = [:]
@@ -840,6 +844,12 @@ enum SoundEffects {
             notes = [
                 (783.99, 0.000, 0.28, 9.0, 0.55),   // G5
                 (1046.50, 0.090, 0.34, 9.0, 0.50)   // C6
+            ]
+        case .miss:
+            // E5 falling to B4 — the chord's own notes, walked down.
+            notes = [
+                (659.26, 0.000, 0.34, 7.5, 0.60),   // E5
+                (493.88, 0.130, 0.48, 6.0, 0.55)    // B4
             ]
         }
 

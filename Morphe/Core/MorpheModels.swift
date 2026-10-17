@@ -2585,6 +2585,20 @@ struct Appointment: Identifiable, Codable, Hashable {
     var endDate: Date { date.addingTimeInterval(TimeInterval(durationMinutes) * 60) }
 }
 
+/// The finish sequence (feedback audit 2026-10-16, F2): the publish
+/// moment after a session saves — summary rises, the streak lands, PRs
+/// stamp in one by one. One sequence, not a banner.
+struct FinishSequenceMoment: Identifiable, Hashable {
+    var id = UUID()
+    var workoutName: String
+    /// "2 of 5 exercises · 3 sets · 12 min"
+    var statsLine: String
+    var shortDay: Bool
+    var streakDays: Int
+    /// Real records only (a first lift is a baseline).
+    var prNames: [String]
+}
+
 struct CelebrationMoment: Identifiable, Hashable {
     var id = UUID()
     var title: String

@@ -138,6 +138,8 @@ final class MorpheAppStore {
     /// The full-screen stamp — only PRs and finished programs land here;
     /// everything else stays on the small `celebration` banner.
     var recordStamp: RecordStampMoment?
+    /// The finish sequence overlay; the record stamp waits behind it.
+    var finishSequence: FinishSequenceMoment?
 
     var isShowingLaunchSequence = true
     var hasCompletedOnboarding = false
@@ -9861,6 +9863,25 @@ final class MorpheAppStore {
         // NO tab yank (audit E5): the user tapped Log in Train and stays
         // there — the celebration + Today's done-card carry the moment,
         // and Progress is one tab away when they want the charts.
+        // The finish sequence (feedback audit 2026-10-16, F2): the stamp
+        // and the banner still fire as before; the sequence plays first
+        // and the stamp shows when it's dismissed.
+        if let data = latestSessionShareCardData {
+            let planned = currentWorkout.exercises.count
+            let word = WorkUnit.word(forLogged: currentAthleteWorkoutLogs.first?.exercises ?? [])
+            let parts = [
+                "\(data.exerciseCount) of \(max(planned, data.exerciseCount)) exercise\(max(planned, data.exerciseCount) == 1 ? "" : "s")",
+                "\(data.setCount) \(data.setCount == 1 ? String(word.dropLast()) : word)",
+                data.minutes > 0 ? "\(data.minutes) min" : nil
+            ].compactMap { $0 }
+            finishSequence = FinishSequenceMoment(
+                workoutName: data.workoutName,
+                statsLine: parts.joined(separator: " · "),
+                shortDay: planned > data.exerciseCount,
+                streakDays: currentWorkoutStreak(from: currentAthleteWorkoutLogs),
+                prNames: newPRs.filter { $0.previous > 0 }.map(\.name)
+            )
+        }
         track("workout_logged")
         if isActivation {
             track("activation_first_log")
@@ -10785,11 +10806,17 @@ final class MorpheAppStore {
             if !completedQuizIDs.contains(quiz.id) {
                 completedQuizIDs.insert(quiz.id)
                 updateXP(for: quiz.rewardXP, add: true)
+                // Complete tier (F2): heard and felt together.
                 SoundEffects.play(.star)
+                Haptics.success()
                 showCelebration(title: "Quiz complete", detail: "+\(quiz.rewardXP) XP", symbol: "brain.head.profile")
                 persistLocalProfile()
             }
         } else {
+            // Miss tier (F2): the falling tone, the error buzz, and the
+            // sheet's shake — the Duolingo "not quite".
+            SoundEffects.play(.miss)
+            Haptics.error()
             showToast("Good try — the explanation below has the answer.")
         }
     }
@@ -20797,6 +20824,10 @@ final class MorpheAppStore {
     private var pendingCelebration: (title: String, detail: String, symbol: String)?
 
     private var celebrationClearTask: Task<Void, Never>?
+
+    func dismissFinishSequence() {
+        finishSequence = nil
+    }
 
     private func showCelebration(title: String, detail: String, symbol: String) {
         if showHelloBeat || showWelcomeExperience {

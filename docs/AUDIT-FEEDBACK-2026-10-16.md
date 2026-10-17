@@ -141,7 +141,7 @@ TikTok rule at once.
   `UISelectionFeedbackGenerator` kept alive per screen with `prepare()`
   called when the console appears and after each use.
 
-### Wave F2 — the game surfaces (one day)
+### Wave F2 — the game surfaces (one day) — ✔ shipped 2026-10-16
 - **Quiz**: correct → card scales 1.04 + `star` + `success`; wrong →
   shake + a two-note descending tone (the first new sound in the app;
   synthesized like the others) + `error`. XP line counts up with

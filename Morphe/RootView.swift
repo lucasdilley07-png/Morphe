@@ -521,7 +521,10 @@ struct RootView: View {
         // attached LAST so it covers everything, including the floating AI
         // button. Dismissed only by the user.
         .overlay {
-            if let stamp = store.recordStamp {
+            if let sequence = store.finishSequence {
+                FinishSequenceOverlay(moment: sequence) { store.dismissFinishSequence() }
+                    .transition(.opacity)
+            } else if let stamp = store.recordStamp {
                 RecordStampOverlay(
                     moment: stamp,
                     caption: store.shareCardCaption,

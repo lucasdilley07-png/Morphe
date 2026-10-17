@@ -698,3 +698,23 @@ migration, selection-haptic pruning, button press scale. Nothing changed.
   and re-prepares after each hit; `Haptics.prepare()` fires when the
   console appears. Haptics can't be felt in the simulator — verify the
   timing on the phone.
+
+## Feedback wave F2 (2026-10-16)
+
+- **Quiz feel**: correct → the sheet pops to 1.04 and back, `star` + success,
+  the XP line counts up (`contentTransition(.numericText)`); wrong → a
+  300 ms three-cycle horizontal shake, the new `miss` cue (E5 → B4, the
+  chord's own notes walked down) + the error buzz. Reduce Motion: no
+  travel, the cues still fire.
+- **Streak increment**: the Today "days shown up" row bounces its icon
+  and fires a medium impact when the number changes; 7 / 30 / 100 / 365
+  add `star` + success. The training-streak flame on Today bounces on a
+  change too.
+- **Finish sequence** (`FinishSequenceOverlay` in GlassCard.swift, store
+  `finishSequence`): after a session saves — SESSION LOGGED / SHORT DAY
+  LOGGED, the workout name, the stats line rise (0 ms) → the streak lands
+  with a medium tap (+500) → each real PR stamps in with a heavy strike
+  (+500 each) → settles 2.2–2.8 s → dismisses. Tap anywhere skips to the
+  end; Continue dismisses. The record stamp (PR / program) waits behind
+  it and takes the stage when it's dismissed, so the PR chord plays once.
+  The "In the books" banner still fires underneath (tests assert it).

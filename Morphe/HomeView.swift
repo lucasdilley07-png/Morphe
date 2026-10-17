@@ -219,6 +219,7 @@ struct HomeView: View {
                             Image(systemName: "flame.fill")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(MorpheTheme.accentText)
+                                .symbolEffect(.bounce, value: safe.days)
                             Text("\(safe.days)-day streak · safe until \(safe.deadline.formatted(.dateTime.weekday(.abbreviated)))")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -2351,6 +2352,12 @@ private struct DailyStreakRow: View {
                 .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
         )
         .animation(.easeOut(duration: 0.2), value: days)
+        // The increment is felt (F2): a medium tap when the number moves
+        // on screen; a 7 / 30 / 100 lands the Complete tier.
+        .onChange(of: days) { _, now in
+            Haptics.impact(.medium)
+            if [7, 30, 100, 365].contains(now) { SoundEffects.play(.star); Haptics.success() }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel((days == 1
             ? "Shown up: day one. Open Morphe tomorrow to build it."
@@ -2365,6 +2372,7 @@ private struct DailyStreakRow: View {
             Image(systemName: "calendar.badge.checkmark")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(MorpheTheme.accentText)
+                .symbolEffect(.bounce, value: days)
                 .accessibilityHidden(true)
             Text("\(days)")
                 .font(.title3.weight(.bold))
