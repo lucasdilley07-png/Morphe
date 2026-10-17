@@ -179,8 +179,12 @@ final class MorpheAppStore {
     var threadsFetchState: FetchState = .idle
     // A tab named "Learn" opens to learning, not to a scoreboard.
     /// Learn opens on Nutrition, the middle chip (Lucas 2026-10-17).
-    var selectedHubFeature: ClientHubFeature? = .nutrition
-    var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
+    var selectedHubFeature: ClientHubFeature? = .nutrition {
+        didSet { if selectedHubFeature != oldValue { followEditingSection() } }
+    }
+    var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact {
+        didSet { if selectedCommunitySection != oldValue { followEditingSection() } }
+    }
     var selectedDiscoverSection: DiscoverSection = .workouts {
         didSet { if selectedDiscoverSection != oldValue { noteEngagement("Discover tab: \(selectedDiscoverSection.rawValue)") } }
     }
@@ -574,9 +578,28 @@ final class MorpheAppStore {
         case .today: return .today
         case .train: return .train
         case .discover: return selectedDiscoverSection == .feed ? .explore : .discover
-        case .more: return .learn
-        case .community, .hub: return nil
+        case .more:
+            switch selectedHubFeature {
+            case .nutrition: return .nutrition
+            case .library: return .library
+            default: return .learn
+            }
+        case .community:
+            switch selectedCommunitySection {
+            case .board: return .board
+            case .calendar: return .calendar
+            case .contact: return .chats
+            case .forYou: return nil
+            }
+        case .hub: return nil
         }
+    }
+
+    /// A section switch mid-edit (Board → Chats, Nutrition → Library)
+    /// moves the mode with it (Lucas 2026-10-17).
+    func followEditingSection() {
+        guard editingPage != nil, let page = editablePage(for: selectedClientTab) else { return }
+        editingPage = page
     }
 
     /// Discover's two sections edit separately (Fitness / Explore): a
@@ -658,6 +681,47 @@ final class MorpheAppStore {
         if let hidden { styleProfile.learnHiddenCards = hidden }
         styleProfile.updatedAt = .now
         persistLocalProfile()
+    }
+
+    // MARK: Generic page layouts (Lucas 2026-10-17)
+
+    func pageLayout<C: LayoutCard>(_ type: C.Type, page: EditablePage) -> [C] {
+        C.resolvedOrder(from: styleProfile.sectionLayouts[page.rawValue]?.order ?? [])
+    }
+    func visiblePageCards<C: LayoutCard>(_ type: C.Type, page: EditablePage) -> [C] {
+        let hidden = styleProfile.sectionLayouts[page.rawValue]?.hidden ?? []
+        return pageLayout(type, page: page).filter { !hidden.contains($0.rawValue) }
+    }
+    func hiddenPageCards<C: LayoutCard>(_ type: C.Type, page: EditablePage) -> [C] {
+        let hidden = styleProfile.sectionLayouts[page.rawValue]?.hidden ?? []
+        return pageLayout(type, page: page).filter { hidden.contains($0.rawValue) }
+    }
+    func setPageLayout(_ page: EditablePage, order: [String]? = nil, hidden: [String]? = nil) {
+        var record = styleProfile.sectionLayouts[page.rawValue] ?? PageLayoutRecord()
+        if let order { record.order = order }
+        if let hidden { record.hidden = hidden }
+        styleProfile.sectionLayouts[page.rawValue] = record
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+    /// The visible order moved; hidden cards keep their place after it.
+    func movePageCards<C: LayoutCard>(_ visible: [C], page: EditablePage) {
+        let rest = pageLayout(C.self, page: page).filter { !visible.contains($0) }
+        setPageLayout(page, order: (visible + rest).map(\.rawValue))
+    }
+    /// False when the card is the last one showing (min one per page).
+    @discardableResult
+    func hidePageCard<C: LayoutCard>(_ card: C, page: EditablePage) -> Bool {
+        guard visiblePageCards(C.self, page: page).count > 1 else { return false }
+        var hidden = styleProfile.sectionLayouts[page.rawValue]?.hidden ?? []
+        if !hidden.contains(card.rawValue) { hidden.append(card.rawValue) }
+        setPageLayout(page, hidden: hidden)
+        return true
+    }
+    func showPageCard<C: LayoutCard>(_ card: C, page: EditablePage) {
+        var hidden = styleProfile.sectionLayouts[page.rawValue]?.hidden ?? []
+        hidden.removeAll { $0 == card.rawValue }
+        setPageLayout(page, hidden: hidden)
     }
 
     /// Explore's sections (Lucas 2026-10-16).
@@ -10526,6 +10590,23 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: - Discover search + filters (Lucas 2026-10-17)
+
+    /// The Fitness catalog's search and filters live here so the bar can
+    /// render twice — in the page, and pinned while the user scrolls up.
+    struct DiscoverFilters: Equatable {
+        var query = ""
+        var goal: String?
+        var level: DemoDifficulty?
+        var duration: String?
+        var equipment: String?
+        var activeCount: Int { [goal != nil, duration != nil, equipment != nil, level != nil].filter { $0 }.count }
+    }
+    var discoverFilters = DiscoverFilters()
+    /// Explore's search and chip, same reason.
+    var exploreQuery = ""
+    var exploreFilter = "All"
+
     // MARK: - Chat mode on the Hey Morphe stage (Lucas 2026-10-16)
 
     /// True while the stage's text bar has been opened: the orb at the
@@ -10582,6 +10663,16 @@ final class MorpheAppStore {
         else { return nil }
         return last.text == "\u{2026}" ? "Thinking…" : last.text
     }
+
+    // MARK: - The floating AI button parks (Lucas 2026-10-17)
+
+    static let aiButtonParkedKey = "morphe.aiButton.parked"
+    /// Swiped off the right edge; a small accent chevron marks its place.
+    var aiButtonParked: Bool = UserDefaults.standard.bool(forKey: MorpheAppStore.aiButtonParkedKey) {
+        didSet { UserDefaults.standard.set(aiButtonParked, forKey: Self.aiButtonParkedKey) }
+    }
+    func parkAIButton() { aiButtonParked = true; Haptics.impact(.light) }
+    func unparkAIButton() { aiButtonParked = false; Haptics.impact(.light) }
 
     // MARK: - Chats have the stage (Lucas 2026-10-16)
 
@@ -15785,9 +15876,14 @@ final class MorpheAppStore {
         activationWelcomePending = false
         switch kind {
         case .tour:
-            // The full stop-by-stop tour (the replay form).
+            // The full stop-by-stop tour (the replay form). It presents
+            // once the pop-up's cover has left (first-run audit
+            // 2026-10-17: raised together, the sheet never appeared).
             welcomeIsReplay = true
-            showWelcomeExperience = true
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(650))
+                self?.showWelcomeExperience = true
+            }
             Haptics.selection()
             return
         case .editProfile:

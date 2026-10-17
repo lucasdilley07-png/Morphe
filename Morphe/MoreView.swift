@@ -82,27 +82,18 @@ struct MoreView: View {
     /// Title + chip row, repeated at the top of every page's scroll.
     private var learnHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitleView(
-                // The kicker follows the chip (late audit 2026-10-16, #7):
-                // the Nutrition door lands under NUTRITION, not LEARN.
-                title: activeFeature == .nutrition ? "Nutrition" : (activeFeature == .library ? "Library" : "Learn"),
-                subtitle: "Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.",
-                titleSize: 16
+            // LESSONS · NUTRITION · LIBRARY in the tabs grammar (Lucas
+            // 2026-10-17) — the chips are gone; the tabs ARE the header.
+            MonoSectionTabs(
+                items: Self.tabs.map { (id: $0, title: chipTitle(for: $0)) },
+                selection: Binding(get: { activeFeature }, set: { store.selectedHubFeature = $0 })
             )
-
-            // Centered chip row (Lucas 2026-08-16): three chips balance on
-            // the page's center line, matching the app-wide symmetry.
-            HStack(spacing: 20) {
-                ForEach(Self.tabs) { feature in
-                    Button(chipTitle(for: feature)) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            store.selectedHubFeature = feature
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
-                }
-            }
-            .frame(maxWidth: .infinity)
+            .padding(.top, -8)
+            Text("Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
         }
     }
 
@@ -130,40 +121,24 @@ struct MoreView: View {
 
 
     private var libraryPanel: some View {
-        Group {
-            // (SportModeSelector removed from here: browsing the library must
-            // not rewrite the user's sports, goal, and persisted profile as a
-            // side effect — changing sport lives on the plan surfaces.)
-            // Doors, not walls (Lucas 2026-10-10): the exercise library
-            // and every saved thing open as their own slide-up page.
-            LearnLibraryRow(systemImage: "figure.strengthtraining.traditional", title: "Exercise Library",
-                            detail: "\(store.allExercises.count) movements by muscle group — form help and safer alternatives inside.") {
-                openedLibraryPage = .exercises
+        VStack(alignment: .leading, spacing: 16) {
+            // Exercise Library · Saved, in the user's order (Lucas
+            // 2026-10-17), hideable, at least one kept.
+            SectionEditorList(
+                editing: store.editingPage == .library,
+                cards: store.visiblePageCards(LibraryCardID.self, page: .library),
+                hidden: store.hiddenPageCards(LibraryCardID.self, page: .library),
+                title: \.title,
+                onMove: { store.movePageCards($0, page: .library) },
+                onHide: { store.hidePageCard($0, page: .library) },
+                onShow: { store.showPageCard($0, page: .library) }
+            ) { card in
+                librarySection(card)
             }
-
-            VStack(alignment: .leading, spacing: 10) {
-                CodeLabel(text: "Saved", color: MorpheTheme.accentText)
-                LearnLibraryRow(systemImage: "bookmark", title: "Saved posts",
-                                detail: store.savedPostIds.isEmpty ? "Nothing saved yet — bookmark a post from its menu." : "\(store.savedPostIds.count) saved") {
-                    openedLibraryPage = .savedPosts
-                }
-                LearnLibraryRow(systemImage: "dumbbell", title: "Saved workouts",
-                                detail: store.savedWorkouts.isEmpty ? "Nothing saved yet — save one from Discover or build one in Train." : "\(store.savedWorkouts.count) saved") {
-                    openedLibraryPage = .savedWorkouts
-                }
-                LearnLibraryRow(systemImage: "figure.walk", title: "Saved exercises",
-                                detail: store.savedExerciseIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any movement." : "\(store.savedExerciseIDs.count) saved") {
-                    openedLibraryPage = .savedExercises
-                }
-                LearnLibraryRow(systemImage: "fork.knife", title: "Saved diet plans",
-                                detail: store.savedDietPlanModes.isEmpty ? "Nothing saved yet — save a plan from the chart under Nutrition." : "\(store.savedDietPlanModes.count) saved") {
-                    openedLibraryPage = .savedDietPlans
-                }
-                LearnLibraryRow(systemImage: "text.book.closed", title: "Saved lessons",
-                                detail: store.savedLessonIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any lesson." : "\(store.savedLessonIDs.count) saved") {
-                    openedLibraryPage = .savedLessons
-                }
+            if store.editingPage != .library {
+                EditLayoutButton(page: "Library") { store.beginEditing(.library) }
             }
+            Color.clear.frame(height: 0)
             .sheet(item: $openedLibraryPage, onDismiss: {
                 // A sheet can't present the root exercise sheet while it's
                 // up — the tapped movement opens once this page is gone.
@@ -218,6 +193,41 @@ struct MoreView: View {
         }
     }
 
+    @ViewBuilder
+    private func librarySection(_ card: LibraryCardID) -> some View {
+        switch card {
+        case .exercises:
+            LearnLibraryRow(systemImage: "figure.strengthtraining.traditional", title: "Exercise Library",
+                            detail: "\(store.allExercises.count) movements by muscle group — form help and safer alternatives inside.") {
+                openedLibraryPage = .exercises
+            }
+        case .saved:
+            VStack(alignment: .leading, spacing: 10) {
+                CodeLabel(text: "Saved", color: MorpheTheme.accentText)
+                LearnLibraryRow(systemImage: "bookmark", title: "Saved posts",
+                                detail: store.savedPostIds.isEmpty ? "Nothing saved yet — bookmark a post from its menu." : "\(store.savedPostIds.count) saved") {
+                    openedLibraryPage = .savedPosts
+                }
+                LearnLibraryRow(systemImage: "dumbbell", title: "Saved workouts",
+                                detail: store.savedWorkouts.isEmpty ? "Nothing saved yet — save one from Discover or build one in Train." : "\(store.savedWorkouts.count) saved") {
+                    openedLibraryPage = .savedWorkouts
+                }
+                LearnLibraryRow(systemImage: "figure.walk", title: "Saved exercises",
+                                detail: store.savedExerciseIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any movement." : "\(store.savedExerciseIDs.count) saved") {
+                    openedLibraryPage = .savedExercises
+                }
+                LearnLibraryRow(systemImage: "fork.knife", title: "Saved diet plans",
+                                detail: store.savedDietPlanModes.isEmpty ? "Nothing saved yet — save a plan from the chart under Nutrition." : "\(store.savedDietPlanModes.count) saved") {
+                    openedLibraryPage = .savedDietPlans
+                }
+                LearnLibraryRow(systemImage: "text.book.closed", title: "Saved lessons",
+                                detail: store.savedLessonIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any lesson." : "\(store.savedLessonIDs.count) saved") {
+                    openedLibraryPage = .savedLessons
+                }
+            }
+        }
+    }
+
     // MARK: - Nutrition
 
     /// One goal-flavored guidance line — the numbers themselves come from
@@ -234,64 +244,86 @@ struct MoreView: View {
     }
 
     private var nutritionPanel: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
+            // Check · Fuel · Chart · Basics · Morphe's read, in the user's
+            // order (Lucas 2026-10-17), hideable, at least one kept.
+            SectionEditorList(
+                editing: store.editingPage == .nutrition,
+                cards: store.visiblePageCards(NutritionCardID.self, page: .nutrition),
+                hidden: store.hiddenPageCards(NutritionCardID.self, page: .nutrition),
+                title: \.title,
+                onMove: { store.movePageCards($0, page: .nutrition) },
+                onHide: { store.hidePageCard($0, page: .nutrition) },
+                onShow: { store.showPageCard($0, page: .nutrition) }
+            ) { card in
+                nutritionSection(card)
+            }
+            if store.editingPage != .nutrition {
+                EditLayoutButton(page: "Nutrition") { store.beginEditing(.nutrition) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func nutritionSection(_ card: NutritionCardID) -> some View {
+        switch card {
+        case .check:
             FoodCheckCard()
-
+        case .fuel:
             FuelLogCard()
-
-            // Drop-downs, chart first (Lucas 2026-10-10).
+        case .chart:
             LearnDisclosure(title: "The chart", subtitle: "Calories and the carb · protein · fat split for your goal, from your logged weight.", isExpanded: $showChart) {
                 NutritionChartCard()
             }
+        case .basics:
+                LearnDisclosure(title: "Nutrition basics", subtitle: "Calories, protein, water — the three numbers to hit before anything fancy.", isExpanded: $showBasics) {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Nutrition Basics")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Hit the basics before trying to be perfect.")
+                            .foregroundStyle(MorpheTheme.textSecondary)
 
-            LearnDisclosure(title: "Nutrition basics", subtitle: "Calories, protein, water — the three numbers to hit before anything fancy.", isExpanded: $showBasics) {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Nutrition Basics")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Hit the basics before trying to be perfect.")
-                        .foregroundStyle(MorpheTheme.textSecondary)
-
-                    HStack(spacing: 8) {
-                        MetricPill(label: "Calories", value: store.nutritionTargets.calories.formatted())
-                        MetricPill(label: "Protein", value: "\(store.nutritionTargets.proteinGrams)g")
-                        MetricPill(label: "Water", value: "\(store.nutritionTargets.waterCups) cups")
-                    }
-
-                    Text(nutritionGuidanceLine)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    // The honest label for where the numbers come from.
-                    Text(store.nutritionTargets.sourceNote)
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if let tip = store.mealPrepTip {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "fork.knife")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.accentText)
-                            Text(tip)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 8) {
+                            MetricPill(label: "Calories", value: store.nutritionTargets.calories.formatted())
+                            MetricPill(label: "Protein", value: "\(store.nutritionTargets.proteinGrams)g")
+                            MetricPill(label: "Water", value: "\(store.nutritionTargets.waterCups) cups")
                         }
-                        .padding(10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(MorpheTheme.panelStrong)
-                        )
+
+                        Text(nutritionGuidanceLine)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        // The honest label for where the numbers come from.
+                        Text(store.nutritionTargets.sourceNote)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if let tip = store.mealPrepTip {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "fork.knife")
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                Text(tip)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .fill(MorpheTheme.panelStrong)
+                            )
+                        }
                     }
                 }
-            }
 
-            }
-
+                }
+        case .insight:
             AIInsightCard(insight: store.nutritionInsight)
         }
     }
@@ -406,7 +438,7 @@ struct MoreView: View {
                 learnCard(card)
             }
             if store.editingPage != .learn {
-                EditLayoutButton(page: "Learn") { store.beginEditing(.learn) }
+                EditLayoutButton(page: "Lessons") { store.beginEditing(.learn) }
             }
         }
     }

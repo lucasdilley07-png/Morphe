@@ -9752,9 +9752,9 @@ final class MorpheRemembersTests: XCTestCase {
         store.followEditing(to: .train)
         XCTAssertEqual(store.editingPage, .train)
         store.followEditing(to: .community)
-        XCTAssertEqual(store.editingPage, .train, "a page with no layout keeps the mode alive")
+        XCTAssertEqual(store.editingPage, .chats, "Network edits its section (Lucas 2026-10-17)")
         store.followEditing(to: .more)
-        XCTAssertEqual(store.editingPage, .learn)
+        XCTAssertEqual(store.editingPage, .nutrition, "Learn edits its section (Nutrition is the default)")
         store.endEditing()
         store.followEditing(to: .today)
         XCTAssertNil(store.editingPage, "Done ends it; a later switch does not restart it")
@@ -9832,7 +9832,7 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertEqual(store.dayPopupChoices(evening: true).map(\.label), ["Take the tour", "Edit my profile", "Train", "Other…"])
         store.answerDayPopup(.tour)
         XCTAssertFalse(store.activationWelcomePending, "answered once, gone for good")
-        XCTAssertTrue(store.showWelcomeExperience && store.welcomeIsReplay, "the tour is the full replay form")
+        XCTAssertTrue(store.welcomeIsReplay, "the tour is the full replay form (it presents after the cover leaves)")
         store.dismissWelcomeExperience()
         XCTAssertTrue(store.dayPopupChoices(evening: false).first?.label.hasPrefix("Train ") == true, "the standard state after that")
         store.clearActivationWelcome()
@@ -9874,6 +9874,48 @@ final class MorpheRemembersTests: XCTestCase {
         store.popTabToRoot(ClientTab.community.rawValue)
         XCTAssertNotEqual(store.tabResetKey(ClientTab.community.rawValue), before)
         XCTAssertEqual(store.selectedCommunitySection, .board, "still on Board, just at the top")
+    }
+
+    /// Discover's search and filters live in the store (Lucas 2026-10-17)
+    /// so the pinned bar and the page share one state.
+    func testDiscoverFiltersAreShared() {
+        let store = freshStore()
+        XCTAssertEqual(store.discoverFilters.activeCount, 0)
+        store.discoverFilters.level = .beginner
+        store.discoverFilters.query = "squat"
+        XCTAssertEqual(store.discoverFilters.activeCount, 1, "the query is not a filter")
+        store.exploreFilter = ExploreFilter.blogs.rawValue
+        XCTAssertEqual(ExploreFilter(rawValue: store.exploreFilter)?.section, .blogs)
+    }
+
+    /// Board, Chats, Calendar, Nutrition and Library edit through one
+    /// page-layout store (Lucas 2026-10-17): reorder, hide, min one kept,
+    /// and the Discover-style page mapping follows the section.
+    func testPageLayoutsReorderHideAndKeepOne() {
+        let store = freshStore()
+        XCTAssertEqual(store.visiblePageCards(NutritionCardID.self, page: .nutrition), NutritionCardID.defaultOrder)
+        store.movePageCards([NutritionCardID.fuel, .check, .chart, .basics, .insight], page: .nutrition)
+        XCTAssertEqual(store.visiblePageCards(NutritionCardID.self, page: .nutrition).first, .fuel)
+        XCTAssertTrue(store.hidePageCard(NutritionCardID.insight, page: .nutrition))
+        XCTAssertEqual(store.hiddenPageCards(NutritionCardID.self, page: .nutrition), [.insight])
+        store.showPageCard(NutritionCardID.insight, page: .nutrition)
+        XCTAssertTrue(store.hiddenPageCards(NutritionCardID.self, page: .nutrition).isEmpty)
+        XCTAssertFalse(store.hidePageCard(CalendarCardID.schedule, page: .calendar), "the last box stays")
+        store.selectedClientTab = .community
+        store.selectedCommunitySection = .board
+        XCTAssertEqual(store.editablePage(for: .community), .board)
+        store.beginEditing(.board)
+        store.selectedCommunitySection = .calendar
+        XCTAssertEqual(store.editingPage, .calendar, "the mode follows the section")
+        store.endEditing()
+        store.selectedClientTab = .more
+        store.selectedHubFeature = .library
+        XCTAssertEqual(store.editablePage(for: .more), .library)
+        XCTAssertEqual(EditablePage.learn.title, "Lessons")
+        store.parkAIButton()
+        XCTAssertTrue(store.aiButtonParked)
+        store.unparkAIButton()
+        XCTAssertFalse(store.aiButtonParked)
     }
 }
 

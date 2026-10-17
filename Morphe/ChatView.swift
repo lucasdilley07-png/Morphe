@@ -231,7 +231,21 @@ struct CommunityView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 networkHeader.padding(.horizontal, -20)
-                WeeklyBoardCard()
+                // One box, editable like every page (Lucas 2026-10-17).
+                SectionEditorList(
+                    editing: store.editingPage == .board,
+                    cards: store.visiblePageCards(BoardCardID.self, page: .board),
+                    hidden: store.hiddenPageCards(BoardCardID.self, page: .board),
+                    title: \.title,
+                    onMove: { store.movePageCards($0, page: .board) },
+                    onHide: { store.hidePageCard($0, page: .board) },
+                    onShow: { store.showPageCard($0, page: .board) }
+                ) { _ in
+                    WeeklyBoardCard()
+                }
+                if store.editingPage != .board {
+                    EditLayoutButton(page: "Board") { store.beginEditing(.board) }
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 6)
@@ -248,6 +262,35 @@ struct CommunityView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 networkHeader.padding(.horizontal, -20)
+                SectionEditorList(
+                    editing: store.editingPage == .calendar,
+                    cards: store.visiblePageCards(CalendarCardID.self, page: .calendar),
+                    hidden: store.hiddenPageCards(CalendarCardID.self, page: .calendar),
+                    title: \.title,
+                    onMove: { store.movePageCards($0, page: .calendar) },
+                    onHide: { store.hidePageCard($0, page: .calendar) },
+                    onShow: { store.showPageCard($0, page: .calendar) }
+                ) { _ in
+                    scheduleSection
+                }
+                if store.editingPage != .calendar {
+                    EditLayoutButton(page: "Calendar") { store.beginEditing(.calendar) }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 120)
+        }
+        .refreshable { await store.refreshAppointments() }
+        .sheet(isPresented: $showCalendarEditor) {
+            AppointmentEditorSheet()
+                .environment(store)
+        }
+    }
+
+    /// The schedule box: header, then the list or the empty-state door.
+    private var scheduleSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("Schedule")
                         .font(.headline)
@@ -291,15 +334,6 @@ struct CommunityView: View {
                         AppointmentRowView(appointment: appointment)
                     }
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 6)
-            .padding(.bottom, 120)
-        }
-        .refreshable { await store.refreshAppointments() }
-        .sheet(isPresented: $showCalendarEditor) {
-            AppointmentEditorSheet()
-                .environment(store)
         }
     }
 
@@ -3762,6 +3796,8 @@ struct AthleteInboxView: View {
     @State private var startingChatUid: String?
     @State private var showNewConversation = false
     @State private var showMorpheThread = false
+    @State private var lastOffset: CGFloat = 0
+    @State private var pinnedSearch = false
     @FocusState private var searchFocused: Bool
 
     private var myUid: String { store.authUser?.id ?? "" }
@@ -3773,8 +3809,10 @@ struct AthleteInboxView: View {
     /// Conversations matching the query by the OTHER person's name (all of
     /// them when the query is empty).
     private var visibleThreads: [MessageThreadSummary] {
-        guard !cleanQuery.isEmpty else { return store.liveThreads }
-        return store.liveThreads.filter {
+        // Newest first (Lucas 2026-10-17); Morphe sits above them all.
+        let sorted = store.liveThreads.sorted { $0.updatedAt > $1.updatedAt }
+        guard !cleanQuery.isEmpty else { return sorted }
+        return sorted.filter {
             $0.counterpartName(for: myUid).localizedCaseInsensitiveContains(cleanQuery)
         }
     }
@@ -3837,10 +3875,94 @@ struct AthleteInboxView: View {
 
     private var threadList: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 0) {
-                if let topContent {
-                    topContent
+            VStack(spacing: 0) {
+                // People · Messages, in the user's order
+                // (Lucas 2026-10-17), each hideable, at least one kept.
+                SectionEditorList(
+                    editing: store.editingPage == .chats,
+                    cards: store.visiblePageCards(ChatsCardID.self, page: .chats),
+                    hidden: store.hiddenPageCards(ChatsCardID.self, page: .chats),
+                    title: \.title,
+                    onMove: { store.movePageCards($0, page: .chats) },
+                    onHide: { store.hidePageCard($0, page: .chats) },
+                    onShow: { store.showPageCard($0, page: .chats) }
+                ) { card in
+                    chatsSection(card)
                 }
+                .padding(.horizontal, 16)
+                if store.editingPage != .chats {
+                    EditLayoutButton(page: "Chats") { store.beginEditing(.chats) }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 12)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .coordinateSpace(name: "chatsScroll")
+        // The search row scrolls with the list; a scroll UP slides a pinned
+        // copy in at the top, a scroll DOWN takes it away, and back at the
+        // top the real row takes over (Lucas 2026-10-17, same as Discover).
+        .onPreferenceChange(ChatsScrollOffsetKey.self) { y in
+            let pastBar = y < -40
+            let movingUp = y > lastOffset + 1.5
+            let movingDown = y < lastOffset - 1.5
+            lastOffset = y
+            let next = pastBar && (movingUp || (pinnedSearch && !movingDown))
+            if next != pinnedSearch {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { pinnedSearch = next }
+            }
+        }
+        .overlay(alignment: .top) {
+            if pinnedSearch {
+                HStack(spacing: 10) {
+                    searchField
+                    Button { showNewConversation = true } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(MorpheTheme.panelStrong))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New message")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Rectangle().fill(.ultraThinMaterial)
+                        .overlay(Rectangle().fill(MorpheTheme.ink.opacity(0.6)))
+                        .ignoresSafeArea(edges: .top)
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .refreshable { await store.refreshThreads(force: true) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func chatsSection(_ card: ChatsCardID) -> some View {
+        switch card {
+        case .people:
+            if let topContent {
+                VStack(spacing: 8) {
+                    topContent
+                    GuideHint(
+                        key: "network.chats",
+                        text: "This is your Network — chats live here, the weekly board and your calendar are one tab over. Search a username to start a conversation."
+                    )
+                    .padding(.horizontal, 16)
+                }
+                .padding(.horizontal, -16)
+            } else {
+                Text("Your people land here once you connect.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        case .conversations:
+            VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     searchField
                     // Start a new conversation (Lucas 2026-10-10): the
@@ -3857,8 +3979,11 @@ struct AthleteInboxView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("New message")
                 }
-                .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                // The pinned copy reads this row's place in the scroll.
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ChatsScrollOffsetKey.self, value: geo.frame(in: .named("chatsScroll")).minY)
+                })
                 .sheet(isPresented: $showNewConversation) {
                     NewConversationSheet()
                         .environment(store)
@@ -3870,22 +3995,15 @@ struct AthleteInboxView: View {
                         .sheetToastSurface()
                 }
 
-                GuideHint(
-                    key: "network.chats",
-                    text: "This is your Network — chats live here, the weekly board and your calendar are one tab over. Search a username to start a conversation."
-                )
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-
-                // Morphe's own conversation, pinned (Lucas 2026-10-10):
-                // weekly reports, news, answers. Every account has it.
-                // Always at the top (Lucas 2026-10-16); a search still
-                // finds it by name.
+            // Morphe's own conversation, always first (Lucas 2026-10-17):
+            // weekly reports, news, answers. Every account has it; a
+            // search still finds it by name.
                 if cleanQuery.isEmpty || "morphe".localizedCaseInsensitiveContains(cleanQuery) {
                     Button {
                         showMorpheThread = true
                     } label: {
                         MorpheThreadRow(lastItem: store.morpheInbox.last, lastTurn: store.morpheConversation.last, unread: store.morpheInboxUnreadCount)
+                            .padding(.horizontal, -16)
                     }
                     .buttonStyle(.plain)
                     .sheet(isPresented: $showMorpheThread, onDismiss: { store.markMorpheInboxRead() }) {
@@ -3898,9 +4016,9 @@ struct AthleteInboxView: View {
                             .presentationCornerRadius(28)
                             .sheetToastSurface()
                     }
-                    Divider()
-                        .overlay(MorpheTheme.stroke.opacity(0.5))
-                        .padding(.leading, 72)
+                }
+                if !visibleThreads.isEmpty {
+                    Divider().overlay(MorpheTheme.stroke.opacity(0.5)).padding(.leading, 56)
                 }
 
                 ForEach(Array(visibleThreads.enumerated()), id: \.element.id) { index, thread in
@@ -3909,39 +4027,34 @@ struct AthleteInboxView: View {
                     } label: {
                         LiveThreadRow(thread: thread, viewerUid: myUid,
                                       isUnread: store.isThreadUnread(thread))
+                            .padding(.horizontal, -16)
                     }
                     .buttonStyle(.plain)
 
                     if index < visibleThreads.count - 1 {
                         Divider()
                             .overlay(MorpheTheme.stroke.opacity(0.5))
-                            .padding(.leading, 72)
+                            .padding(.leading, 56)
                     }
                 }
 
                 if cleanQuery.count >= 2 {
-                    directoryResults
+                    directoryResults.padding(.horizontal, -16)
                 } else if store.liveThreads.isEmpty,
                           store.threadsFetchState == .loading || store.threadsFetchState == .idle {
                     // Loading — never claim "no conversations" before the
                     // fetch answers (deferred-states pass 2026-09).
                     FetchPlaceholderCard(line: "Loading your chats…")
-                        .padding(.horizontal, 16)
                 } else if store.liveThreads.isEmpty, store.threadsFetchState == .failed {
                     // Failed with nothing cached — a retry, not a dead-end.
                     FetchRetryCard(message: "Your chats couldn't load — check your connection.") {
                         Task { await store.refreshThreads(force: true) }
                     }
-                    .padding(.horizontal, 16)
                 }
                 // (No "no conversations yet" card — the Morphe chat is
                 // always here, Lucas 2026-10-10.)
             }
-            .padding(.vertical, 4)
         }
-        .scrollDismissesKeyboard(.immediately)
-        .refreshable { await store.refreshThreads(force: true) }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var searchField: some View {
@@ -4381,14 +4494,11 @@ struct CreatorFeed: View {
     @State private var expandedWorkouts: Set<String> = []
     @State private var reporting: CreatorNote?
     @State private var reportingWorkout: CreatorWorkout?
-    /// Search + type filter (Lucas 2026-10-10: a LinkedIn-style stream).
-    @State private var query = ""
-    @State private var filter: Filter = .all
-
-    private enum Filter: String, CaseIterable, Identifiable {
-        case all = "All", blogs = "Blogs", workouts = "Workouts", challenges = "Challenges"
-        var id: String { rawValue }
-    }
+    /// Search + type filter (Lucas 2026-10-10: a LinkedIn-style stream),
+    /// store-backed (Lucas 2026-10-17) so the pinned bar shares them.
+    private var query: String { store.exploreQuery }
+    private var filter: Filter { ExploreFilter(rawValue: store.exploreFilter) ?? .all }
+    private typealias Filter = ExploreFilter
 
     private enum Item: Identifiable {
         case workout(CreatorWorkout)
@@ -4411,20 +4521,7 @@ struct CreatorFeed: View {
         }
     }
 
-    /// The section a chip stands for (All has none).
-    private func section(for filter: Filter) -> ExploreCardID? {
-        switch filter {
-        case .all: return nil
-        case .blogs: return .blogs
-        case .workouts: return .workouts
-        case .challenges: return .challenges
-        }
-    }
-
-    /// Chips: All plus the sections the user keeps visible.
-    private var chips: [Filter] {
-        Filter.allCases.filter { f in section(for: f).map { store.visibleExploreCards.contains($0) } ?? true }
-    }
+    private func section(for filter: Filter) -> ExploreCardID? { filter.section }
 
     /// One section's items, newest first, filtered by the search.
     private func items(in section: ExploreCardID) -> [Item] {
@@ -4519,35 +4616,9 @@ struct CreatorFeed: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Search, then the stream (Lucas 2026-10-10).
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(MorpheTheme.textMuted)
-                TextField("Search coaches, blogs, workouts…", text: $query)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                if !query.isEmpty {
-                    Button { query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(MorpheTheme.textMuted)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 46)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(chips) { f in
-                        Button(f.rawValue) { filter = f }
-                            .buttonStyle(FilterChipStyle(isSelected: filter == f))
-                    }
-                }
-            }
-            .pageSwipeExempt()
-            .onChange(of: chips) { _, now in if !now.contains(filter) { filter = .all } }
+            // Search, then the stream (Lucas 2026-10-10) — the bar is shared
+            // with the pinned copy (Lucas 2026-10-17).
+            ExploreSearchBar()
 
             if let only = section(for: filter) {
                 // One chip: that section's stream, flat.
@@ -4740,4 +4811,75 @@ struct CreatorFeed: View {
             }
         }
     }
+}
+
+
+/// Explore's chips (Lucas 2026-10-17: a file-scope type so the store and the
+/// pinned bar can name them).
+enum ExploreFilter: String, CaseIterable, Identifiable {
+    case all = "All", blogs = "Blogs", workouts = "Workouts", challenges = "Challenges"
+    var id: String { rawValue }
+    /// The section a chip stands for (All has none).
+    var section: ExploreCardID? {
+        switch self {
+        case .all: return nil
+        case .blogs: return .blogs
+        case .workouts: return .workouts
+        case .challenges: return .challenges
+        }
+    }
+}
+
+/// Explore's search field and chips, store-backed so the page and the
+/// pinned copy are one state.
+struct ExploreSearchBar: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    /// All plus the sections the user keeps visible.
+    private var chips: [ExploreFilter] {
+        ExploreFilter.allCases.filter { f in f.section.map { store.visibleExploreCards.contains($0) } ?? true }
+    }
+
+    var body: some View {
+        @Bindable var store = store
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(MorpheTheme.textMuted)
+                TextField("Search coaches, blogs, workouts…", text: $store.exploreQuery)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                if !store.exploreQuery.isEmpty {
+                    Button { store.exploreQuery = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 46)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chips) { f in
+                        Button(f.rawValue) { store.exploreFilter = f.rawValue }
+                            .buttonStyle(FilterChipStyle(isSelected: store.exploreFilter == f.rawValue))
+                    }
+                }
+            }
+            .pageSwipeExempt()
+            .onChange(of: chips) { _, now in
+                if !now.contains(where: { $0.rawValue == store.exploreFilter }) { store.exploreFilter = ExploreFilter.all.rawValue }
+            }
+        }
+    }
+}
+
+
+/// The chats list's scroll offset, read under its search row.
+struct ChatsScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

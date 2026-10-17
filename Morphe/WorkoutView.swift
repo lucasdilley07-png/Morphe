@@ -887,13 +887,17 @@ struct WorkoutView: View {
         return ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Train",
-                    subtitle: store.hasCompletedWorkoutFlow
-                        ? "Session logged. Look it over, rate it, and I'll lock it in."
-                        : "Ready when you are — start the session and I'll track every set with you.",
-                    titleSize: 16
-                )
+                // The page title in the tabs grammar (Lucas 2026-10-17):
+                // TRAIN underlined like FITNESS / EXPLORE, one line under it.
+                MonoSectionTabs(items: [(id: 0, title: "Train")], selection: .constant(0))
+                    .padding(.top, -8)
+                Text(store.hasCompletedWorkoutFlow
+                     ? "Session logged. Look it over, rate it, and I'll lock it in."
+                     : "Ready when you are — start the session and I'll track every set with you.")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
 
 
                 // The hint describes the first session; it retires the
@@ -2098,6 +2102,9 @@ struct TechniqueLibraryView: View {
 /// workout here drops straight into the live tracker on Train.
 struct DiscoverScreenView: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var lastOffset: CGFloat = 0
+    @State private var pinned = false
 
     var body: some View {
         // The stack exists for the category drill-in: a real push with
@@ -2111,6 +2118,9 @@ struct DiscoverScreenView: View {
                     // Network's.
                     DiscoverSectionTabs()
                         .padding(.top, -8)
+                        .background(GeometryReader { geo in
+                            Color.clear.preference(key: DiscoverScrollOffsetKey.self, value: geo.frame(in: .named("discoverScroll")).minY)
+                        })
 
                     Text(store.selectedDiscoverSection == .feed
                          ? "What the Creator Coaches published — under their names, every post reportable."
@@ -2140,6 +2150,41 @@ struct DiscoverScreenView: View {
                 // Train/Network/Learn and clears the floating icon row.
                 .padding(.top, MorpheTheme.Spacing.pageTopStacked)
                 .padding(.bottom, 120)
+            }
+            .coordinateSpace(name: "discoverScroll")
+            // The search bar and filters scroll away with the page; on a
+            // scroll UP they slide in pinned at the top (Lucas 2026-10-17)
+            // and leave again at the top, where the real ones sit.
+            .onPreferenceChange(DiscoverScrollOffsetKey.self) { y in
+                let pastBar = y < -170
+                let movingUp = y > lastOffset + 1.5
+                let movingDown = y < lastOffset - 1.5
+                lastOffset = y
+                let next = pastBar && (movingUp || (pinned && !movingDown))
+                if next != pinned {
+                    withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.32, dampingFraction: 0.86)) { pinned = next }
+                }
+            }
+            .overlay(alignment: .top) {
+                if pinned {
+                    Group {
+                        if store.selectedDiscoverSection == .feed {
+                            ExploreSearchBar()
+                        } else {
+                            DiscoverFilterBar(scope: store.discoverWorkouts)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 10)
+                    .background(
+                        Rectangle().fill(.ultraThinMaterial)
+                            .overlay(Rectangle().fill(MorpheTheme.ink.opacity(0.6)))
+                            .ignoresSafeArea(edges: .top)
+                    )
+                    .padding(.top, MorpheTheme.Spacing.pageTopStacked - 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .inTabPageSwipe(pages: [DiscoverSection.workouts, .feed], selection: Binding(
@@ -4505,11 +4550,28 @@ struct DiscoverCatalogSection: View {
     }
 
     @State private var selection: Selection?
-    @State private var searchQuery = ""
-    @State private var goalFilter: String?
-    @State private var levelFilter: DemoDifficulty?
-    @State private var durationFilter: String?
-    @State private var equipmentFilter: String?
+    // The search and filters live in the store (Lucas 2026-10-17): the
+    // same bar renders in the page and pinned at the top while scrolling up.
+    private var searchQuery: String {
+        get { store.discoverFilters.query }
+        nonmutating set { store.discoverFilters.query = newValue }
+    }
+    private var goalFilter: String? {
+        get { store.discoverFilters.goal }
+        nonmutating set { store.discoverFilters.goal = newValue }
+    }
+    private var levelFilter: DemoDifficulty? {
+        get { store.discoverFilters.level }
+        nonmutating set { store.discoverFilters.level = newValue }
+    }
+    private var durationFilter: String? {
+        get { store.discoverFilters.duration }
+        nonmutating set { store.discoverFilters.duration = newValue }
+    }
+    private var equipmentFilter: String? {
+        get { store.discoverFilters.equipment }
+        nonmutating set { store.discoverFilters.equipment = newValue }
+    }
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
     @State private var showTechniqueLibrary = false
@@ -4517,7 +4579,7 @@ struct DiscoverCatalogSection: View {
     /// Time filters are ranges, not exact matches — catalog sessions run
     /// odd lengths (15/24/36/38 min), so exact chips would make most
     /// combinations return zero results.
-    private static let durationBuckets = ["Under 20 min", "20–40 min", "Over 40 min"]
+    static let durationBuckets = ["Under 20 min", "20–40 min", "Over 40 min"]
 
     private func durationBucket(_ minutes: Int) -> String {
         if minutes < 20 { return "Under 20 min" }
@@ -4602,7 +4664,7 @@ struct DiscoverCatalogSection: View {
 
     /// The four result targets every v2 workout carries — the goal lens
     /// applies to the landing counts, drill-ins, and search alike.
-    private static let goalOptions: [(tag: String, label: String)] = [
+    static let goalOptions: [(tag: String, label: String)] = [
         ("weightLoss", "Weight Loss"),
         ("strengthBuilding", "Strength"),
         ("leanOut", "Lean Out"),
@@ -4773,37 +4835,6 @@ struct DiscoverCatalogSection: View {
         }
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.subheadline)
-                .foregroundStyle(MorpheTheme.textMuted)
-            TextField("Search workouts, exercises, people", text: $searchQuery)
-                .textFieldStyle(.plain)
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .autocorrectionDisabled()
-            if !searchQuery.isEmpty {
-                Button {
-                    searchQuery = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                .fill(MorpheTheme.panelStrong)
-                .overlay(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                )
-        )
-    }
-
     /// Exercises by name, muscles, gear, or style — the Technique Library
     /// answers the same search box.
     private var exerciseResults: [ExerciseReference] {
@@ -4924,7 +4955,7 @@ struct DiscoverCatalogSection: View {
             // Search leads the catalog's own page — the one obvious next
             // step here is find/start a workout, not social pairing
             // (affordance audit 2026-09). Connect moved to the bottom.
-            searchBar
+            DiscoverFilterBar(scope: store.discoverWorkouts, showFilters: false)
 
             // Empty here means the bundled catalog failed to load — the v2
             // library ships in the bundle, so say so instead of a bare grid.
@@ -4946,7 +4977,7 @@ struct DiscoverCatalogSection: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                filterRow(scope: store.discoverWorkouts)
+                DiscoverFilterBar(scope: store.discoverWorkouts, showSearch: false)
             }
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -5227,101 +5258,6 @@ struct DiscoverCatalogSection: View {
     /// duration chips, equipment menu, goal chips, difficulty menu. `scope`
     /// feeds the equipment options so drilled-in categories only offer gear
     /// their workouts actually use.
-    private func filterRow(scope: [WorkoutTemplate]) -> some View {
-        let equipmentOptions = Array(Set(scope.map(\.equipment))).sorted()
-
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if activeFilterCount > 0 {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            goalFilter = nil
-                            durationFilter = nil
-                            equipmentFilter = nil
-                            levelFilter = nil
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "xmark")
-                                .scaledFont(size: 9, weight: .bold)
-                            Text("Clear")
-                            Text("\(activeFilterCount)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
-                                .frame(width: 16, height: 16)
-                                .background(Circle().fill(MorpheTheme.accent))
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: false))
-                    .accessibilityLabel("Clear \(activeFilterCount) active filters")
-                }
-
-                // Four uniform groups in one read: Time, Equipment, Goals,
-                // Difficulty — every group is a menu chip now (Time and
-                // Goals used to be seven loose chips beside two menus).
-                filterMenuChip("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
-
-                // Always present — a filter that vanishes between categories
-                // reads as a glitch and jolts the row's layout.
-                filterMenuChip("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
-                    .disabled(equipmentOptions.count <= 1)
-                    .opacity(equipmentOptions.count <= 1 ? 0.4 : 1)
-
-                filterMenuChip(
-                    "Goals",
-                    selection: $goalFilter,
-                    options: Self.goalOptions.map(\.tag)
-                ) { tag in
-                    Self.goalOptions.first(where: { $0.tag == tag })?.label ?? tag
-                }
-
-                filterMenuChip(
-                    "Difficulty",
-                    selection: $levelFilter,
-                    options: [DemoDifficulty.beginner, .moderate, .advanced, .recovery]
-                ) { $0.rawValue }
-            }
-        }
-        .pageSwipeExempt()
-    }
-
-    /// Menu dressed as a filter chip — Menu labels can't take a ButtonStyle,
-    /// so this mirrors FilterChipStyle's look by hand.
-    private func filterMenuChip<Option: Hashable>(
-        _ label: String,
-        selection: Binding<Option?>,
-        options: [Option],
-        title: @escaping (Option) -> String
-    ) -> some View {
-        let isSelected = selection.wrappedValue != nil
-        return Menu {
-            Button("All") { selection.wrappedValue = nil }
-            ForEach(options, id: \.self) { option in
-                Button(title(option)) { selection.wrappedValue = option }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Text(selection.wrappedValue.map(title) ?? label)
-                Image(systemName: "chevron.down")
-                    .scaledFont(size: 8, weight: .bold)
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .fill(isSelected ? MorpheTheme.accent : MorpheTheme.panel)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
-            )
-        }
-        .accessibilityLabel("\(label) filter")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
     private func categoryTile(_ category: String, count: Int) -> some View {
         Button {
             // NavigationStack animates the push itself.
@@ -5403,7 +5339,7 @@ struct DiscoverCatalogSection: View {
 
             sectionHeader(title: title, count: filtered.count)
 
-            filterRow(scope: all)
+            DiscoverFilterBar(scope: all, showSearch: false)
 
             if filtered.isEmpty {
                 GlassCard {
@@ -8709,4 +8645,143 @@ private struct ExercisePickerSheet: View {
         .accessibilityLabel("\(exercise.name)\(isAdded ? ", added" : "")")
         .accessibilityHint(isAdded ? "Removes it from your workout" : "Adds it to your workout")
     }
+}
+
+
+// MARK: - Discover search bars (Lucas 2026-10-17)
+
+/// The Fitness catalog's search field and filter chips, store-backed so
+/// the page and the pinned copy are one state.
+struct DiscoverFilterBar: View {
+    @Environment(MorpheAppStore.self) private var store
+    let scope: [WorkoutTemplate]
+    var showSearch = true
+    var showFilters = true
+
+    private func bind<V>(_ keyPath: WritableKeyPath<MorpheAppStore.DiscoverFilters, V>) -> Binding<V> {
+        Binding(get: { store.discoverFilters[keyPath: keyPath] }, set: { store.discoverFilters[keyPath: keyPath] = $0 })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if showSearch { searchBar }
+            if showFilters { filterRow }
+        }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textMuted)
+            TextField("Search workouts, exercises, people", text: bind(\.query))
+                .textFieldStyle(.plain)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .autocorrectionDisabled()
+            if !store.discoverFilters.query.isEmpty {
+                Button {
+                    store.discoverFilters.query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                )
+        )
+    }
+
+    private var filterRow: some View {
+        let equipmentOptions = Array(Set(scope.map(\.equipment))).sorted()
+        let activeFilterCount = store.discoverFilters.activeCount
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if activeFilterCount > 0 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            store.discoverFilters.goal = nil
+                            store.discoverFilters.duration = nil
+                            store.discoverFilters.equipment = nil
+                            store.discoverFilters.level = nil
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark")
+                                .scaledFont(size: 9, weight: .bold)
+                            Text("Clear")
+                            Text("\(activeFilterCount)")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                                .frame(width: 16, height: 16)
+                                .background(Circle().fill(MorpheTheme.accent))
+                        }
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: false))
+                    .accessibilityLabel("Clear \(activeFilterCount) active filters")
+                }
+
+                filterMenuChip("Time", selection: bind(\.duration), options: DiscoverCatalogSection.durationBuckets) { $0 }
+                filterMenuChip("Equipment", selection: bind(\.equipment), options: equipmentOptions) { $0 }
+                    .disabled(equipmentOptions.count <= 1)
+                    .opacity(equipmentOptions.count <= 1 ? 0.4 : 1)
+                filterMenuChip("Goals", selection: bind(\.goal), options: DiscoverCatalogSection.goalOptions.map(\.tag)) { tag in
+                    DiscoverCatalogSection.goalOptions.first(where: { $0.tag == tag })?.label ?? tag
+                }
+                filterMenuChip("Difficulty", selection: bind(\.level), options: [DemoDifficulty.beginner, .moderate, .advanced, .recovery]) { $0.rawValue }
+            }
+        }
+        .pageSwipeExempt()
+    }
+
+    /// Menu dressed as a filter chip — Menu labels can't take a ButtonStyle,
+    /// so this mirrors FilterChipStyle's look by hand.
+    private func filterMenuChip<Option: Hashable>(
+        _ label: String,
+        selection: Binding<Option?>,
+        options: [Option],
+        title: @escaping (Option) -> String
+    ) -> some View {
+        let isSelected = selection.wrappedValue != nil
+        return Menu {
+            Button("All") { selection.wrappedValue = nil }
+            ForEach(options, id: \.self) { option in
+                Button(title(option)) { selection.wrappedValue = option }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selection.wrappedValue.map(title) ?? label)
+                Image(systemName: "chevron.down")
+                    .scaledFont(size: 8, weight: .bold)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .fill(isSelected ? MorpheTheme.accent : MorpheTheme.panel)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
+            )
+        }
+        .accessibilityLabel("\(label) filter")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// The scroll offset of the Discover page, read from inside its scroll view.
+struct DiscoverScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

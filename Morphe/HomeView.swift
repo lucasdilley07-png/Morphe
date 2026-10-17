@@ -478,25 +478,10 @@ struct HomeView: View {
     /// Four doors where the plan card was (Lucas 2026-10-16): Train,
     /// Nutrition, Network, Learn. Morphe says nothing here — the strip
     /// above already spoke; each card is one tap to its page.
+    /// Network · Discover on top, Nutrition · Train below (Lucas 2026-10-17):
+    /// Train sits bottom-right, nearest the thumb.
     private var doorsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            HomeLinkTile(
-                systemImage: "figure.strengthtraining.traditional",
-                title: "Train",
-                detail: "\(store.currentWorkout.name) · \(store.currentWorkout.durationMinutes) min",
-                detailIsMuted: false,
-                // The Train door is the page's primary action: filled with
-                // the user's accent like a Start button (Lucas 2026-10-16).
-                prominent: true,
-                accessibilityLabel: "Train — \(store.currentWorkout.name), \(store.currentWorkout.durationMinutes) minutes"
-            ) { store.showTrainTab() }
-            HomeLinkTile(
-                systemImage: "fork.knife",
-                title: "Nutrition",
-                detail: store.nutritionTargets.isStarter ? "Log a meal or a plate" : "\(store.nutrition.caloriesConsumed) of \(store.nutritionTargets.calories) cal",
-                detailIsMuted: store.nutritionTargets.isStarter,
-                accessibilityLabel: "Nutrition"
-            ) { store.openHub(.nutrition) }
             HomeLinkTile(
                 systemImage: "person.3.fill",
                 title: "Network",
@@ -511,6 +496,23 @@ struct HomeView: View {
                 detailIsMuted: true,
                 accessibilityLabel: "Discover"
             ) { store.openDiscoverDoor() }
+            HomeLinkTile(
+                systemImage: "fork.knife",
+                title: "Nutrition",
+                detail: store.nutritionTargets.isStarter ? "Log a meal or a plate" : "\(store.nutrition.caloriesConsumed) of \(store.nutritionTargets.calories) cal",
+                detailIsMuted: store.nutritionTargets.isStarter,
+                accessibilityLabel: "Nutrition"
+            ) { store.openHub(.nutrition) }
+            HomeLinkTile(
+                systemImage: "figure.strengthtraining.traditional",
+                title: "Train",
+                detail: "\(store.currentWorkout.name) · \(store.currentWorkout.durationMinutes) min",
+                detailIsMuted: false,
+                // The Train door is the page's primary action: filled with
+                // the user's accent like a Start button (Lucas 2026-10-16).
+                prominent: true,
+                accessibilityLabel: "Train — \(store.currentWorkout.name), \(store.currentWorkout.durationMinutes) minutes"
+            ) { store.showTrainTab() }
         }
     }
 
@@ -1374,8 +1376,10 @@ struct MorpheDayPopup: View {
             .opacity(bubbleIn || reduceMotion ? 1 : 0)
             .offset(y: bubbleIn || reduceMotion ? 0 : -6)
 
+            // Bottom-up (Lucas 2026-10-17): the first offer sits nearest the
+            // thumb, the fourth at the top.
             VStack(spacing: 10) {
-                ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
+                ForEach(Array(store.dayPopupChoices.enumerated().reversed()), id: \.element.id) { index, choice in
                     choiceRow(choice, index: index)
                 }
             }
@@ -2856,16 +2860,18 @@ private struct TodayIdentityStrip: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity)
+            // LEVEL · SCORE · ENERGY · READINESS (Lucas 2026-10-17: level and
+            // the check-in swapped places).
             HStack(spacing: 8) {
-                tile("READINESS", value: checkIn == nil ? "Check in" : "\(shown[0])", unit: checkIn == nil ? "20 seconds" : "/ 100",
-                     tint: checkIn.map { $0.score >= 80 ? MorpheTheme.accent : ($0.score >= 60 ? MorpheTheme.accentAlt : MorpheTheme.warning) } ?? MorpheTheme.textMuted,
-                     index: 0) { showCheckIn = true }
+                tile("LEVEL", value: "\(shown[3])", unit: rank.lowercased(), tint: MorpheTheme.accent, index: 0) { store.showClientProfile = true }
                 tile("SCORE", value: store.loggedWorkoutCount == 0 ? "Day 1" : "\(shown[1])",
                      unit: store.loggedWorkoutCount == 0 ? "first log starts it" : store.clientProfile.health.tier.rawValue.lowercased(),
                      tint: MorpheTheme.accent, index: 1) { store.openProgress() }
                 tile("ENERGY", value: checkIn == nil ? "—" : "\(shown[2] / 10)", unit: checkIn == nil ? "after check-in" : "/ 10",
                      tint: checkIn == nil ? MorpheTheme.textMuted : MorpheTheme.accentAlt, index: 2) { showCheckIn = true }
-                tile("LEVEL", value: "\(shown[3])", unit: rank.lowercased(), tint: MorpheTheme.accent, index: 3) { store.showClientProfile = true }
+                tile("READINESS", value: checkIn == nil ? "Check in" : "\(shown[0])", unit: checkIn == nil ? "20 seconds" : "/ 100",
+                     tint: checkIn.map { $0.score >= 80 ? MorpheTheme.accent : ($0.score >= 60 ? MorpheTheme.accentAlt : MorpheTheme.warning) } ?? MorpheTheme.textMuted,
+                     index: 3) { showCheckIn = true }
             }
         }
         .onChange(of: appeared, initial: true) { _, now in

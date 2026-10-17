@@ -1238,6 +1238,68 @@ enum LearnCardID: String, LayoutCard {
     static let defaultOrder: [LearnCardID] = [.quizzes, .lessons, .whyMorphe, .rules, .coachNotes]
 }
 
+/// A page's saved order and hidden sections (Lucas 2026-10-17).
+struct PageLayoutRecord: Codable, Hashable {
+    var order: [String] = []
+    var hidden: [String] = []
+}
+
+/// Board (Lucas 2026-10-17): one box — the boards themselves.
+enum BoardCardID: String, LayoutCard {
+    case boards
+    var title: String { "Boards" }
+    var detail: String { "Your groups, their codes, this week's standings" }
+    static let defaultOrder: [BoardCardID] = [.boards]
+}
+
+/// Chats (Lucas 2026-10-17).
+enum ChatsCardID: String, LayoutCard {
+    case people, conversations
+    var title: String { self == .people ? "People" : "Messages" }
+    var detail: String { self == .people ? "Stories and the Connect row" : "Search, Morphe first, then your chats newest first" }
+    static let defaultOrder: [ChatsCardID] = [.people, .conversations]
+}
+
+/// Calendar (Lucas 2026-10-17): one box — the schedule.
+enum CalendarCardID: String, LayoutCard {
+    case schedule
+    var title: String { "Schedule" }
+    var detail: String { "Upcoming sessions and calls" }
+    static let defaultOrder: [CalendarCardID] = [.schedule]
+}
+
+/// Nutrition (Lucas 2026-10-17).
+enum NutritionCardID: String, LayoutCard {
+    case check, fuel, chart, basics, insight
+    var title: String {
+        switch self {
+        case .check: return "Check a food"
+        case .fuel: return "Today's Fuel"
+        case .chart: return "The chart"
+        case .basics: return "Nutrition basics"
+        case .insight: return "Morphe's read"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .check: return "Barcode and photo checks"
+        case .fuel: return "Calories, protein, water, the log"
+        case .chart: return "Calories and the macro split"
+        case .basics: return "The three numbers to hit"
+        case .insight: return "What Morphe sees in your fuel"
+        }
+    }
+    static let defaultOrder: [NutritionCardID] = [.check, .fuel, .chart, .basics, .insight]
+}
+
+/// Library (Lucas 2026-10-17).
+enum LibraryCardID: String, LayoutCard {
+    case exercises, saved
+    var title: String { self == .exercises ? "Exercise Library" : "Saved" }
+    var detail: String { self == .exercises ? "Every movement by muscle group" : "Posts, workouts, exercises, plans, lessons" }
+    static let defaultOrder: [LibraryCardID] = [.exercises, .saved]
+}
+
 /// Explore's sections (Discover → Explore, Lucas 2026-10-16): the stream
 /// grouped by what Creator Coaches publish, in the user's order.
 enum ExploreCardID: String, LayoutCard {
@@ -1648,6 +1710,9 @@ struct UserStyleProfile: Codable, Equatable {
     /// Explore's section order / hidden sections (raw ExploreCardID).
     var exploreCardOrder: [String] = []
     var exploreHiddenCards: [String] = []
+    /// Every other editable page (Lucas 2026-10-17: Board, Chats, Calendar,
+    /// Nutrition, Library) keyed by page name.
+    var sectionLayouts: [String: PageLayoutRecord] = [:]
     /// The tab bar's order (raw ClientTab values); empty = default.
     var tabOrder: [String] = []
     /// How often each Today card gets used (learned half — feeds the
@@ -1687,6 +1752,7 @@ struct UserStyleProfile: Codable, Equatable {
         learnHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .learnHiddenCards)) ?? nil) ?? []
         exploreCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .exploreCardOrder)) ?? nil) ?? []
         exploreHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .exploreHiddenCards)) ?? nil) ?? []
+        sectionLayouts = ((try? c.decodeIfPresent([String: PageLayoutRecord].self, forKey: .sectionLayouts)) ?? nil) ?? [:]
         tabOrder = ((try? c.decodeIfPresent([String].self, forKey: .tabOrder)) ?? nil) ?? []
         homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
         declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []

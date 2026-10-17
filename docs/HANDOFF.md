@@ -1024,3 +1024,41 @@ Network is deliberately left alone.
   user left. The main TabView's selection binding treats a re-tap of the
   selected icon as `popTabToRoot` — the section stays (Board, Library…),
   the page rebuilds at its top (Lucas 2026-10-17).
+- Discover (Lucas 2026-10-17): the Fitness search + filters and Explore's
+  search + chips are store-backed (`discoverFilters`, `exploreQuery`,
+  `exploreFilter`) and rendered by `DiscoverFilterBar` / `ExploreSearchBar`.
+  They scroll with the page; once the page is past them (offset < -170)
+  a scroll UP slides a pinned copy in under the icon row (material
+  backing), a scroll DOWN slides it out, and back at the top it leaves so
+  the real bar takes over. Offset comes from `DiscoverScrollOffsetKey`
+  (a GeometryReader under the section tabs, iOS 17-safe).
+- Page titles in the tabs grammar: `MonoSectionTabs` (GlassCard.swift) —
+  Train shows TRAIN underlined with its line under it; Learn shows
+  LESSONS · NUTRITION · LIBRARY (the chip row is gone) with its line
+  under it.
+- Edit options everywhere (Lucas 2026-10-17): Board, Chats, Calendar,
+  Nutrition and Library edit through one generic store —
+  `StyleProfile.sectionLayouts[page] = PageLayoutRecord(order, hidden)`,
+  `pageLayout / visiblePageCards / hiddenPageCards / movePageCards /
+  hidePageCard (min one) / showPageCard`, with `BoardCardID` (boards),
+  `ChatsCardID` (people · morphe · conversations), `CalendarCardID`
+  (schedule), `NutritionCardID` (check · fuel · chart · basics · insight),
+  `LibraryCardID` (exercises · saved). `EditablePage` gained those cases;
+  `editablePage(for:)` maps the Network section and the Learn feature;
+  `followEditingSection()` (didSet on both) moves the mode with a section
+  switch. Learn's button reads "Edit Lessons's layout".
+- The floating Morphe AI button parks (Lucas 2026-10-17): swipe it right
+  (not mid-hop) and it slides off; `aiButtonParked` (UserDefaults) shows
+  `AIButtonParkedTab`, a small accent chevron hugging the right edge in its
+  place; tap or swipe it left to bring the button back. The chats / Hey
+  Morphe gate is unchanged (no chevron there).
+- Page swipes (Chats ↔ Board ↔ Calendar, Fitness ↔ Explore) run on a UIKit
+  pan (`PageSwipeRecognizer`, attached to the page's host view, simultaneous
+  with every scroll view, `cancelsTouchesInView = false`) instead of a
+  SwiftUI drag — the chats list swallowed the drag (Lucas 2026-10-17). The
+  exempt frames (rails, chip rows) still apply. Today's doors are Network ·
+  Discover / Nutrition · Train; the tiles read LEVEL · SCORE · ENERGY ·
+  READINESS; the welcome pop-up's buttons run bottom-up (1 nearest the
+  thumb); after the intro the name step no longer re-asks the birth year
+  and the counter reads N OF 5; "Take the tour" presents after the pop-up
+  cover has left.

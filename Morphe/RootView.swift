@@ -504,12 +504,20 @@ struct RootView: View {
             // And it slides off while the chats have the stage (Lucas
             // 2026-10-16): the list, an open thread, the search board.
             if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage && !store.showHelloBeat && store.editingPage == nil && !store.chatsHaveTheStage {
+                if store.aiButtonParked {
+                    // Swiped off (Lucas 2026-10-17): a small accent chevron
+                    // marks its place; a tap or a swipe left brings it back.
+                    AIButtonParkedTab()
+                        .padding(.bottom, aiButtonDockClearance)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
                     // growing with the dock's labels at accessibility sizes.
                     .padding(.bottom, aiButtonDockClearance)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
         // The food check's refusal (Lucas 2026-10-16): one pop-up wherever
@@ -930,6 +938,8 @@ private struct FloatingAIAgentButton: View {
     /// button jumps once so the app feels alive. Never under Reduce Motion,
     /// mid "Hey Morphe" exchange, with the AI open, or in the background.
     @State private var hop: CGFloat = 0
+    /// The finger's pull to the right while swiping it off.
+    @State private var dragX: CGFloat = 0
 
     private var label: String { "Morphe AI" }
 
@@ -1001,7 +1011,25 @@ private struct FloatingAIAgentButton: View {
             }
         }
         .buttonStyle(.plain)
-        .offset(y: hop)
+        .offset(x: dragX, y: hop)
+        // Hold and swipe it off the right edge (Lucas 2026-10-17); not
+        // while it is mid-hop. The drag wins over the tap once it moves.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 12)
+                .onChanged { value in
+                    guard hop == 0 else { return }
+                    dragX = max(0, value.translation.width)
+                }
+                .onEnded { value in
+                    guard hop == 0 else { dragX = 0; return }
+                    if value.translation.width > 44 || value.predictedEndTranslation.width > 120 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.parkAIButton() }
+                        dragX = 0
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { dragX = 0 }
+                    }
+                }
+        )
         // Restarts when the gates change, so the loop never reads a stale
         // copy of Reduce Motion or the scene phase.
         .task(id: "\(reduceMotion)-\(scenePhase == .active)") { await idleHops() }
@@ -1030,6 +1058,46 @@ private struct FloatingAIAgentButton: View {
                 Capsule(style: .continuous)
                     .stroke(MorpheTheme.accent.opacity(0.55), lineWidth: 1)
             )
+    }
+}
+
+/// The parked AI button's chevron (Lucas 2026-10-17): a small accent tab
+/// hugging the right edge where the button was. Tap or swipe left brings
+/// the button back.
+private struct AIButtonParkedTab: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var pull: CGFloat = 0
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.unparkAIButton() }
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
+                .frame(width: 30, height: 44)
+                .background(
+                    UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
+                        .fill(MorpheTheme.accent)
+                        .shadow(color: MorpheTheme.accent.opacity(0.35), radius: 8, x: -2, y: 2)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .offset(x: pull)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 8)
+                .onChanged { value in pull = min(0, value.translation.width) }
+                .onEnded { value in
+                    if value.translation.width < -24 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { store.unparkAIButton() }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { pull = 0 }
+                    }
+                    pull = 0
+                }
+        )
+        .accessibilityLabel("Show the Morphe AI button")
     }
 }
 

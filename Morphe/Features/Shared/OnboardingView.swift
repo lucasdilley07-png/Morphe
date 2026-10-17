@@ -293,13 +293,17 @@ struct OnboardingFlowView: View {
                             // Thin bar + count, nothing else (the old header
                             // card repeated a title and a subtitle on every
                             // step). The account already counts as done.
-                            let answered = max(stepIndex, 1)
+                            // No welcome step after the intro (Lucas 2026-10-17):
+                            // the count is the question's own number.
+                            let hasWelcome = steps.first == .welcome
+                            let total = hasWelcome ? steps.count - 1 : steps.count
+                            let answered = hasWelcome ? max(stepIndex, 1) : stepIndex + 1
                             HStack(spacing: 12) {
                                 ProgressBarView(
-                                    progress: Double(answered) / Double(steps.count),
+                                    progress: Double(answered) / Double(total),
                                     color: MorpheTheme.accent
                                 )
-                                Text("\(answered) OF \(steps.count - 1)")
+                                Text("\(answered) OF \(total)")
                                     .font(MorpheTheme.microLabel(10))
                                     .tracking(1.2)
                                     .foregroundStyle(MorpheTheme.textMuted)
@@ -307,7 +311,7 @@ struct OnboardingFlowView: View {
                             }
                             .padding(.top, 4)
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("Step \(answered) of \(steps.count - 1)")
+                            .accessibilityLabel("Step \(answered) of \(total)")
                         }
 
                         stepView(for: currentStep)
@@ -463,7 +467,7 @@ struct OnboardingFlowView: View {
                 ProfileReviewStep()
             }
         case .name:
-            NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear, namespace: brand)
+            NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear, askBirthYear: !store.introSuppliedIdentity, namespace: brand)
         case .username:
             UsernameStep(
                 entry: $usernameEntry,
@@ -735,6 +739,8 @@ private struct LandingPoint: View {
 private struct NameStep: View {
     @Binding var name: String
     @Binding var birthYear: Int?
+    /// The intro already took the birthday (Lucas 2026-10-17): no second ask.
+    var askBirthYear: Bool = true
     let namespace: Namespace.ID
     @State private var yearText = ""
 
@@ -749,7 +755,9 @@ private struct NameStep: View {
     var body: some View {
         OnboardingCard(
             title: "What should Morphe call you?",
-            subtitle: "Morphe greets you by name. Your birth year confirms you can train with Morphe — it isn't shown to anyone."
+            subtitle: askBirthYear
+                ? "Morphe greets you by name. Your birth year confirms you can train with Morphe — it isn't shown to anyone."
+                : "Morphe greets you by name — first name is enough."
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 // The opener's mark lands here, small, beside the field.
@@ -785,6 +793,7 @@ private struct NameStep: View {
 
                 // Age gate (fix wave 2026-10-13): asked neutrally, no hint
                 // at the cutoff, and it becomes the profile age.
+                if askBirthYear {
                 TextField("Year you were born", text: $yearText)
                     .textFieldStyle(MorpheFieldStyle())
                     .keyboardType(.numberPad)
@@ -795,7 +804,8 @@ private struct NameStep: View {
                         birthYear = digits.count == 4 ? Int(digits) : nil
                     }
                     .accessibilityLabel("Year you were born")
-                if let yearMessage {
+                }
+                if askBirthYear, let yearMessage {
                     Text(yearMessage)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.warning)

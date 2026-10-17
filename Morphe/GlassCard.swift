@@ -116,6 +116,43 @@ struct GlassCard<Content: View>: View {
     }
 }
 
+/// The page-top tabs grammar (Discover's FITNESS · EXPLORE, Network's
+/// BOARD · CHATS · CALENDAR): equal columns, tracked mono labels, a short
+/// accent underline under the active one. One item renders as a plain
+/// underlined title (Train). Lucas 2026-10-17.
+struct MonoSectionTabs<ID: Hashable>: View {
+    let items: [(id: ID, title: String)]
+    @Binding var selection: ID
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            ForEach(items, id: \.id) { item in
+                let isActive = selection == item.id
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { selection = item.id }
+                } label: {
+                    VStack(alignment: .center, spacing: 5) {
+                        Text(item.title.uppercased())
+                            .font(MorpheTheme.microLabel(16))
+                            .tracking(1.6)
+                            .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                        Rectangle()
+                            .fill(isActive ? MorpheTheme.accent : .clear)
+                            .frame(width: 34, height: 3)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottom)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.title)
+                .accessibilityAddTraits(isActive ? .isSelected : [])
+            }
+        }
+        .sensoryFeedback(.selection, trigger: selection)
+        .frame(maxWidth: .infinity)
+    }
+}
+
 struct SectionTitleView: View {
     let title: String
     let subtitle: String
@@ -2980,19 +3017,100 @@ struct InTabPageSwipe<Page: Hashable>: ViewModifier {
         content
             .coordinateSpace(name: PageSwipeSpace.name)
             .onPreferenceChange(PageSwipeExemptKey.self) { exemptFrames = $0 }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 30, coordinateSpace: .named(PageSwipeSpace.name))
-                    .onEnded { value in
-                        guard !exemptFrames.contains(where: { $0.contains(value.startLocation) }) else { return }
-                        let dx = value.translation.width, dy = value.translation.height
-                        guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
-                              let index = pages.firstIndex(of: selection) else { return }
-                        let next = dx < 0 ? index + 1 : index - 1
-                        guard pages.indices.contains(next) else { return }
-                        Haptics.selection()
-                        withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
-                    }
+            // A UIKit pan that recognizes alongside the page's own scroll
+            // views (Lucas 2026-10-17: the chats list swallowed the SwiftUI
+            // drag) — a swipe anywhere on the page flips it.
+            .overlay(
+                PageSwipeRecognizer { start, dx, dy in
+                    guard !exemptFrames.contains(where: { $0.contains(start) }) else { return }
+                    guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
+                          let index = pages.firstIndex(of: selection) else { return }
+                    let next = dx < 0 ? index + 1 : index - 1
+                    guard pages.indices.contains(next) else { return }
+                    Haptics.selection()
+                    withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
+                }
+                .allowsHitTesting(false)
             )
+    }
+}
+
+/// A pan recognizer attached to the page's host view so it sees every
+/// touch in the page, scroll views included, without stealing them
+/// (`cancelsTouchesInView = false`, simultaneous with everything). Reports
+/// the start point (in the page's space) and the translation on release.
+struct PageSwipeRecognizer: UIViewRepresentable {
+    let onSwipe: (CGPoint, CGFloat, CGFloat) -> Void
+
+    func makeUIView(context: Context) -> HostView {
+        let view = HostView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = nil
+        view.onSwipe = onSwipe
+        return view
+    }
+    func updateUIView(_ view: HostView, context: Context) { view.onSwipe = onSwipe }
+    static func dismantleUIView(_ view: HostView, coordinator: ()) { view.detach() }
+
+    final class HostView: UIView, UIGestureRecognizerDelegate {
+        var onSwipe: ((CGPoint, CGFloat, CGFloat) -> Void)?
+        private var pan: UIPanGestureRecognizer?
+        private weak var host: UIView?
+        private var start: CGPoint = .zero
+        private var tracking = false
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            // The window, not the superview: SwiftUI wraps a representable
+            // in a container its own size, so a recognizer there never
+            // sees the page's touches. The window sees them all; `began`
+            // filters to touches that landed on this page.
+            guard let host = window, pan == nil else { return }
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+            pan.delegate = self
+            pan.cancelsTouchesInView = false
+            pan.delaysTouchesBegan = false
+            host.addGestureRecognizer(pan)
+            self.pan = pan
+            self.host = host
+        }
+
+        func detach() {
+            if let pan, let host { host.removeGestureRecognizer(pan) }
+            pan = nil
+        }
+
+        /// False when any ancestor is hidden or fully transparent.
+        private var isShowing: Bool {
+            var view: UIView? = self
+            while let v = view {
+                if v.isHidden || v.alpha < 0.01 { return false }
+                view = v.superview
+            }
+            return true
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+
+        @objc private func handle(_ gesture: UIPanGestureRecognizer) {
+            switch gesture.state {
+            case .began:
+                let point = gesture.location(in: self)
+                // Only touches that landed on this page while it is showing
+                // (the window is shared with every tab and sheet).
+                tracking = bounds.contains(point) && isShowing
+                start = point
+            case .ended:
+                guard tracking else { return }
+                tracking = false
+                let t = gesture.translation(in: self)
+                onSwipe?(start, t.x, t.y)
+            case .cancelled, .failed:
+                tracking = false
+            default:
+                break
+            }
+        }
     }
 }
 
@@ -3458,9 +3576,16 @@ struct EditLayoutButton: View {
 // sections wait in a HIDDEN row at the bottom with a Show button, and the
 // last visible section can't be hidden.
 
-enum EditablePage: String { case today, train, discover, explore, learn
-    /// Discover's sections are Fitness and Explore (Lucas 2026-10-16).
-    var title: String { self == .discover ? "Fitness" : rawValue.capitalized }
+enum EditablePage: String { case today, train, discover, explore, learn, board, chats, calendar, nutrition, library
+    /// Discover's sections are Fitness and Explore (Lucas 2026-10-16);
+    /// Learn's first section is Lessons (Lucas 2026-10-17).
+    var title: String {
+        switch self {
+        case .discover: return "Fitness"
+        case .learn: return "Lessons"
+        default: return rawValue.capitalized
+        }
+    }
 }
 
 /// Frames of every section in the editor's coordinate space.
